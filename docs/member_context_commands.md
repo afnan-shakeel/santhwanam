@@ -1,5 +1,6 @@
+# Member Context Documentation
 
-# Member Commands
+## Member Commands
 
 #### 1. StartMemberRegistration 
 * Triggered by: Agent, Unit Admin, Area Admin, Forum Admin
@@ -134,6 +135,7 @@
 * Triggered by: Agent, Admin
 * Input:
 ```json
+{
   "nomineeId": "uuid",
   "nominee": { /* same as AddNominee */ }
 }
@@ -378,8 +380,8 @@ Input:
 #### 18. ReassignMemberAgent
 
 
-# State Machines
-## State Machine: Member Registration
+## State Machines
+### State Machine: Member Registration
 ```
 [Start]
    ↓
@@ -398,7 +400,7 @@ Input:
 
 ---
 
-## State Machine: Member Status (Post-Registration)
+### State Machine: Member Status (Post-Registration)
 ```
 [Active]
    ↓
@@ -412,10 +414,10 @@ Input:
 
 ```
 
-# Some Flow Logic Examples
+## Some Flow Logic Examples
 
-## Agent Assignment Logic
-### Scenario 1: Agent Filling the Form
+### Agent Assignment Logic
+#### Scenario 1: Agent Filling the Form
 - Command: StartMemberRegistration
 - Input (Agent context):
 ```json
@@ -431,7 +433,13 @@ Input:
 // If createdBy user is an Agent:
 member.agentId = createdBy // Auto-assign agent
 ```
-### Scenario 2: Admin Filling the Form
+- UI Implications:
+```
+Agent: [Auto-filled, read-only] John Doe (Agent)
+Unit: [Auto-filled, read-only] Unit A
+```
+
+#### Scenario 2: Admin Filling the Form
 - Command: StartMemberRegistration
 - Input (Admin context):
 ```json
@@ -464,19 +472,21 @@ if (agent.unitId !== member.unitId) {
 member.agentId = agentId
 ```
 
----
-
-### UI Implications for Agent assignment
-
-#### **Registration Form - Step 1 (Personal Details)**
-
-**If logged-in user is Agent:**
-```
-Agent: [Auto-filled, read-only] John Doe (Agent)
-Unit: [Auto-filled, read-only] Unit A
-```
-
-**If logged-in user is Admin:**
+- UI Implications:
 ```
 Unit: [Dropdown] Select Unit
 Agent: [Dropdown] Select Agent (filtered by selected Unit)
+```
+
+## Domain Design Model (data structures)
+### 1. Membership Bounded Context 
+#### Aggregates
+### **Member (root)**
+* MemberId
+* Personal details (name, DOB, contact, address, etc.)
+* Tier/Level
+* Status (Active, Frozen, Suspended, Closed)
+* Registration date
+* UnitId, AgentId
+* ForumId, AreaId
+* Nominee
