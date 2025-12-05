@@ -275,45 +275,28 @@ Business Rules:
 - Only Super Admin, Forum Admin (of parent forum), or Area Admin (of parent area) can create units
 - `establishedDate` cannot be in the future
 
-## Agents Domain (`docs/domain/3.agents.md`)
+## Approval Workflow System Design
 
 ### Domain Model
 
-#### Entity: Agent
-```js
-Agent {
-  agentId: UUID
+#### **Entity: ApprovalWorkflow**
 
-  // Hierarchy (belongs to unit)
-  unitId: UUID // Parent unit
-  areaId: UUID // Denormalized from unit
-  forumId: UUID // Denormalized from unit
-
-  // Identification
-  agentCode: string // Admin-defined, unique within unit
-
-  // User reference (Agent IS a user)
-  userId: UUID // References users.userId
-
-  // Contact Details
-  contactNumber: string
-  alternateContactNumber: string?
-
-  // Status
-  agentStatus: enum [Active, Inactive, Suspended, Terminated]
-  // Phase 1: Only Active and Terminated used
-  // Phase 2: Inactive (temporary), Suspended (disciplinary)
-
-  // Statistics (computed/cached)
-  totalActiveMembers: int // Count of members with status = Active
-  totalRegistrations: int // All-time count of members registered by this agent
-
+```javascript
+ApprovalWorkflow {
+  workflowId: UUID
+  workflowCode: string // Unique: "member_registration", "death_claim_approval", "wallet_deposit"
+  workflowName: string
+  description: string?
+  
+  // Context
+  module: enum [Membership, Wallet, Claims, Contributions, Organization]
+  entityType: string // "Member", "DeathClaim", "WalletDeposit"
+  
+  // Configuration
+  isActive: boolean
+  requiresAllStages: boolean // true = sequential, false = any stage can approve
+  
   // Metadata
-  joinedDate: date // When agent started
-  terminatedDate: date? // When agent was terminated
-  terminationReason: string? // Why agent was terminated
-
-  // Timestamps
   createdAt: timestamp
   createdBy: UUID
   updatedAt: timestamp
@@ -321,9 +304,224 @@ Agent {
 }
 ```
 
+---
+
+#### **Entity: ApprovalStage**
+
+```javascript
+ApprovalStage {
+  stageId: UUID
+  workflowId: UUID
+  
+  // Stage details
+  stageName: string // "Unit Admin Review", "Forum Admin Approval"
+  stageOrder: int // 1, 2, 3... (for sequential workflows)
+  
+  // Approver assignment
+  approverType: enum [Role, SpecificUser, Hierarchy]
+  
+  // If approverType = Role
+  roleId: UUID?
+  
+  // If approverType = SpecificUser
+  userId: UUID?
+  
+  // If approverType = Hierarchy
+  hierarchyLevel: enum [Unit, Area, Forum]? // Dynamically resolve based on entity
+  
+  // Stage behavior
+  isOptional: boolean // Can be skipped
+  autoApprove: boolean // Automatically approve without manual action
+  
+  // Metadata
+  createdAt: timestamp
+}
+```
+
+**Example - Member Registration:**
+```javascript
+Workflow: "member_registration"
+  Stage 1: Unit Admin Review (order: 1, roleId: "unit_admin", hierarchyLevel: "Unit")
+  Stage 2: Forum Admin Approval (order: 2, roleId: "forum_admin", hierarchyLevel: "Forum")
+```
+
+**Example - Wallet Deposit:**
+```javascript
+Workflow: "wallet_deposit_approval"
+  Stage 1: Unit Admin Approval (order: 1, roleId: "unit_admin", hierarchyLevel: "Unit")
+```
+
+**Example - Death Claim:**
+```javascript
+Workflow: "death_claim_approval"
+  Stage 1: Forum Admin Approval (order: 1, roleId: "forum_admin", hierarchyLevel: "Forum")
+```
+
+---
+
+#### **Entity: ApprovalRequest**
+
+```javascript
+ApprovalRequest {
+  requestId: UUID
+  workflowId: UUID
+  
+  // Entity being approved
+  entityType: string // "Member", "DeathClaim", "WalletDeposit"
+  entityId: UUID
+  
+  // Context (for hierarchy resolution)
+  forumId: UUID?
+  areaId: UUID?
+  unitId: UUID?
+  
+  // Request details
+  requestedBy: UUID
+  requestedAt: timestamp
+  
+  // Current status
+  status: enum [Pending, Approved, Rejected, Cancelled]
+  currentStageOrder: int // Which stage is it at now
+  
+  // Final outcome
+  approvedBy: UUID?
+  approvedAt: timestamp?
+  rejectedBy: UUID?
+  rejectedAt: timestamp?
+  rejectionReason: string?
+  
+  // Metadata
+  createdAt: timestamp
+  updatedAt: timestamp
+}
+```
+
+---
+
+#### **Entity: ApprovalStageExecution**
+
+```javascript
+ApprovalStageExecution {
+  executionId: UUID
+  requestId: UUID
+  stageId: UUID
+  stageOrder: int
+  
+  // Execution details
+  status: enum [Pending, Approved, Rejected, Skipped]
+  
+  // Assigned approver (resolved from stage config)
+  assignedApproverId: UUID?
+  
+  // Approval/Rejection
+  reviewedBy: UUID?
+  reviewedAt: timestamp?
+  decision: enum [Approve, Reject]?
+  comments: string?
+  
+  // Metadata
+  createdAt: timestamp
+  updatedAt: timestamp
+}
+```
+
+---
+
+
+## Agents Domain (`docs/domain/3.agents.md`)
+
+### Domain Model
+
+#### **Entity: Agent**
+
+```javascript
+Agent {
+  agentId: UUID
+  agentCode: string // Admin-defined, unique within unit
+  
+  // Registration tracking
+  registrationStatus: enum [Draft, PendingApproval, Approved, Rejected]
+  approvalRequestId: UUID? // Links to approval_requests table
+  
+  // Hierarchy
+  unitId: UUID
+  areaId: UUID // Denormalized
+  forumId: UUID // Denormalized
+  
+  // User reference (set after approval)
+  userId: UUID? // References users.userId
+  
+  // Personal details
+  firstName: string
+  middleName: string?
+  lastName: string
+  dateOfBirth: date
+  gender: enum [Male, Female, Other]
+  
+  // Contact
+  contactNumber: string
+  alternateContactNumber: string?
+  email: string // Used to create Supabase account
+  
+  // Address (Optional)
+  addressLine1: string?
+  addressLine2: string?
+  city: string?
+  state: string?
+  postalCode: string?
+  country: string?
+  
+  // Agent status (after approval)
+  agentStatus: enum [Active, Inactive, Suspended, Terminated]?
+  // null until approved
+  
+  // Statistics
+  totalActiveMembers: int // Count of Active members
+  totalRegistrations: int // All-time registrations
+  
+  // Metadata
+  joinedDate: date
+  terminatedDate: date?
+  terminationReason: string?
+  
+  // Timestamps
+  createdAt: timestamp
+  approvedAt: timestamp?
+  updatedAt: timestamp
+  
+  // Audit
+  createdBy: UUID
+  approvedBy: UUID?
+}
+```
+
+---
+
+### State Machines
+
+#### **Registration Status:**
+```
+[Draft]
+   ↓
+[PendingApproval]
+   ↓
+   ├─→ [Approved] → User created, agent activated
+   └─→ [Rejected]
+```
+
+#### **Agent Status (Post-Approval):**
+```
+[Active]
+   ↓
+   ├─→ [Inactive] (Phase 2)
+   ├─→ [Suspended] (Phase 2)
+   └─→ [Terminated] (Phase 1: requires 0 active members)
+```
+
+
 ### Business Rules
 
-**Creation**
+#### **Creation**
 
 - Agent must belong to an existing active unit
 - `agentCode` must be unique within the unit
@@ -333,20 +531,13 @@ Agent {
 - Only Super Admin, Forum Admin (of parent forum), Area Admin (of parent area), or Unit Admin (of parent unit) can create agents
 - `joinedDate` cannot be in the future
 
-**Status**
-
-- Active: Agent can register members, handle transactions
-- Terminated: Agent permanently removed (Phase 1)
-- Inactive: Temporary deactivation (Phase 2)
-- Suspended: Disciplinary action (Phase 2)
-
-**Phase 1 Constraints**
+#### **Phase 1 Constraints**
 
 - No agent transfers between units
 - No member reassignments when agent status changes
 - Agent must have zero active members before termination
 
-**Phase 2 Features (Future)**
+#### **Phase 2 Features (Future)**
 
 - Transfer agent to another unit (with or without members)
 - Reassign members to another agent
@@ -355,17 +546,34 @@ Agent {
 
 ## Member Domain (`docs/domain/4.membership.md`)
 
-### Domain Design Model (data structures)
-#### Entity: Member
+
+### Domain Model
+
+#### **Entity: Member**
+
 ```javascript
 Member {
   memberId: UUID
+  memberCode: string // Auto-generated: "MEM-2025-00001"
   
   // Registration tracking
-  registrationStatus: enum [Draft, PendingApproval, Approved, Rejected]
-  registrationStep: enum [PersonalDetails, Nominees, DocumentsPayment, Completed]
+  registrationStatus: enum [
+    Draft,              // Still filling out 3-step form
+    PendingApproval,    // Submitted to approval workflow
+    Approved,           // Approval workflow completed
+    Rejected            // Approval workflow rejected
+  ]
+  registrationStep: enum [
+    PersonalDetails,    // Step 1
+    Nominees,           // Step 2
+    DocumentsPayment,   // Step 3
+    Completed           // All steps done, ready to submit
+  ]
   
-  // Personal details
+  // Approval tracking
+  approvalRequestId: UUID? // Links to approval_requests table
+  
+  // Personal Details (Step 1)
   firstName: string
   middleName: string?
   lastName: string
@@ -374,146 +582,220 @@ Member {
   contactNumber: string
   alternateContactNumber: string?
   email: string?
-  address: {
-    line1: string
-    line2: string?
-    city: string
-    state: string
-    postalCode: string
-    country: string
-  }
   
-  // Hierarchy
-  tierId: UUID
+  // Address
+  addressLine1: string
+  addressLine2: string?
+  city: string
+  state: string
+  postalCode: string
+  country: string
+  
+  // Membership details
+  tierId: UUID // References membership_tiers
+  
+  // Hierarchy (assigned during registration)
   agentId: UUID
   unitId: UUID
-  areaId: UUID // Denormalized
-  forumId: UUID // Denormalized
+  areaId: UUID // Denormalized from unit
+  forumId: UUID // Denormalized from unit
   
-  // Status (after approval)
+  // Member Status (after approval)
   memberStatus: enum [Active, Frozen, Suspended, Closed, Deceased]?
-  suspensionCounter: int // Missed contributions count
+  // null until approved
+  
+  // Suspension tracking
+  suspensionCounter: int // Consecutive missed contributions
+  suspensionReason: string?
+  suspendedAt: timestamp?
   
   // Timestamps
   createdAt: timestamp
-  registeredAt: timestamp? // When approved
+  registeredAt: timestamp? // When approved and activated
   updatedAt: timestamp
-  createdBy: UUID // Agent or Admin
-  approvedBy: UUID?
+  
+  // Audit
+  createdBy: UUID // Agent or Admin who started registration
+  approvedBy: UUID? // Final approver (from approval workflow)
 }
 ```
 
-#### Entity: Nominee
+---
+
+#### **Entity: Nominee**
+
 ```javascript
 Nominee {
   nomineeId: UUID
   memberId: UUID
   
+  // Nominee details
   name: string
   relationType: enum [Father, Mother, Spouse, Son, Daughter, Brother, Sister, Other]
   dateOfBirth: date
   contactNumber: string
   alternateContactNumber: string?
-  address: {
-    line1: string
-    line2: string?
-    city: string
-    state: string
-    postalCode: string
-    country: string
-  }
+  
+  // Address
+  addressLine1: string
+  addressLine2: string?
+  city: string
+  state: string
+  postalCode: string
+  country: string
   
   // ID Proof
   idProofType: enum [NationalID, Passport, DrivingLicense, VoterID, Other]
   idProofNumber: string
-  idProofDocumentId: UUID? // Link to MemberDocument
+  idProofDocumentId: UUID? // References member_documents
   
-  priority: int // 1 = primary, Phase 1: only priority 1
+  // Priority (for benefit distribution)
+  priority: int // 1 = primary, 2 = secondary, etc.
+  // Phase 1: Only priority = 1 used (single nominee)
+  // Phase 2: Multiple priorities
+  
+  // Status
   isActive: boolean
   
+  // Timestamps
   createdAt: timestamp
   updatedAt: timestamp
 }
 ```
-#### Entity: MemberDocument
+
+**Business Rules:**
+- Phase 1: Exactly 1 nominee with priority = 1
+- Phase 2: Multiple nominees with unique priorities
+- At least 1 nominee required to submit registration
+
+---
+
+#### **Entity: MemberDocument**
+
 ```javascript
 MemberDocument {
   documentId: UUID
   memberId: UUID
   nomineeId: UUID? // If document belongs to nominee
   
+  // Document details
   documentType: enum [
-    NationalID, Passport, DrivingLicense, BirthCertificate,
-    ResidenceCard, AddressProof_UtilityBill, AddressProof_BankStatement,
-    AddressProof_RentalAgreement, MemberPhoto, NomineeIDProof, Other
+    NationalID,
+    Passport,
+    DrivingLicense,
+    BirthCertificate,
+    ResidenceCard,
+    AddressProof_UtilityBill,
+    AddressProof_BankStatement,
+    AddressProof_RentalAgreement,
+    MemberPhoto,
+    NomineeIDProof,
+    Other
   ]
-  documentCategory: enum [MemberIdentity, MemberAddress, MemberPhoto, NomineeProof, Other]
+  documentCategory: enum [
+    MemberIdentity,
+    MemberAddress,
+    MemberPhoto,
+    NomineeProof,
+    Other
+  ]
   documentName: string
   
+  // File storage
   fileUrl: string
   fileSize: int
   mimeType: string
   
+  // Metadata
   uploadedBy: UUID
   uploadedAt: timestamp
+  
+  // Verification (done during approval)
+  verificationStatus: enum [Pending, Verified, Rejected]
   verifiedBy: UUID?
   verifiedAt: timestamp?
-  verificationStatus: enum [Pending, Verified, Rejected]
   rejectionReason: string?
   
+  // Optional
   expiryDate: date?
+  
+  // Status
   isActive: boolean
   
+  // Timestamps
   createdAt: timestamp
   updatedAt: timestamp
 }
 ```
-#### Entity: RegistrationPayment
+
+**Business Rules:**
+- Member must have:
+  - At least 1 identity document (MemberIdentity)
+  - At least 1 address proof (MemberAddress)
+  - Exactly 1 member photo (MemberPhoto)
+  - For each nominee: At least 1 ID proof (NomineeProof)
+
+---
+
+#### **Entity: RegistrationPayment**
+
 ```javascript
 RegistrationPayment {
   paymentId: UUID
   memberId: UUID
   
+  // Payment details
   registrationFee: decimal
   advanceDeposit: decimal
-  totalAmount: decimal
+  totalAmount: decimal // registrationFee + advanceDeposit
   
+  // Collection details
   collectedBy: UUID // AgentId
   collectionDate: date
   collectionMode: enum [Cash, BankTransfer, Cheque, Online]
   referenceNumber: string?
   
+  // Approval status (set when member approved)
   approvalStatus: enum [PendingApproval, Approved, Rejected]
   approvedBy: UUID?
   approvedAt: timestamp?
   rejectionReason: string?
   
+  // Timestamps
   createdAt: timestamp
   updatedAt: timestamp
 }
 ```
-#### Entity: MembershipTier
+
+---
+
+#### **Entity: MembershipTier**
+
 ```javascript
 MembershipTier {
   tierId: UUID
-  tierCode: string // Unique
-  tierName: string
+  tierCode: string // "TIER-A", "TIER-B"
+  tierName: string // "Standard Membership", "Premium Membership"
   description: string?
   
   // Financial amounts
   registrationFee: decimal
   advanceDepositAmount: decimal
-  contributionAmount: decimal // Per death event
-  deathBenefitAmount: decimal // Payout to nominee
+  contributionAmount: decimal // Amount to pay per death event
+  deathBenefitAmount: decimal // Amount nominee receives
   
+  // Status
   isActive: boolean
-  isDefault: boolean
+  isDefault: boolean // Default tier for new registrations
   
+  // Timestamps
   createdAt: timestamp
   createdBy: UUID
   updatedAt: timestamp
 }
 ```
+
+---
 
 ### Business Rules
 **Registration**:
@@ -541,51 +823,55 @@ MembershipTier {
 - Advance deposit: Goes to wallet as liability
 - Collected by agent, approved by admin
 
-**Status**:
+### State Machines
 
-- Active: Can use services
-- Suspended: After 2 consecutive missed contributions
-- Closed: Voluntary exit (refund wallet balance)
-- Deceased: After death claim approved
+#### **Registration Status:**
 
-
-
-### State Machine: Member Registration
 ```
-[Start]
-   ↓
-[Draft - PersonalDetails] ←→ SaveDraft
-   ↓ CompleteStep
-[Draft - Nominees] ←→ SaveDraft (Add/Edit/Remove Nominees)
-   ↓ CompleteStep
-[Draft - DocumentsPayment] ←→ SaveDraft (Upload Docs, Record Payment)
-   ↓ Submit
+[Draft]
+   ↓ (submit for approval)
 [PendingApproval]
    ↓
-   ├─→ [Approved] → [Active Member]
-   ├─→ [Rejected] → [End]
-   └─→ [Revision Requested] → Back to [Draft - specific step]
+   ├─→ [Approved] → Member activated, wallet created
+   │
+   └─→ [Rejected] → Payment refunded
 ```
 
-### State Machine: Member Status (Post-Registration)
+#### **Registration Steps:**
+
+```
+[PersonalDetails]
+   ↓ (complete step)
+[Nominees]
+   ↓ (complete step)
+[DocumentsPayment]
+   ↓ (submit)
+[Completed]
+```
+
+#### **Member Status (Post-Approval):**
+
 ```
 [Active]
    ↓
    ├─→ [Suspended] (after 2 missed contributions)
-   │     ↓
-   │     └─→ [Active] (reactivated after clearing dues)
+   │     ↓ (clear dues)
+   │   [Active]
    │
-   ├─→ [Closed] (member voluntarily exits)
+   ├─→ [Closed] (voluntary exit)
    │
    └─→ [Deceased] (death claim approved)
-
 ```
+
+---
+
 
 ## Finance/GL Domain (`docs/domain/gl.md`)
 
 ### Domain Model
 
-#### Entity: Account
+#### **Entity: Account**
+
 ```ts
 Account {
   accountId: UUID
@@ -602,7 +888,8 @@ Account {
 }
 ```
 
-#### Entity: JournalEntry
+#### **Entity: JournalEntry**
+
 ```ts
 JournalEntry {
   entryId: UUID
@@ -630,7 +917,8 @@ JournalEntry {
 }
 ```
 
-#### Entity: JournalEntryLine
+#### **Entity: JournalEntryLine**
+
 ```ts
 JournalEntryLine {
   lineId: UUID
@@ -647,7 +935,8 @@ JournalEntryLine {
 }
 ```
 
-## Initial Chart of Accounts Setup
+
+### Initial Chart of Accounts Setup
 
 Seed Data:
 ```js
@@ -708,164 +997,368 @@ const CHART_OF_ACCOUNTS = [
 
 ### Domain Model
 
-#### Entity: MemberWallet
+#### **Entity: Wallet**
+
 ```javascript
-MemberWallet {
+Wallet {
   walletId: UUID
   memberId: UUID // One-to-one with Member
-
-  // Balance
-  currentBalance: decimal // Current available balance
-
-  // Statistics
-  totalDeposited: decimal // Lifetime deposits
-  totalDebited: decimal // Lifetime debits
-
-  // Timestamps
+  
+  currentBalance: decimal
+  
   createdAt: timestamp
   updatedAt: timestamp
 }
 ```
 
-#### Entity: WalletTransaction
+---
+
+#### **Entity: WalletTransaction**
+
 ```javascript
 WalletTransaction {
   transactionId: UUID
   walletId: UUID
-  memberId: UUID // Denormalized for queries
-
-  // Transaction Details
-  transactionType: enum [Deposit, Debit, Refund, Adjustment]
+  
+  transactionType: enum [
+    Deposit,              // Cash deposit by agent
+    Debit,               // Deduction (for contributions)
+    Refund,              // Refund on account closure
+    Adjustment           // Manual correction
+  ]
+  
   amount: decimal
-  balanceBefore: decimal
-  balanceAfter: decimal
-
-  // Status
-  status: enum [Pending, Approved, Rejected, Completed, Cancelled]
-
-  // Source tracking
-  sourceModule: enum [Wallet, Contributions, Membership]
+  balanceAfter: decimal // Snapshot of balance after transaction
+  
+  // Reference
+  sourceModule: string // "Wallet", "Contributions"
   sourceEntityId: UUID? // depositRequestId, contributionId, etc.
-  sourceTransactionType: string
-
-  // GL Integration
-  journalEntryId: UUID? // Link to GL entry
-
-  // Metadata
-  description: string?
-  notes: string?
-
-  // Approval (for deposits)
-  approvedBy: UUID?
-  approvedAt: timestamp?
-  rejectionReason: string?
-
-  // Timestamps
-  createdAt: timestamp
+  
+  // Description
+  description: string
+  
+  // Financial
+  journalEntryId: UUID? // GL entry reference
+  
+  // Status
+  status: enum [Pending, Completed, Failed, Reversed]
+  
+  // Audit
   createdBy: UUID
+  createdAt: timestamp
 }
 ```
 
-#### Entity: WalletDepositRequest
+---
+
+#### **Entity: WalletDepositRequest**
+
 ```javascript
 WalletDepositRequest {
   depositRequestId: UUID
   memberId: UUID
   walletId: UUID
-
-  // Deposit Details
+  
   amount: decimal
   collectionDate: date
-  collectionMode: enum [Cash, BankTransfer, Cheque]
-  referenceNumber: string? // For bank transfer/cheque
-
-  // Agent who collected
   collectedBy: UUID // AgentId
-
-  // Status
-  status: enum [PendingApproval, Approved, Rejected]
-
-  // Approval
-  approvedBy: UUID?
-  approvedAt: timestamp?
-  rejectionReason: string?
-
-  // Links
-  walletTransactionId: UUID? // Created when approved
-  journalEntryId: UUID? // GL entry
-
-  // Metadata
   notes: string?
-
+  
+  // Status
+  requestStatus: enum [Draft, PendingApproval, Approved, Rejected]
+  
+  // Approval
+  approvalRequestId: UUID? // Links to approval_requests
+  
+  // Financial
+  journalEntryId: UUID?
+  
   // Timestamps
   createdAt: timestamp
-  updatedAt: timestamp
+  approvedAt: timestamp?
+  rejectedAt: timestamp?
 }
 ```
 
-#### Entity: WalletDebitRequest
+---
+
+#### **Entity: WalletDebitRequest** (for Contributions)
+
 ```javascript
 WalletDebitRequest {
   debitRequestId: UUID
   memberId: UUID
   walletId: UUID
-
-  // Debit Details
+  
   amount: decimal
-  reason: string // e.g., "Contribution for death claim CL-001"
-
-  // Source (contribution cycle)
-  contributionCycleId: UUID
-  memberContributionId: UUID
-
+  purpose: string // "Contribution for Cycle CC-2025-00001"
+  
+  // References
+  contributionCycleId: UUID?
+  contributionId: UUID?
+  
   // Status
-  status: enum [PendingAcknowledgment, Acknowledged, Completed, Invalidated, Cancelled]
-
-  // Acknowledgment (agent confirms with member)
-  acknowledgedBy: UUID? // AgentId
+  status: enum [
+    PendingAcknowledgment,
+    Acknowledged,
+    Completed,
+    Invalidated,
+    Failed
+  ]
+  
+  // Timestamps
+  createdAt: timestamp
   acknowledgedAt: timestamp?
+  completedAt: timestamp?
+}
+```
 
-  // Completion
-  walletTransactionId: UUID? // Created when debited
-  journalEntryId: UUID? // GL entry
+---
 
-  // Invalidation (if member pays directly)
-  invalidatedReason: string?
-  invalidatedBy: UUID?
-  invalidatedAt: timestamp?
+## Death Claims & Contribution Domain (`docs/domain/8.death_claims_and_contribution.md`) I
+## Part: Death Claims Context
 
+### Domain Model
+
+#### **Entity: DeathClaim**
+
+```javascript
+DeathClaim {
+  claimId: UUID
+  claimNumber: string // Auto-generated: "DC-2025-00001"
+  
+  // Registration tracking
+  claimStatus: enum [
+    Reported,           // Initial report
+    UnderVerification,  // Documents being verified
+    PendingApproval,    // Submitted to approval workflow
+    Approved,           // Approved, ready for settlement
+    Settled,            // Benefit paid out
+    Rejected            // Claim rejected
+  ]
+  
+  // Approval tracking
+  approvalRequestId: UUID? // Links to approval_requests
+  
+  // Member info
+  memberId: UUID
+  memberCode: string // Denormalized
+  memberName: string // Denormalized
+  tierId: UUID
+  
+  // Hierarchy
+  agentId: UUID
+  unitId: UUID
+  areaId: UUID
+  forumId: UUID
+  
+  // Death details
+  deathDate: date
+  deathPlace: string?
+  causeOfDeath: string?
+  
+  // Reporting
+  reportedBy: UUID
+  reportedByRole: string
+  reportedDate: date
+  initialNotes: string?
+  
+  // Nominee info (snapshot at time of death)
+  nomineeId: UUID
+  nomineeName: string
+  nomineeRelation: string
+  nomineeContactNumber: string
+  nomineeAddress: JSON
+  
+  // Benefit
+  benefitAmount: decimal // Locked from tier at approval
+  
+  // Verification
+  verificationStatus: enum [Pending, InProgress, Completed, Rejected]
+  verifiedBy: UUID?
+  verifiedDate: date?
+  verificationNotes: string?
+  
+  // Settlement
+  settlementStatus: enum [Pending, Completed]
+  paymentMethod: enum [Cash, BankTransfer, Cheque]?
+  paymentReference: string?
+  paymentDate: date?
+  paidBy: UUID?
+  nomineeAcknowledgment: string? // File URL
+  
+  // Financial
+  journalEntryId: UUID? // GL entry for payout
+  
+  // Timestamps
+  createdAt: timestamp
+  approvedAt: timestamp?
+  settledAt: timestamp?
+  updatedAt: timestamp
+  
+  // Audit
+  approvedBy: UUID?
+  rejectedBy: UUID?
+  rejectionReason: string?
+}
+```
+
+---
+
+#### **Entity: DeathClaimDocument**
+
+```javascript
+DeathClaimDocument {
+  documentId: UUID
+  claimId: UUID
+  
+  documentType: enum [
+    DeathCertificate,
+    NewspaperClipping,
+    MedicalReport,
+    PoliceReport,
+    NomineeIdProof,
+    Other
+  ]
+  documentName: string
+  fileUrl: string
+  fileSize: int
+  mimeType: string
+  
+  uploadedBy: UUID
+  uploadedAt: timestamp
+  
+  verificationStatus: enum [Pending, Verified, Rejected]
+  verifiedBy: UUID?
+  verifiedAt: timestamp?
+  rejectionReason: string?
+}
+```
+
+---
+
+## Part: Contribution Collection Context
+
+### Domain Model
+
+#### **Entity: ContributionCycle**
+
+```javascript
+ContributionCycle {
+  cycleId: UUID
+  cycleNumber: string // "CC-2025-00001"
+  
+  // Linked to death claim
+  deathClaimId: UUID
+  claimNumber: string
+  deceasedMemberId: UUID
+  deceasedMemberName: string
+  benefitAmount: decimal
+  
+  // Hierarchy
+  forumId: UUID
+  
+  // Cycle details
+  startDate: date
+  collectionDeadline: date
+  
+  // Status
+  cycleStatus: enum [Active, Closed]
+  
+  // Statistics
+  totalMembers: int
+  totalExpectedAmount: decimal
+  totalCollectedAmount: decimal
+  totalPendingAmount: decimal
+  membersCollected: int
+  membersPending: int
+  membersMissed: int
+  
+  // Closure
+  closedDate: date?
+  closedBy: UUID?
+  
   // Timestamps
   createdAt: timestamp
   updatedAt: timestamp
 }
 ```
 
-### Business Rules
+---
 
-#### Wallet Creation
+#### **Entity: MemberContribution**
 
-- Created automatically when member registration is approved
-- Initial balance = advance deposit from registration payment
-- One wallet per member (one-to-one)
+```javascript
+MemberContribution {
+  contributionId: UUID
+  cycleId: UUID
+  
+  // Member info
+  memberId: UUID
+  memberCode: string
+  memberName: string
+  tierId: UUID
+  agentId: UUID
+  
+  // Amount
+  expectedAmount: decimal
+  
+  // Status
+  contributionStatus: enum [
+    Pending,
+    WalletDebitRequested,
+    Acknowledged,
+    Collected,
+    Missed,
+    Exempted
+  ]
+  
+  // Payment details
+  paymentMethod: enum [Wallet, DirectCash]?
+  collectionDate: date?
+  collectedBy: UUID?
+  
+  // Wallet tracking
+  walletDebitRequestId: UUID?
+  debitAcknowledgedAt: timestamp?
+  
+  // Direct cash tracking
+  cashReceiptReference: string?
+  
+  // Financial
+  journalEntryId: UUID?
+  
+  // Consecutive miss tracking
+  isConsecutiveMiss: boolean
+  
+  // Timestamps
+  createdAt: timestamp
+  updatedAt: timestamp
+}
+```
 
-#### Deposits
+---
 
-- Agent collects cash/payment → creates deposit request
-- Deposit request requires approval (Unit Admin or configured approver)
-- Upon approval: wallet credited + GL entry created (atomic)
-- Can only deposit positive amounts
+### Commands Summary
 
-#### Debits
+**Death Claims:**
+1. `ReportDeath`
+2. `UploadClaimDocument`
+3. `VerifyClaimDocuments`
+4. `SubmitClaimForApproval`
+5. `SettleDeathClaim`
 
-- System creates debit request (e.g., when contribution cycle starts)
-- Requires member acknowledgment (via agent)
-- Upon acknowledgment: wallet debited + GL entry created (atomic)
-- Cannot debit if insufficient balance
-- Can be invalidated if member pays directly in cash
+**Approval via workflow + listeners**
 
-#### Balance Rules
+**Contributions:**
+6. `StartContributionCycle` (system)
+7. `AcknowledgeContributionDebit`
+8. `RecordDirectCashContribution`
+9. `MarkContributionAsMissed`
+10. `CloseContributionCycle`
 
-- Balance cannot go negative
-- Balance = sum of all completed transactions
-- Wallet balance must reconcile with GL account 2100 (Member Prepaid Liability)
+
+
+
+
 
