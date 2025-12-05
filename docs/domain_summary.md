@@ -1,4 +1,5 @@
-This document aggregates the Domain Model sections from `docs/domain/*.md`.
+# Project Santhwanam
+This is a mutual aid/burial fund system where members pool resources to support families of deceased members. When a member dies, their nominee receives a predetermined payout - this happens regardless of whether all other members have paid their contribution yet.
 
 ## IAM Domain (`docs/domain/1.iam.md`)
 
