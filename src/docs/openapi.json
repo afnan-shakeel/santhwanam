@@ -1,7 +1,7 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "Santhwanam API",
+    "title": "Santhwanam API X",
     "version": "0.1.0",
     "description": "Minimal OpenAPI spec for IAM (permissions & roles)"
   },
