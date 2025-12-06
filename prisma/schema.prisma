@@ -26,6 +26,7 @@ model User {
   createdAt     DateTime @default(now())
   lastSyncedAt  DateTime?
   userRoles     UserRole[]
+  passwordResetTokens PasswordResetToken[]
 }
 
 // Enums for role scope and user role scope
@@ -91,5 +92,35 @@ model UserRole {
   assignedBy     String?
   revokedAt      DateTime?
   revokedBy      String?
+}
+
+// Domain: Event Bus - Event Store for Audit Trail
+model Event {
+  eventId       String   @id @default(uuid())
+  eventType     String
+  aggregateId   String?
+  eventData     Json
+  userId        String?
+  ipAddress     String?
+  timestamp     DateTime @default(now())
+
+  @@index([eventType])
+  @@index([aggregateId])
+  @@index([timestamp])
+}
+
+// Password reset tokens for backend-controlled reset flow
+model PasswordResetToken {
+  tokenId    String   @id @default(uuid())
+  user       User     @relation(fields: [userId], references: [userId])
+  userId     String
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  used       Boolean  @default(false)
+  usedAt     DateTime?
+  createdAt  DateTime @default(now())
+
+  @@index([tokenHash])
+  @@index([userId, expiresAt])
 }
 

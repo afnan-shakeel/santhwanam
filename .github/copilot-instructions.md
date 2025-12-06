@@ -35,3 +35,4 @@ Follow the vertical (feature-based) structure from `docs/architecture.md`:
 - **Repository pattern**: Define interfaces in `domain/repositories/`, implementations in `shared/infrastructure/`
 - **Error handling**: Use custom error classes in `shared/utils/error-handling/`, no scattered try/catch blocks
 - **Type safety**: Well-typed TypeScript, avoid `any`
+ - **Documentation files**: no need of creating doc file or md file if not sepcified to

@@ -1,12 +1,27 @@
 import { PrismaPermissionRepository } from './infrastructure/prisma/permissionRepository'
 import { PrismaRoleRepository } from './infrastructure/prisma/roleRepository'
+import { PrismaRolePermissionRepository } from './infrastructure/prisma/rolePermissionRepository'
+import { PrismaUserRepository } from './infrastructure/prisma/userRepository'
+import { UserService } from './application/userService'
+import { PrismaUserRoleRepository } from './infrastructure/prisma/userRoleRepository'
 import { PermissionService } from './application/permissionService'
 import { RoleService } from './application/roleService'
+import { inviteUserHandler } from './application/commands/inviteUserCommand'
+import { assignRoleToUserHandler } from './application/commands/assignRoleToUserCommand'
+import { revokeRoleFromUserHandler } from './application/commands/revokeRoleFromUserCommand'
 
 const permissionRepo = new PrismaPermissionRepository()
 const roleRepo = new PrismaRoleRepository()
+const rolePermissionRepo = new PrismaRolePermissionRepository()
+const userRepo = new PrismaUserRepository()
+const userRoleRepo = new PrismaUserRoleRepository()
 
 export const permissionService = new PermissionService(permissionRepo)
-export const roleService = new RoleService(roleRepo)
+export const roleService = new RoleService(roleRepo, permissionRepo, rolePermissionRepo)
+export const userService = new UserService(userRepo)
+export { PrismaUserRoleRepository }
+export { inviteUserHandler }
+export { assignRoleToUserHandler, revokeRoleFromUserHandler }
 
 export { PrismaPermissionRepository, PrismaRoleRepository }
+export { PrismaUserRepository }
