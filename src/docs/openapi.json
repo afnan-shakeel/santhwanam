@@ -118,6 +118,261 @@
           "400": { "description": "Invalid or expired token" }
         }
       }
+    },
+    "/api/iam/users/invite": {
+      "post": {
+        "tags": ["IAM - Users"],
+        "summary": "Invite user",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email"],
+                "properties": {
+                  "email": { "type": "string", "format": "email" },
+                  "firstName": { "type": "string" },
+                  "lastName": { "type": "string" },
+                  "roles": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "roleId": { "type": "string" },
+                        "scopeEntityType": { "type": "string", "enum": ["None", "Forum", "Area", "Unit", "Agent"] },
+                        "scopeEntityId": { "type": "string" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "User invited" }
+        }
+      }
+    },
+    "/api/iam/users/search": {
+      "post": {
+        "tags": ["IAM - Users"],
+        "summary": "Search users",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "searchTerm": { "type": "string" },
+                  "searchFields": { "type": "array", "items": { "type": "string" } },
+                  "page": { "type": "integer", "default": 1 },
+                  "pageSize": { "type": "integer", "default": 20 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Search results" }
+        }
+      }
+    },
+    "/api/iam/users/{id}": {
+      "patch": {
+        "tags": ["IAM - Users"],
+        "summary": "Update user",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": { "type": "string", "format": "email" },
+                  "firstName": { "type": "string" },
+                  "lastName": { "type": "string" },
+                  "isActive": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "User updated" }
+        }
+      }
+    },
+    "/api/iam/permissions/search": {
+      "post": {
+        "tags": ["IAM - Permissions"],
+        "summary": "Search permissions",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "searchTerm": { "type": "string" },
+                  "searchFields": { "type": "array", "items": { "type": "string" } },
+                  "page": { "type": "integer", "default": 1 },
+                  "pageSize": { "type": "integer", "default": 20 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Search results" }
+        }
+      }
+    },
+    "/api/iam/permissions": {
+      "post": {
+        "tags": ["IAM - Permissions"],
+        "summary": "Create permission",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["permissionCode", "permissionName"],
+                "properties": {
+                  "permissionCode": { "type": "string" },
+                  "permissionName": { "type": "string" },
+                  "description": { "type": "string" },
+                  "module": { "type": "string" },
+                  "action": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Permission created" }
+        }
+      }
+    },
+    "/api/iam/permissions/{id}": {
+      "patch": {
+        "tags": ["IAM - Permissions"],
+        "summary": "Update permission",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "permissionCode": { "type": "string" },
+                  "permissionName": { "type": "string" },
+                  "description": { "type": "string" },
+                  "module": { "type": "string" },
+                  "action": { "type": "string" },
+                  "isActive": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Permission updated" }
+        }
+      }
+    },
+    "/api/iam/roles/search": {
+      "post": {
+        "tags": ["IAM - Roles"],
+        "summary": "Search roles",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "searchTerm": { "type": "string" },
+                  "searchFields": { "type": "array", "items": { "type": "string" } },
+                  "page": { "type": "integer", "default": 1 },
+                  "pageSize": { "type": "integer", "default": 20 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Search results" }
+        }
+      }
+    },
+    "/api/iam/roles": {
+      "post": {
+        "tags": ["IAM - Roles"],
+        "summary": "Create role",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["roleCode", "roleName", "scopeType"],
+                "properties": {
+                  "roleCode": { "type": "string" },
+                  "roleName": { "type": "string" },
+                  "description": { "type": "string" },
+                  "scopeType": { "type": "string", "enum": ["None", "Forum", "Area", "Unit", "Agent"] },
+                  "isSystemRole": { "type": "boolean" },
+                  "permissionIds": { "type": "array", "items": { "type": "string" } }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Role created" }
+        }
+      }
+    },
+    "/api/iam/roles/{id}": {
+      "patch": {
+        "tags": ["IAM - Roles"],
+        "summary": "Update role",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "roleCode": { "type": "string" },
+                  "roleName": { "type": "string" },
+                  "description": { "type": "string" },
+                  "scopeType": { "type": "string", "enum": ["None", "Forum", "Area", "Unit", "Agent"] },
+                  "isActive": { "type": "boolean" },
+                  "isSystemRole": { "type": "boolean" },
+                  "permissionIds": { "type": "array", "items": { "type": "string" } }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Role updated" }
+        }
+      }
     }
   },
   "components": {
