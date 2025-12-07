@@ -483,7 +483,9 @@
                     "workflowCode": { "type": "string" },
                     "workflowName": { "type": "string" },
                     "module": { "type": "string" },
-                    "stages": { "type": "array" }
+                    "stages": { "type": "array", "items": {
+                      "type": "object"
+                    } }
                   }
                 }
               }
