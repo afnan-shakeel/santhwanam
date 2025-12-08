@@ -29,6 +29,12 @@ import { PrismaUnitRepository } from "@/modules/organization-bodies/infrastructu
 // Agent repository for statistics
 import { PrismaAgentRepository } from "@/modules/agents/infrastructure/prisma/agentRepository";
 
+// GL services
+import { JournalEntryService } from "@/modules/gl/application/journalEntryService";
+import { PrismaJournalEntryRepository } from "@/modules/gl/infrastructure/prisma/journalEntryRepository";
+import { PrismaJournalEntryLineRepository } from "@/modules/gl/infrastructure/prisma/journalEntryLineRepository";
+import { PrismaChartOfAccountRepository } from "@/modules/gl/infrastructure/prisma/chartOfAccountRepository";
+
 // Initialize repositories
 const memberRepo = new PrismaMemberRepository();
 const nomineeRepo = new PrismaNomineeRepository();
@@ -36,6 +42,16 @@ const memberDocumentRepo = new PrismaMemberDocumentRepository();
 const registrationPaymentRepo = new PrismaRegistrationPaymentRepository();
 const membershipTierRepo = new PrismaMembershipTierRepository();
 const agentRepo = new PrismaAgentRepository();
+
+// Initialize GL repositories and service
+const journalEntryRepo = new PrismaJournalEntryRepository();
+const journalEntryLineRepo = new PrismaJournalEntryLineRepository();
+const chartOfAccountRepo = new PrismaChartOfAccountRepository();
+const journalEntryService = new JournalEntryService(
+  journalEntryRepo,
+  journalEntryLineRepo,
+  chartOfAccountRepo
+);
 
 // Initialize approval workflow
 const workflowRepo = new PrismaApprovalWorkflowRepository();
@@ -77,7 +93,8 @@ const reactivateMemberCmd = new ReactivateMemberCommand(memberRepo, agentRepo);
 
 const closeMemberAccountCmd = new CloseMemberAccountCommand(
   memberRepo,
-  agentRepo
+  agentRepo,
+  journalEntryService
 );
 
 // Initialize controller

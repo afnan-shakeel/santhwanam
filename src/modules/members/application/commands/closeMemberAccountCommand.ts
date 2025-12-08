@@ -7,6 +7,8 @@ import { MemberAccountClosedEvent } from "../../domain/events";
 import prisma from "@/shared/infrastructure/prisma/prismaClient";
 import { AppError } from "@/shared/utils/error-handling/AppError";
 import { v4 as uuidv4 } from "uuid";
+import { JournalEntryService } from "@/modules/gl/application/journalEntryService";
+import { ACCOUNT_CODES, TRANSACTION_SOURCE, TRANSACTION_TYPE } from "@/modules/gl/constants/accountCodes";
 
 export interface CloseMemberAccountInput {
   memberId: string;
@@ -19,7 +21,8 @@ export interface CloseMemberAccountInput {
 export class CloseMemberAccountCommand {
   constructor(
     private readonly memberRepository: MemberRepository,
-    private readonly agentRepository: AgentRepository
+    private readonly agentRepository: AgentRepository,
+    private readonly journalEntryService: JournalEntryService
   ) {}
 
   async execute(input: CloseMemberAccountInput): Promise<void> {
@@ -99,48 +102,29 @@ export class CloseMemberAccountCommand {
 
       // 6. Create GL entry for refund
       if (input.walletBalanceRefunded > 0) {
-        await tx.generalLedgerEntry.create({
-          data: {
-            entryId: uuidv4(),
-            entryDate: new Date(),
-            effectiveDate: input.closureDate,
-            description: `Member Account Closure - ${member.memberCode}`,
-            referenceNumber: member.memberCode,
-            sourceModule: "Membership",
-            sourceEntityType: "Member",
-            sourceEntityId: input.memberId,
-            sourceTransactionType: "AccountClosure",
-            fiscalYear: new Date().getFullYear(),
-            fiscalPeriod: new Date().getMonth() + 1,
-            isPosted: true,
-            postedBy: input.refundedBy,
-            postedAt: new Date(),
-            createdBy: input.refundedBy,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            lineItems: {
-              create: [
-                {
-                  lineItemId: uuidv4(),
-                  accountCode: "2100", // Member Wallet Liability
-                  debitAmount: input.walletBalanceRefunded,
-                  creditAmount: 0,
-                  description: "Wallet balance refund on account closure",
-                  createdAt: new Date(),
-                  updatedAt: new Date(),
-                },
-                {
-                  lineItemId: uuidv4(),
-                  accountCode: "1000", // Cash
-                  debitAmount: 0,
-                  creditAmount: input.walletBalanceRefunded,
-                  description: "Cash refunded to member",
-                  createdAt: new Date(),
-                  updatedAt: new Date(),
-                },
-              ],
+        await this.journalEntryService.createJournalEntry({
+          entryDate: input.closureDate,
+          description: `Member Account Closure - ${member.memberCode}`,
+          reference: member.memberCode,
+          sourceModule: TRANSACTION_SOURCE.MEMBERSHIP,
+          sourceEntityId: input.memberId,
+          sourceTransactionType: TRANSACTION_TYPE.ACCOUNT_CLOSURE_REFUND,
+          lines: [
+            {
+              accountCode: ACCOUNT_CODES.MEMBER_WALLET_LIABILITY,
+              debitAmount: input.walletBalanceRefunded,
+              creditAmount: 0,
+              description: "Wallet balance refund on account closure",
             },
-          },
+            {
+              accountCode: ACCOUNT_CODES.CASH,
+              debitAmount: 0,
+              creditAmount: input.walletBalanceRefunded,
+              description: "Cash refunded to member",
+            },
+          ],
+          createdBy: input.refundedBy,
+          autoPost: true,
         });
       }
 

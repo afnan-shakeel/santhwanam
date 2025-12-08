@@ -10,6 +10,8 @@ import { eventBus } from "@/shared/domain/events/event-bus";
 import { MemberActivatedEvent } from "../../domain/events";
 import prisma from "@/shared/infrastructure/prisma/prismaClient";
 import { v4 as uuidv4 } from "uuid";
+import { JournalEntryService } from "@/modules/gl/application/journalEntryService";
+import { ACCOUNT_CODES, TRANSACTION_SOURCE, TRANSACTION_TYPE } from "@/modules/gl/constants/accountCodes";
 
 /**
  * Approval workflow emits generic approval events
@@ -29,7 +31,8 @@ export class ActivateMemberOnApprovalHandler implements IEventHandler<DomainEven
     private readonly memberRepository: MemberRepository,
     private readonly memberDocumentRepository: MemberDocumentRepository,
     private readonly registrationPaymentRepository: RegistrationPaymentRepository,
-    private readonly agentRepository: AgentRepository
+    private readonly agentRepository: AgentRepository,
+    private readonly journalEntryService: JournalEntryService
   ) {}
 
   async handle(event: DomainEvent): Promise<void> {
@@ -126,57 +129,35 @@ export class ActivateMemberOnApprovalHandler implements IEventHandler<DomainEven
         advanceDeposit: payment.advanceDeposit,
       });
       
-      await tx.generalLedgerEntry.create({
-        data: {
-          entryId: uuidv4(),
-          entryDate: new Date(),
-          effectiveDate: payment.collectionDate,
-          description: `Member Registration - ${member.memberCode}`,
-          referenceNumber: member.memberCode,
-          sourceModule: "Membership",
-          sourceEntityType: "Member",
-          sourceEntityId: memberId,
-          sourceTransactionType: "RegistrationApproval",
-          fiscalYear: new Date().getFullYear(),
-          fiscalPeriod: new Date().getMonth() + 1,
-          isPosted: true,
-          postedBy: approvedBy,
-          postedAt: new Date(),
-          createdBy: approvedBy,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          lineItems: {
-            create: [
-              {
-                lineItemId: uuidv4(),
-                accountCode: "1000", // Cash
-                debitAmount: payment.totalAmount,
-                creditAmount: 0,
-                description: "Registration fee and advance deposit collected",
-                createdAt: new Date(),
-                updatedAt: new Date(),
-              },
-              {
-                lineItemId: uuidv4(),
-                accountCode: "4100", // Registration Fee Revenue
-                debitAmount: 0,
-                creditAmount: payment.registrationFee,
-                description: "Registration fee revenue",
-                createdAt: new Date(),
-                updatedAt: new Date(),
-              },
-              {
-                lineItemId: uuidv4(),
-                accountCode: "2100", // Member Wallet Liability
-                debitAmount: 0,
-                creditAmount: payment.advanceDeposit,
-                description: "Advance deposit for future contributions",
-                createdAt: new Date(),
-                updatedAt: new Date(),
-              },
-            ],
+      await this.journalEntryService.createJournalEntry({
+        entryDate: payment.collectionDate,
+        description: `Member Registration - ${member.memberCode}`,
+        reference: member.memberCode,
+        sourceModule: TRANSACTION_SOURCE.MEMBERSHIP,
+        sourceEntityId: memberId,
+        sourceTransactionType: TRANSACTION_TYPE.REGISTRATION_APPROVAL,
+        lines: [
+          {
+            accountCode: ACCOUNT_CODES.CASH,
+            debitAmount: payment.totalAmount,
+            creditAmount: 0,
+            description: "Registration fee and advance deposit collected",
           },
-        },
+          {
+            accountCode: ACCOUNT_CODES.REGISTRATION_FEE_REVENUE,
+            debitAmount: 0,
+            creditAmount: payment.registrationFee,
+            description: "Registration fee revenue",
+          },
+          {
+            accountCode: ACCOUNT_CODES.MEMBER_WALLET_LIABILITY,
+            debitAmount: 0,
+            creditAmount: payment.advanceDeposit,
+            description: "Advance deposit for future contributions",
+          },
+        ],
+        createdBy: approvedBy,
+        autoPost: true,
       });
 
       // 8. Update agent statistics
