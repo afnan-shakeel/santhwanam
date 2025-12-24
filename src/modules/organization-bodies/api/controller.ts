@@ -17,9 +17,17 @@ import type {
   UpdateUnitCommand,
   AssignUnitAdminCommand,
 } from '../application/commands';
-import { ForumDto, ForumListDto, ForumsSearchResponseDto } from './dtos/forumDtos';
-import { AreaDto, AreaListDto, AreasSearchResponseDto } from './dtos/areaDtos';
-import { UnitDto, UnitListDto, UnitsSearchResponseDto } from './dtos/unitDtos';
+import {
+  ForumResponseDto,
+  ForumListResponseDto,
+  ForumsSearchResponseDto,
+  AreaResponseDto,
+  AreaListResponseDto,
+  AreasSearchResponseDto,
+  UnitResponseDto,
+  UnitListResponseDto,
+  UnitsSearchResponseDto,
+} from './dtos/responseDtos';
 
 export class OrganizationBodiesController {
   constructor(
@@ -41,7 +49,7 @@ export class OrganizationBodiesController {
   createForum = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const forum = await this.createForumCmd.execute(req.body);
-      return next({ dto: ForumDto, data: forum, status: 201 });
+      return next({ dto: ForumResponseDto, data: forum, status: 201 });
     } catch (err) {
       next(err)
     }
@@ -51,7 +59,7 @@ export class OrganizationBodiesController {
     try {
       const { forumId } = req.params;
       const forum = await this.updateForumCmd.execute(forumId, req.body);
-      return next({ dto: ForumDto, data: forum, status: 200 });
+      return next({ dto: ForumResponseDto, data: forum, status: 200 });
     } catch (err) {
       next(err)
     }
@@ -61,7 +69,7 @@ export class OrganizationBodiesController {
     try {
       const { forumId } = req.params;
       const forum = await this.assignForumAdminCmd.execute(forumId, req.body);
-      return next({ dto: ForumDto, data: forum, status: 200 });
+      return next({ dto: ForumResponseDto, data: forum, status: 200 });
     } catch (err) {
       next(err)
     }
@@ -71,7 +79,7 @@ export class OrganizationBodiesController {
     try {
       const { forumId } = req.params;
       const forum = await this.forumService.getForumById(forumId);
-      return next({ dto: ForumDto, data: forum, status: 200 });
+      return next({ dto: ForumResponseDto, data: forum, status: 200 });
     } catch (err) {
       next(err)
     }
@@ -81,7 +89,7 @@ export class OrganizationBodiesController {
     try {
       const { forumCode } = req.params;
       const forum = await this.forumService.getForumByCode(forumCode);
-      return next({ dto: ForumDto, data: forum, status: 200 });
+      return next({ dto: ForumResponseDto, data: forum, status: 200 });
     } catch (err) {
       next(err)
     }
@@ -90,7 +98,7 @@ export class OrganizationBodiesController {
   listForums = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const forums = await this.forumService.listForums();
-      return next({ dto: ForumListDto, data: forums, status: 200 });
+      return next({ dto: ForumListResponseDto, data: forums, status: 200 });
     } catch (err) {
       next(err)
     }
@@ -100,7 +108,7 @@ export class OrganizationBodiesController {
   createArea = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const area = await this.createAreaCmd.execute(req.body);
-      return next({ dto: AreaDto, data: area, status: 201 });
+      return next({ dto: AreaResponseDto, data: area, status: 201 });
     } catch (err) {
       next(err)
     }
@@ -110,7 +118,7 @@ export class OrganizationBodiesController {
     try {
       const { areaId } = req.params;
       const area = await this.updateAreaCmd.execute(areaId, req.body);
-      return next({ dto: AreaDto, data: area, status: 200 });
+      return next({ dto: AreaResponseDto, data: area, status: 200 });
     } catch (err) {
       next(err)
     }
@@ -120,7 +128,7 @@ export class OrganizationBodiesController {
     try {
       const { areaId } = req.params;
       const area = await this.assignAreaAdminCmd.execute(areaId, req.body);
-      return next({ dto: AreaDto, data: area, status: 200 });
+      return next({ dto: AreaResponseDto, data: area, status: 200 });
     } catch (err) {
       next(err)
     }
@@ -130,7 +138,7 @@ export class OrganizationBodiesController {
     try {
       const { areaId } = req.params;
       const area = await this.areaService.getAreaById(areaId);
-      return next({ dto: AreaDto, data: area, status: 200 });
+      return next({ dto: AreaResponseDto, data: area, status: 200 });
     } catch (err) {
       next(err)
     }
@@ -140,7 +148,7 @@ export class OrganizationBodiesController {
     try {
       const { forumId } = req.params;
       const areas = await this.areaService.listAreasByForum(forumId);
-      return next({ dto: AreaListDto, data: areas, status: 200 });
+      return next({ dto: AreaListResponseDto, data: areas, status: 200 });
     } catch (err) {
       next(err)
     }
@@ -150,7 +158,7 @@ export class OrganizationBodiesController {
   createUnit = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const unit = await this.createUnitCmd.execute(req.body);
-      return next({ dto: UnitDto, data: unit, status: 201 });
+      return next({ dto: UnitResponseDto, data: unit, status: 201 });
     } catch (err) {
       next(err)
     }
@@ -160,7 +168,7 @@ export class OrganizationBodiesController {
     try {
       const { unitId } = req.params;
       const unit = await this.updateUnitCmd.execute(unitId, req.body);
-      return next({ dto: UnitDto, data: unit, status: 200 });
+      return next({ dto: UnitResponseDto, data: unit, status: 200 });
     } catch (err) {
       next(err)
     }
@@ -170,7 +178,7 @@ export class OrganizationBodiesController {
     try {
       const { unitId } = req.params;
       const unit = await this.assignUnitAdminCmd.execute(unitId, req.body);
-      return next({ dto: UnitDto, data: unit, status: 200 });
+      return next({ dto: UnitResponseDto, data: unit, status: 200 });
     } catch (err) {
       next(err)
     }
@@ -180,7 +188,7 @@ export class OrganizationBodiesController {
     try {
       const { unitId } = req.params;
       const unit = await this.unitService.getUnitById(unitId);
-      return next({ dto: UnitDto, data: unit, status: 200 });
+      return next({ dto: UnitResponseDto, data: unit, status: 200 });
     } catch (err) {
       next(err)
     }
@@ -190,7 +198,7 @@ export class OrganizationBodiesController {
     try {
       const { areaId } = req.params;
       const units = await this.unitService.listUnitsByArea(areaId);
-      return next({ dto: UnitListDto, data: units, status: 200 });
+      return next({ dto: UnitListResponseDto, data: units, status: 200 });
     } catch (err) {
       next(err)
     }
@@ -200,7 +208,7 @@ export class OrganizationBodiesController {
     try {
       const { forumId } = req.params;
       const units = await this.unitService.listUnitsByForum(forumId);
-      return next({ dto: UnitListDto, data: units, status: 200 });
+      return next({ dto: UnitListResponseDto, data: units, status: 200 });
     } catch (err) {
       next(err)
     }

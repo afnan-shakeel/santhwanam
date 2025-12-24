@@ -2053,6 +2053,56 @@
         }
       }
     },
+    "/api/members/metadata": {
+      "get": {
+        "tags": ["Members - Queries"],
+        "summary": "Get member metadata (document types, categories, collection modes)",
+        "responses": {
+          "200": {
+            "description": "Member metadata for dropdowns and selects",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "documentTypes": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "value": { "type": "string" },
+                          "label": { "type": "string" }
+                        }
+                      }
+                    },
+                    "documentCategories": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "value": { "type": "string" },
+                          "label": { "type": "string" }
+                        }
+                      }
+                    },
+                    "collectionModes": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "value": { "type": "string" },
+                          "label": { "type": "string" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/members/{memberId}": {
       "get": {
         "tags": ["Members - Queries"],

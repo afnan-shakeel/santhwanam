@@ -147,7 +147,7 @@ export const uploadMemberDocumentSchema = z.object({
   documentType: DocumentTypeEnum,
   documentCategory: DocumentCategoryEnum,
   documentName: z.string().min(1).max(255),
-  fileUrl: z.string().url(),
+  fileUrl: z.string(),
   fileSize: z.number().int().positive().max(5 * 1024 * 1024), // 5MB max
   mimeType: z.enum(["application/pdf", "image/jpeg", "image/png"]),
   expiryDate: z.coerce.date().optional(),

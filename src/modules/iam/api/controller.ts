@@ -1,8 +1,13 @@
 import { Request, Response, NextFunction } from 'express'
 import { permissionService, roleService, inviteUserHandler } from '../index'
-import { PermissionDto, PermissionsSearchResponseDto } from './dtos/permissionDtos'
-import { RoleDto, RolesSearchResponseDto } from './dtos/roleDtos'
-import { UserDto } from './dtos/userDtos'
+import {
+  PermissionResponseDto,
+  PermissionsSearchResponseDto,
+  RoleResponseDto,
+  RolesSearchResponseDto,
+  UserResponseDto,
+  UsersSearchResponseDto,
+} from './dtos/responseDtos'
 import { InviteUserCommand } from '@/modules/iam/application/commands/inviteUserCommand'
 
 export async function searchPermissions(req: Request, res: Response, next: NextFunction) {
@@ -19,7 +24,7 @@ export async function createPermission(req: Request, res: Response, next: NextFu
   try {
     // request body is already validated and parsed by centralized middleware
     const p = await permissionService.createPermission(req.body)
-    return next({ dto: PermissionDto, data: p, status: 201 })
+    return next({ dto: PermissionResponseDto, data: p, status: 201 })
   } catch (err) {
     next(err)
   }
@@ -29,7 +34,7 @@ export async function updatePermission(req: Request, res: Response, next: NextFu
   try {
     const id = req.params.id
     const p = await permissionService.updatePermission(id, req.body)
-    return next({ dto: PermissionDto, data: p, status: 200 })
+    return next({ dto: PermissionResponseDto, data: p, status: 200 })
   } catch (err) {
     next(err)
   }
@@ -48,7 +53,7 @@ export async function getRole(req: Request, res: Response, next: NextFunction) {
   try {
     const id = req.params.id
     const r = await roleService.getRoleById(id)
-    return next({ dto: RoleDto, data: r, status: 200 })
+    return next({ dto: RoleResponseDto, data: r, status: 200 })
   } catch (err) {
     next(err)
   }
@@ -58,7 +63,7 @@ export async function createRole(req: Request, res: Response, next: NextFunction
   try {
     // request body is already validated and parsed by centralized middleware
     const r = await roleService.createRole(req.body)
-    return next({ dto: RoleDto, data: r, status: 201 })
+    return next({ dto: RoleResponseDto, data: r, status: 201 })
   } catch (err) {
     next(err)
   }
@@ -68,7 +73,7 @@ export async function inviteUser(req: Request, res: Response, next: NextFunction
   try {
     const payload = req.body as InviteUserCommand
     const created = await inviteUserHandler.execute(payload)
-    return next({ dto: UserDto, data: created, status: 201 })
+    return next({ dto: UserResponseDto, data: created, status: 201 })
   } catch (err) {
     next(err)
   }
@@ -78,7 +83,7 @@ export async function searchUsers(req: Request, res: Response, next: NextFunctio
   try {
     // request validated by middleware
     const result = await (await import('../index')).userService.searchUsers(req.body)
-    return next({ dto: (await import('./dtos/userDtos')).UsersSearchResponseDto, data: result, status: 200 })
+    return next({ dto: UsersSearchResponseDto, data: result, status: 200 })
   } catch (err) {
     next(err)
   }
@@ -88,7 +93,7 @@ export async function updateUser(req: Request, res: Response, next: NextFunction
   try {
     const id = req.params.id
     const updated = await (await import('../index')).userService.updateUser(id, req.body)
-    return next({ dto: UserDto, data: updated, status: 200 })
+    return next({ dto: UserResponseDto, data: updated, status: 200 })
   } catch (err) {
     next(err)
   }
@@ -98,7 +103,7 @@ export async function getUser(req: Request, res: Response, next: NextFunction) {
   try {
     const id = req.params.id
     const u = await (await import('../index')).userService.getUserById(id)
-    return next({ dto: UserDto, data: u, status: 200 })
+    return next({ dto: UserResponseDto, data: u, status: 200 })
   } catch (err) {
     next(err)
   }
@@ -108,7 +113,7 @@ export async function updateRole(req: Request, res: Response, next: NextFunction
   try {
     const id = req.params.id
     const r = await roleService.updateRole(id, req.body)
-    return next({ dto: RoleDto, data: r, status: 200 })
+    return next({ dto: RoleResponseDto, data: r, status: 200 })
   } catch (err) {
     next(err)
   }

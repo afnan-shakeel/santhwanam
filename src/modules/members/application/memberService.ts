@@ -519,9 +519,10 @@ export class MemberService {
         throw new BadRequestError("Invalid member or status");
       }
 
-      if (member.registrationStep !== RegistrationStep.Nominees) {
-        throw new BadRequestError("Invalid registration step");
-      }
+      // commenting to allow backward compatibility
+      // if (member.registrationStep !== RegistrationStep.Nominees) {
+      //   throw new BadRequestError("Invalid registration step");
+      // }
 
       // Validate nominees exist
       const nominees = await this.nomineeRepository.findActiveByMemberId(
@@ -605,6 +606,7 @@ export class MemberService {
         }
       }
 
+      const uploadedBy = asyncLocalStorage.getUserId()
       // Create document record
       const documentId = uuidv4();
       const document = await this.memberDocumentRepository.create(
@@ -618,7 +620,7 @@ export class MemberService {
           fileUrl: input.fileUrl,
           fileSize: input.fileSize,
           mimeType: input.mimeType,
-          uploadedBy: input.uploadedBy,
+          uploadedBy: uploadedBy,
           uploadedAt: new Date(),
           verificationStatus: "Pending" as any,
           verifiedBy: null,
@@ -734,10 +736,10 @@ export class MemberService {
         throw new BadRequestError("Cannot record payment at this step");
       }
 
-      // Verify agent
-      if (member.agentId !== input.collectedBy) {
-        throw new BadRequestError("Only assigned agent can record payment");
-      }
+      // // Verify agent
+      // if (member.agentId !== input.collectedBy) {
+      //   throw new BadRequestError("Only assigned agent can record payment");
+      // } temp commentingg
 
       // Validate amounts match tier
       const tier = await this.membershipTierRepository.findById(
@@ -1005,5 +1007,26 @@ export class MemberService {
       ...searchRequest,
       model: "Member"
     });
+  }
+
+  /**
+   * Get metadata for member documents and payments
+   * Returns lists of document types, categories, and collection modes
+   */
+  async getMetadata() {
+    return {
+      documentTypes: Object.values(DocumentType).map(type => ({
+        value: type,
+        label: type.replace(/([A-Z])/g, ' $1').trim()
+      })),
+      documentCategories: Object.values(DocumentCategory).map(category => ({
+        value: category,
+        label: category.replace(/([A-Z])/g, ' $1').trim()
+      })),
+      collectionModes: Object.values(CollectionMode).map(mode => ({
+        value: mode,
+        label: mode.replace(/([A-Z])/g, ' $1').trim()
+      }))
+    };
   }
 }

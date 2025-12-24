@@ -4,16 +4,19 @@
 
 import { Request, Response } from 'express';
 import {
-  ChartOfAccountDto,
-  ChartOfAccountListDto,
+  ChartOfAccountResponseDto,
+  ChartOfAccountListResponseDto,
   ChartOfAccountSearchResponseDto,
-  JournalEntryDto,
-  JournalEntryWithLinesDto,
+  JournalEntryResponseDto,
+  JournalEntryWithLinesResponseDto,
   JournalEntrySearchResponseDto,
-  FiscalPeriodDto,
-  FiscalPeriodListDto,
-  JournalEntryListDto,
-} from './dtos/glDtos'
+  JournalEntryListResponseDto,
+  FiscalPeriodResponseDto,
+  FiscalPeriodListResponseDto,
+  TrialBalanceResponseDto,
+  IncomeStatementResponseDto,
+  BalanceSheetResponseDto,
+} from './dtos/responseDtos'
 import { ChartOfAccountService } from '../application/chartOfAccountService';
 import { JournalEntryService } from '../application/journalEntryService';
 import { FiscalPeriodService } from '../application/fiscalPeriodService';
@@ -39,7 +42,7 @@ export class GLController {
         ...req.body,
         createdBy: userId,
       });
-      return (req as any).next({ dto: ChartOfAccountDto, data: account, status: 201 });
+      return (req as any).next({ dto: ChartOfAccountResponseDto, data: account, status: 201 });
     } catch (err) {
       (req as any).next(err)
     }
@@ -52,7 +55,7 @@ export class GLController {
         ...req.body,
         updatedBy: userId,
       });
-      return (req as any).next({ dto: ChartOfAccountDto, data: account, status: 200 });
+      return (req as any).next({ dto: ChartOfAccountResponseDto, data: account, status: 200 });
     } catch (err) {
       (req as any).next(err)
     }
@@ -62,7 +65,7 @@ export class GLController {
     const userId = (req as any).user?.userId || 'system';
     try {
       const account = await this.chartOfAccountService.deactivateAccount(req.params.accountId, userId);
-      return (req as any).next({ dto: ChartOfAccountDto, data: account, status: 200 });
+      return (req as any).next({ dto: ChartOfAccountResponseDto, data: account, status: 200 });
     } catch (err) {
       (req as any).next(err)
     }
@@ -71,7 +74,7 @@ export class GLController {
   getAccountById = async (req: Request, res: Response) => {
     try {
       const account = await this.chartOfAccountService.getAccountById(req.params.accountId);
-      return (req as any).next({ dto: ChartOfAccountDto, data: account, status: 200 });
+      return (req as any).next({ dto: ChartOfAccountResponseDto, data: account, status: 200 });
     } catch (err) {
       (req as any).next(err)
     }
@@ -80,7 +83,7 @@ export class GLController {
   getAccountByCode = async (req: Request, res: Response) => {
     try {
       const account = await this.chartOfAccountService.getAccountByCode(req.params.accountCode);
-      return (req as any).next({ dto: ChartOfAccountDto, data: account, status: 200 });
+      return (req as any).next({ dto: ChartOfAccountResponseDto, data: account, status: 200 });
     } catch (err) {
       (req as any).next(err)
     }
@@ -89,7 +92,7 @@ export class GLController {
   getAllAccounts = async (req: Request, res: Response) => {
     try {
       const accounts = await this.chartOfAccountService.getAllAccounts();
-      return (req as any).next({ dto: ChartOfAccountListDto, data: accounts, status: 200 });
+      return (req as any).next({ dto: ChartOfAccountListResponseDto, data: accounts, status: 200 });
     } catch (err) {
       (req as any).next(err)
     }
@@ -98,7 +101,7 @@ export class GLController {
   getAccountsByType = async (req: Request, res: Response) => {
     try {
       const accounts = await this.chartOfAccountService.getAccountsByType(req.params.accountType as any);
-      return (req as any).next({ dto: ChartOfAccountListDto, data: accounts, status: 200 });
+      return (req as any).next({ dto: ChartOfAccountListResponseDto, data: accounts, status: 200 });
     } catch (err) {
       (req as any).next(err)
     }
@@ -107,7 +110,7 @@ export class GLController {
   getActiveAccounts = async (req: Request, res: Response) => {
     try {
       const accounts = await this.chartOfAccountService.getActiveAccounts();
-      return (req as any).next({ dto: ChartOfAccountListDto, data: accounts, status: 200 });
+      return (req as any).next({ dto: ChartOfAccountListResponseDto, data: accounts, status: 200 });
     } catch (err) {
       (req as any).next(err)
     }
@@ -134,7 +137,7 @@ export class GLController {
         entryDate: new Date(req.body.entryDate),
         createdBy: userId,
       });
-      return (req as any).next({ dto: JournalEntryWithLinesDto, data: { entry, lines }, status: 201 });
+      return (req as any).next({ dto: JournalEntryWithLinesResponseDto, data: { entry, lines }, status: 201 });
     } catch (err) {
       (req as any).next(err)
     }
@@ -144,7 +147,7 @@ export class GLController {
     const userId = (req as any).user?.userId || 'system';
     try {
       const entry = await this.journalEntryService.postJournalEntry(req.params.entryId, userId);
-      return (req as any).next({ dto: JournalEntryDto, data: entry, status: 200 });
+      return (req as any).next({ dto: JournalEntryResponseDto, data: entry, status: 200 });
     } catch (err) {
       (req as any).next(err)
     }
@@ -158,7 +161,7 @@ export class GLController {
         userId,
         req.body.reason
       );
-      return (req as any).next({ dto: JournalEntryWithLinesDto, data: result, status: 200 });
+      return (req as any).next({ dto: JournalEntryWithLinesResponseDto, data: result, status: 200 });
     } catch (err) {
       (req as any).next(err)
     }
@@ -167,7 +170,7 @@ export class GLController {
   getJournalEntryById = async (req: Request, res: Response) => {
     try {
       const result = await this.journalEntryService.getJournalEntryById(req.params.entryId);
-      return (req as any).next({ dto: JournalEntryWithLinesDto, data: result, status: 200 });
+      return (req as any).next({ dto: JournalEntryWithLinesResponseDto, data: result, status: 200 });
     } catch (err) {
       (req as any).next(err)
     }
@@ -179,7 +182,7 @@ export class GLController {
         new Date(req.query.startDate as string),
         new Date(req.query.endDate as string)
       );
-      return (req as any).next({ dto: JournalEntryListDto, data: entries, status: 200 });
+      return (req as any).next({ dto: JournalEntryListResponseDto, data: entries, status: 200 });
     } catch (err) {
       (req as any).next(err)
     }
@@ -205,7 +208,7 @@ export class GLController {
         startDate: new Date(req.body.startDate),
         endDate: new Date(req.body.endDate),
       });
-      return (req as any).next({ dto: FiscalPeriodDto, data: period, status: 201 });
+      return (req as any).next({ dto: FiscalPeriodResponseDto, data: period, status: 201 });
     } catch (err) {
       (req as any).next(err)
     }
@@ -215,7 +218,7 @@ export class GLController {
     const userId = (req as any).user?.userId || 'system';
     try {
       const period = await this.fiscalPeriodService.closeFiscalPeriod(req.params.periodId, userId);
-      return (req as any).next({ dto: FiscalPeriodDto, data: period, status: 200 });
+      return (req as any).next({ dto: FiscalPeriodResponseDto, data: period, status: 200 });
     } catch (err) {
       (req as any).next(err)
     }
@@ -224,7 +227,7 @@ export class GLController {
   getFiscalPeriodById = async (req: Request, res: Response) => {
     try {
       const period = await this.fiscalPeriodService.getFiscalPeriodById(req.params.periodId);
-      return (req as any).next({ dto: FiscalPeriodDto, data: period, status: 200 });
+      return (req as any).next({ dto: FiscalPeriodResponseDto, data: period, status: 200 });
     } catch (err) {
       (req as any).next(err)
     }
@@ -233,7 +236,7 @@ export class GLController {
   getAllFiscalPeriods = async (req: Request, res: Response) => {
     try {
       const periods = await this.fiscalPeriodService.getAllFiscalPeriods();
-      return (req as any).next({ dto: FiscalPeriodListDto, data: periods, status: 200 });
+      return (req as any).next({ dto: FiscalPeriodListResponseDto, data: periods, status: 200 });
     } catch (err) {
       (req as any).next(err)
     }
@@ -244,7 +247,7 @@ export class GLController {
       const periods = await this.fiscalPeriodService.getFiscalPeriodsByYear(
         parseInt(req.params.fiscalYear)
       );
-      return (req as any).next({ dto: FiscalPeriodListDto, data: periods, status: 200 });
+      return (req as any).next({ dto: FiscalPeriodListResponseDto, data: periods, status: 200 });
     } catch (err) {
       (req as any).next(err)
     }
@@ -253,7 +256,7 @@ export class GLController {
   getCurrentFiscalPeriod = async (req: Request, res: Response) => {
     try {
       const period = await this.fiscalPeriodService.getCurrentFiscalPeriod();
-      return (req as any).next({ dto: FiscalPeriodDto, data: period, status: 200 });
+      return (req as any).next({ dto: FiscalPeriodResponseDto, data: period, status: 200 });
     } catch (err) {
       (req as any).next(err)
     }
@@ -267,7 +270,7 @@ export class GLController {
     const asOfDate = req.query.asOfDate ? new Date(req.query.asOfDate as string) : undefined;
     try {
       const report = await this.reportService.generateTrialBalance(asOfDate);
-      return (req as any).next({ dto: 'TrialBalance', data: report, status: 200 });
+      return (req as any).next({ dto: TrialBalanceResponseDto, data: report, status: 200 });
     } catch (err) {
       (req as any).next(err)
     }
@@ -279,7 +282,7 @@ export class GLController {
         new Date(req.query.startDate as string),
         new Date(req.query.endDate as string)
       );
-      return (req as any).next({ dto: 'IncomeStatement', data: report, status: 200 });
+      return (req as any).next({ dto: IncomeStatementResponseDto, data: report, status: 200 });
     } catch (err) {
       (req as any).next(err)
     }
@@ -289,7 +292,7 @@ export class GLController {
     const asOfDate = req.query.asOfDate ? new Date(req.query.asOfDate as string) : undefined;
     try {
       const report = await this.reportService.generateBalanceSheet(asOfDate);
-      return (req as any).next({ dto: 'BalanceSheet', data: report, status: 200 });
+      return (req as any).next({ dto: BalanceSheetResponseDto, data: report, status: 200 });
     } catch (err) {
       (req as any).next(err)
     }

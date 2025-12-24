@@ -116,6 +116,8 @@ export function createMembersRouter(controller: MembersController): Router {
 
   // ===== QUERIES =====
 
+  router.get("/metadata", controller.getMetadata);
+
   router.get("/:memberId", controller.getMemberDetails);
 
   router.get("/", controller.listMembers);
