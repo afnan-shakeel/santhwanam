@@ -41,7 +41,7 @@ export class ApprovalWorkflowController {
     try {
       const dto = req.body as CreateWorkflowDTO;
       const result = await this.createWorkflowCommand.execute(dto);
-      return next({ dto: ApprovalWorkflowResponseDto, data: result, status: 201 });
+      return next({ responseSchema: ApprovalWorkflowResponseDto, data: result, status: 201 });
     } catch (err) {
       next(err)
     }
@@ -55,7 +55,7 @@ export class ApprovalWorkflowController {
         workflowId,
         ...dto,
       });
-      return next({ dto: ApprovalWorkflowResponseDto, data: result, status: 200 });
+      return next({ responseSchema: ApprovalWorkflowResponseDto, data: result, status: 200 });
     } catch (err) {
       next(err)
     }
@@ -65,7 +65,7 @@ export class ApprovalWorkflowController {
     try {
       const { workflowId } = req.params;
       const result = await this.workflowService.getWorkflowById(workflowId);
-      return next({ dto: ApprovalWorkflowResponseDto, data: result, status: 200 });
+      return next({ responseSchema: ApprovalWorkflowResponseDto, data: result, status: 200 });
     } catch (err) {
       next(err)
     }
@@ -75,7 +75,7 @@ export class ApprovalWorkflowController {
     try {
       const { workflowCode } = req.params;
       const result = await this.workflowService.getWorkflowByCode(workflowCode);
-      return next({ dto: ApprovalWorkflowResponseDto, data: result, status: 200 });
+      return next({ responseSchema: ApprovalWorkflowResponseDto, data: result, status: 200 });
     } catch (err) {
       next(err)
     }
@@ -85,7 +85,7 @@ export class ApprovalWorkflowController {
     try {
       const { module } = req.query;
       const workflows = await this.workflowService.listActiveWorkflows(module as any);
-      return next({ dto: ApprovalWorkflowListResponseDto, data: workflows, status: 200 });
+      return next({ responseSchema: ApprovalWorkflowListResponseDto, data: workflows, status: 200 });
     } catch (err) {
       next(err)
     }
@@ -94,7 +94,7 @@ export class ApprovalWorkflowController {
   listAllWorkflows = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const workflows = await this.workflowService.listAllWorkflows();
-      return next({ dto: ApprovalWorkflowListResponseDto, data: workflows, status: 200 });
+      return next({ responseSchema: ApprovalWorkflowListResponseDto, data: workflows, status: 200 });
     } catch (err) {
       next(err)
     }
@@ -104,7 +104,7 @@ export class ApprovalWorkflowController {
     try {
       const searchReq = req.body as any;
       const result = await this.workflowService.searchWorkflows(searchReq);
-      return next({ dto: ApprovalWorkflowsSearchResponseDto, data: result, status: 200 });
+      return next({ responseSchema: ApprovalWorkflowsSearchResponseDto, data: result, status: 200 });
     } catch (err) {
       next(err)
     }
@@ -114,7 +114,7 @@ export class ApprovalWorkflowController {
     try {
       const searchReq = req.body as any;
       const result = await this.requestService.searchRequests(searchReq);
-      return next({ dto: ApprovalRequestsSearchResponseDto, data: result, status: 200 });
+      return next({ responseSchema: ApprovalRequestsSearchResponseDto, data: result, status: 200 });
     } catch (err) {
       next(err)
     }
@@ -124,7 +124,7 @@ export class ApprovalWorkflowController {
     try {
       const dto = req.body as SubmitRequestDTO;
       const result = await this.submitRequestCommand.execute(dto);
-      return next({ dto: SubmitRequestResponseDto, data: result, status: 201 });
+      return next({ responseSchema: SubmitRequestResponseDto, data: result, status: 201 });
     } catch (err) {
       next(err)
     }
@@ -134,7 +134,7 @@ export class ApprovalWorkflowController {
     try {
       const dto = req.body as ProcessApprovalDTO;
       const result = await this.processApprovalCommand.execute(dto);
-      return next({ dto: ProcessApprovalResponseDto, data: result, status: 200 });
+      return next({ responseSchema: ProcessApprovalResponseDto, data: result, status: 200 });
     } catch (err) {
       next(err)
     }
@@ -144,7 +144,7 @@ export class ApprovalWorkflowController {
     try {
       const { approverId } = req.params;
       const executions = await this.requestService.getPendingApprovals(approverId);
-      return next({ dto: PendingApprovalsListResponseDto, data: executions, status: 200 });
+      return next({ responseSchema: PendingApprovalsListResponseDto, data: executions, status: 200 });
     } catch (err) {
       next(err)
     }
@@ -155,7 +155,7 @@ export class ApprovalWorkflowController {
       const { requestId } = req.params;
       const result = await this.requestService.getRequestById(requestId);
       console.log('Fetched request with executions and workflow:', result);
-      return next({ dto: ApprovalRequestWithExecutionsResponseDto, data: result, status: 200 });
+      return next({ responseSchema: ApprovalRequestWithExecutionsResponseDto, data: result, status: 200 });
     } catch (err) {
       next(err)
     }
@@ -165,7 +165,7 @@ export class ApprovalWorkflowController {
     try {
       const { entityType, entityId } = req.params;
       const result = await this.requestService.getRequestByEntity(entityType, entityId);
-      return next({ dto: ApprovalRequestWithExecutionsResponseDto, data: result, status: 200 });
+      return next({ responseSchema: ApprovalRequestWithExecutionsResponseDto, data: result, status: 200 });
     } catch (err) {
       next(err)
     }

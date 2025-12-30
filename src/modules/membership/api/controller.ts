@@ -1,5 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { MembershipTierService } from '../application/membershipTierService';
+import { MembershipTierDto, MembershipTierListDto } from './dtos/membershipTierDtos';
+import { NotFoundError } from '@/shared/utils/error-handling/httpErrors';
 
 export class MembershipTierController {
   constructor(private readonly tierService: MembershipTierService) {}
@@ -9,11 +11,7 @@ export class MembershipTierController {
       const activeOnly = req.query.activeOnly === 'true';
       const tiers = await this.tierService.getAllTiers(activeOnly);
 
-      res.status(200).json({
-        success: true,
-        data: tiers,
-        message: 'Membership tiers retrieved successfully'
-      });
+      return next({ responseSchema: MembershipTierListDto, data: tiers, status: 200 });
     } catch (error) {
       next(error);
     }
@@ -25,18 +23,10 @@ export class MembershipTierController {
       const tier = await this.tierService.getTierById(tierId);
 
       if (!tier) {
-        res.status(404).json({
-          success: false,
-          message: 'Membership tier not found'
-        });
-        return;
+        throw new NotFoundError('Membership tier not found');
       }
 
-      res.status(200).json({
-        success: true,
-        data: tier,
-        message: 'Membership tier retrieved successfully'
-      });
+      return next({ responseSchema: MembershipTierDto, data: tier, status: 200 });
     } catch (error) {
       next(error);
     }
