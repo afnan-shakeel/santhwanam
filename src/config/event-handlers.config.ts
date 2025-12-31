@@ -10,6 +10,11 @@ import { memberRepo, registrationPaymentRepo, memberDocumentRepo } from '@/modul
 import { ActivateMemberOnApprovalHandler } from '@/modules/members/application/event-handlers/activate-member-on-approval.handler';
 import { RejectMemberOnApprovalHandler } from '@/modules/members/application/event-handlers/reject-member-on-approval.handler';
 
+// Wallet module
+import { depositRequestService } from '@/modules/wallet';
+import { ProcessWalletDepositApprovalHandler } from '@/modules/wallet/application/handlers/process-deposit-approval.handler';
+import { ProcessWalletDepositRejectionHandler } from '@/modules/wallet/application/handlers/process-deposit-rejection.handler';
+
 // Agent repository
 import { PrismaAgentRepository } from '@/modules/agents/infrastructure/prisma/agentRepository';
 
@@ -92,6 +97,25 @@ export function registerEventHandlers(): void {
   eventBus.subscribe(
     'approval.request.rejected',
     rejectMemberHandler
+  );
+
+  // Wallet deposit approval handlers
+  const processDepositApprovalHandler = new ProcessWalletDepositApprovalHandler(
+    depositRequestService
+  );
+
+  const processDepositRejectionHandler = new ProcessWalletDepositRejectionHandler(
+    depositRequestService
+  );
+
+  eventBus.subscribe(
+    'approval.request.approved',
+    processDepositApprovalHandler
+  );
+
+  eventBus.subscribe(
+    'approval.request.rejected',
+    processDepositRejectionHandler
   );
 
   logger.info('Event handlers registered successfully');

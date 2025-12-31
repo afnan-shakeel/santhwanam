@@ -29,7 +29,7 @@ export interface AuthOptions {
  */
 export function createAuthMiddleware(options?: AuthOptions) {
   const skipPaths = options?.skipPaths || ['/health', '/api/docs', '/api/openapi.json',
-    '/reset-password-x', '/reset-password-x/confirm', '/api/auth/login'
+    '/reset-password', '/reset-password/confirm', '/api/auth/reset-password','/api/auth/reset-password/request', '/api/auth/login'
   ];
   const skipMethods = (options?.skipMethods || []).map((m) => m.toUpperCase());
 

@@ -69,18 +69,36 @@ export class ActivateMemberOnApprovalHandler implements IEventHandler<DomainEven
 
       // 3. Create member wallet with advance deposit
       logger.info("Creating member wallet", { memberId, initialBalance: payment.advanceDeposit });
-      await tx.memberWallet.create({
+      const walletId = uuidv4();
+      await tx.wallet.create({
         data: {
-          walletId: uuidv4(),
+          walletId,
           memberId,
           currentBalance: payment.advanceDeposit,
-          totalDeposited: payment.advanceDeposit,
-          totalWithdrawn: 0,
-          lastTransactionAt: new Date(),
           createdAt: new Date(),
-          updatedAt: new Date(),
+          updatedAt: null,
         },
       });
+
+      // Create initial wallet transaction for advance deposit
+      if (Number(payment.advanceDeposit) > 0) {
+        await tx.walletTransaction.create({
+          data: {
+            transactionId: uuidv4(),
+            walletId,
+            transactionType: "Deposit",
+            amount: payment.advanceDeposit,
+            balanceAfter: payment.advanceDeposit,
+            sourceModule: "Membership",
+            sourceEntityId: memberId,
+            description: "Initial deposit from registration",
+            journalEntryId: null,
+            status: "Completed",
+            createdBy: approvedBy,
+            createdAt: new Date(),
+          },
+        });
+      }
 
       // 4. Update member status to Active
       logger.info("Updating member status to Active", { memberId });

@@ -236,8 +236,9 @@ model ApprovalRequest {
   createdAt         DateTime              @default(now())
   updatedAt         DateTime?
 
-  stageExecutions   ApprovalStageExecution[]
-  agents            Agent[]
+  stageExecutions        ApprovalStageExecution[]
+  agents                 Agent[]
+  walletDepositRequests  WalletDepositRequest[]
 
   @@index([entityType, entityId])
   @@index([status])
@@ -564,6 +565,9 @@ model Member {
   nominees                 Nominee[]
   documents                MemberDocument[]
   payment                  RegistrationPayment?
+  wallet                   Wallet?
+  walletDepositRequests    WalletDepositRequest[]
+  walletDebitRequests      WalletDebitRequest[]
 
   @@index([memberCode])
   @@index([registrationStatus])
@@ -825,6 +829,8 @@ model JournalEntry {
 
   // Relations
   lines                    JournalEntryLine[]
+  walletTransactions       WalletTransaction[]
+  walletDepositRequests    WalletDepositRequest[]
 
   @@index([entryNumber])
   @@index([entryDate])
@@ -883,4 +889,156 @@ model FiscalPeriod {
   @@index([fiscalYear])
   @@index([status])
   @@index([startDate, endDate])
+}
+
+// ===================================
+// Domain: Membership Wallet
+// See `docs/domain/7.membership_wallet.md`
+// ===================================
+
+enum WalletTransactionType {
+  Deposit
+  Debit
+  Refund
+  Adjustment
+}
+
+enum WalletTransactionStatus {
+  Pending
+  Completed
+  Failed
+  Reversed
+}
+
+enum WalletDepositRequestStatus {
+  Draft
+  PendingApproval
+  Approved
+  Rejected
+}
+
+enum WalletDebitRequestStatus {
+  PendingAcknowledgment
+  Acknowledged
+  Completed
+  Invalidated
+  Failed
+}
+
+// Member Wallet
+model Wallet {
+  walletId                 String                    @id @default(uuid())
+  member                   Member                    @relation(fields: [memberId], references: [memberId])
+  memberId                 String                    @unique
+
+  currentBalance           Decimal                   @db.Decimal(15, 2) @default(0)
+
+  // Timestamps
+  createdAt                DateTime                  @default(now())
+  updatedAt                DateTime?
+
+  // Relations
+  transactions             WalletTransaction[]
+  depositRequests          WalletDepositRequest[]
+  debitRequests            WalletDebitRequest[]
+
+  @@index([memberId])
+}
+
+// Wallet Transaction
+model WalletTransaction {
+  transactionId            String                    @id @default(uuid())
+  wallet                   Wallet                    @relation(fields: [walletId], references: [walletId])
+  walletId                 String
+
+  transactionType          WalletTransactionType
+  amount                   Decimal                   @db.Decimal(15, 2)
+  balanceAfter             Decimal                   @db.Decimal(15, 2)
+
+  // Reference
+  sourceModule             String
+  sourceEntityId           String?
+
+  // Description
+  description              String
+
+  // Financial - GL reference
+  journalEntry             JournalEntry?             @relation(fields: [journalEntryId], references: [entryId])
+  journalEntryId           String?
+
+  // Status
+  status                   WalletTransactionStatus   @default(Completed)
+
+  // Audit
+  createdBy                String
+  createdAt                DateTime                  @default(now())
+
+  @@index([walletId])
+  @@index([transactionType])
+  @@index([sourceModule, sourceEntityId])
+  @@index([createdAt])
+}
+
+// Wallet Deposit Request
+model WalletDepositRequest {
+  depositRequestId         String                    @id @default(uuid())
+  member                   Member                    @relation(fields: [memberId], references: [memberId])
+  memberId                 String
+  wallet                   Wallet                    @relation(fields: [walletId], references: [walletId])
+  walletId                 String
+
+  amount                   Decimal                   @db.Decimal(15, 2)
+  collectionDate           DateTime
+  collectedBy              String                    // AgentId
+  notes                    String?
+
+  // Status
+  requestStatus            WalletDepositRequestStatus @default(Draft)
+
+  // Approval
+  approvalRequest          ApprovalRequest?          @relation(fields: [approvalRequestId], references: [requestId])
+  approvalRequestId        String?
+
+  // Financial - GL reference
+  journalEntry             JournalEntry?             @relation(fields: [journalEntryId], references: [entryId])
+  journalEntryId           String?
+
+  // Timestamps
+  createdAt                DateTime                  @default(now())
+  approvedAt               DateTime?
+  rejectedAt               DateTime?
+
+  @@index([memberId])
+  @@index([walletId])
+  @@index([requestStatus])
+  @@index([collectedBy])
+}
+
+// Wallet Debit Request
+model WalletDebitRequest {
+  debitRequestId           String                    @id @default(uuid())
+  member                   Member                    @relation(fields: [memberId], references: [memberId])
+  memberId                 String
+  wallet                   Wallet                    @relation(fields: [walletId], references: [walletId])
+  walletId                 String
+
+  amount                   Decimal                   @db.Decimal(15, 2)
+  purpose                  String
+
+  // References
+  contributionCycleId      String?
+  contributionId           String?
+
+  // Status
+  status                   WalletDebitRequestStatus  @default(PendingAcknowledgment)
+
+  // Timestamps
+  createdAt                DateTime                  @default(now())
+  acknowledgedAt           DateTime?
+  completedAt              DateTime?
+
+  @@index([memberId])
+  @@index([walletId])
+  @@index([status])
+  @@index([contributionId])
 }

@@ -3700,6 +3700,641 @@
           }
         }
       }
+    },
+    "/api/wallet/members/{memberId}/wallet": {
+      "get": {
+        "tags": ["Wallet - Member"],
+        "summary": "Get wallet summary for a member",
+        "parameters": [
+          {
+            "name": "memberId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Wallet summary",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/WalletSummary" }
+              }
+            }
+          },
+          "404": { "description": "Member or wallet not found" }
+        }
+      }
+    },
+    "/api/wallet/my-wallet": {
+      "get": {
+        "tags": ["Wallet - Member"],
+        "summary": "Get wallet summary for logged-in member",
+        "responses": {
+          "200": {
+            "description": "Wallet summary",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/WalletSummary" }
+              }
+            }
+          },
+          "404": { "description": "Wallet not found" }
+        }
+      }
+    },
+    "/api/wallet/members/{memberId}/wallet/transactions": {
+      "get": {
+        "tags": ["Wallet - Member"],
+        "summary": "Get wallet transaction history",
+        "parameters": [
+          {
+            "name": "memberId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "default": 1 }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["Deposit", "Debit", "Refund", "Adjustment"] }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["Pending", "Completed", "Failed", "Reversed"] }
+          },
+          {
+            "name": "startDate",
+            "in": "query",
+            "schema": { "type": "string", "format": "date-time" }
+          },
+          {
+            "name": "endDate",
+            "in": "query",
+            "schema": { "type": "string", "format": "date-time" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Transaction history",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "transactions": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/WalletTransaction" }
+                    },
+                    "total": { "type": "integer" },
+                    "page": { "type": "integer" },
+                    "limit": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/wallet/members/{memberId}/wallet/deposit-requests": {
+      "post": {
+        "tags": ["Wallet - Deposits"],
+        "summary": "Request a wallet deposit",
+        "parameters": [
+          {
+            "name": "memberId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["amount", "collectionDate"],
+                "properties": {
+                  "amount": { "type": "number", "minimum": 0.01, "description": "Deposit amount" },
+                  "collectionDate": { "type": "string", "format": "date-time", "description": "Date of cash collection" },
+                  "notes": { "type": "string", "maxLength": 500, "description": "Optional notes" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Deposit request created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/WalletDepositRequest" }
+              }
+            }
+          },
+          "400": { "description": "Invalid request" },
+          "404": { "description": "Member or wallet not found" }
+        }
+      },
+      "get": {
+        "tags": ["Wallet - Deposits"],
+        "summary": "Get member's deposit requests",
+        "parameters": [
+          {
+            "name": "memberId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "default": 1 }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["Draft", "PendingApproval", "Approved", "Rejected"] }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of deposit requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "requests": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/WalletDepositRequest" }
+                    },
+                    "total": { "type": "integer" },
+                    "page": { "type": "integer" },
+                    "limit": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/wallet/deposit-requests/{requestId}/submit": {
+      "post": {
+        "tags": ["Wallet - Deposits"],
+        "summary": "Submit deposit request for approval",
+        "parameters": [
+          {
+            "name": "requestId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deposit request submitted for approval",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/WalletDepositRequest" }
+              }
+            }
+          },
+          "400": { "description": "Invalid request status" },
+          "404": { "description": "Deposit request not found" }
+        }
+      }
+    },
+    "/api/wallet/members/{memberId}/wallet/debit-requests": {
+      "get": {
+        "tags": ["Wallet - Debits"],
+        "summary": "Get member's debit requests",
+        "parameters": [
+          {
+            "name": "memberId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "default": 1 }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["PendingAcknowledgment", "Acknowledged", "Completed", "Invalidated", "Failed"] }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of debit requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "requests": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/WalletDebitRequest" }
+                    },
+                    "total": { "type": "integer" },
+                    "page": { "type": "integer" },
+                    "limit": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Wallet - Debits"],
+        "summary": "Create a debit request for a member",
+        "parameters": [
+          {
+            "name": "memberId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["amount", "purpose"],
+                "properties": {
+                  "amount": { "type": "number", "minimum": 0.01, "description": "Debit amount" },
+                  "purpose": { "type": "string", "minLength": 1, "maxLength": 255, "description": "Purpose of debit" },
+                  "contributionCycleId": { "type": "string", "format": "uuid", "description": "Optional contribution cycle reference" },
+                  "contributionId": { "type": "string", "format": "uuid", "description": "Optional contribution reference" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Debit request created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/WalletDebitRequest" }
+              }
+            }
+          },
+          "400": { "description": "Invalid request or insufficient balance" },
+          "404": { "description": "Member or wallet not found" }
+        }
+      }
+    },
+    "/api/wallet/debit-requests/pending": {
+      "get": {
+        "tags": ["Wallet - Debits"],
+        "summary": "Get pending acknowledgment requests",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "default": 1 }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 }
+          },
+          {
+            "name": "agentId",
+            "in": "query",
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of pending debit requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "requests": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/WalletDebitRequest" }
+                    },
+                    "total": { "type": "integer" },
+                    "page": { "type": "integer" },
+                    "limit": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/wallet/debit-requests/{debitRequestId}/acknowledge": {
+      "post": {
+        "tags": ["Wallet - Debits"],
+        "summary": "Acknowledge a debit request",
+        "parameters": [
+          {
+            "name": "debitRequestId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Debit request acknowledged",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/WalletDebitRequest" }
+              }
+            }
+          },
+          "400": { "description": "Invalid request status" },
+          "404": { "description": "Debit request not found" }
+        }
+      }
+    },
+    "/api/wallet/debit-requests/{debitRequestId}/invalidate": {
+      "post": {
+        "tags": ["Wallet - Debits"],
+        "summary": "Invalidate a debit request",
+        "parameters": [
+          {
+            "name": "debitRequestId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Debit request invalidated",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/WalletDebitRequest" }
+              }
+            }
+          },
+          "400": { "description": "Invalid request status" },
+          "404": { "description": "Debit request not found" }
+        }
+      }
+    },
+    "/api/wallet/admin/deposits/pending": {
+      "get": {
+        "tags": ["Wallet - Admin"],
+        "summary": "Get all pending deposit requests",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "default": 1 }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 }
+          },
+          {
+            "name": "collectedBy",
+            "in": "query",
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of pending deposit requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "requests": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/WalletDepositRequest" }
+                    },
+                    "total": { "type": "integer" },
+                    "page": { "type": "integer" },
+                    "limit": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/wallet/admin/wallets": {
+      "get": {
+        "tags": ["Wallet - Admin"],
+        "summary": "Get all wallets (admin)",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "default": 1 }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 }
+          },
+          {
+            "name": "minBalance",
+            "in": "query",
+            "schema": { "type": "number" }
+          },
+          {
+            "name": "maxBalance",
+            "in": "query",
+            "schema": { "type": "number" }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of wallets",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "wallets": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/WalletWithMember" }
+                    },
+                    "total": { "type": "integer" },
+                    "page": { "type": "integer" },
+                    "limit": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/wallet/admin/wallets/statistics": {
+      "get": {
+        "tags": ["Wallet - Admin"],
+        "summary": "Get wallet statistics",
+        "responses": {
+          "200": {
+            "description": "Wallet statistics",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/WalletStatistics" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/wallet/admin/wallets/low-balance": {
+      "get": {
+        "tags": ["Wallet - Admin"],
+        "summary": "Get low balance wallets",
+        "parameters": [
+          {
+            "name": "threshold",
+            "in": "query",
+            "schema": { "type": "number", "default": 200, "description": "Balance threshold" }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "default": 1 }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of low balance wallets",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "wallets": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/WalletWithMember" }
+                    },
+                    "total": { "type": "integer" },
+                    "page": { "type": "integer" },
+                    "limit": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/wallet/admin/wallets/{walletId}": {
+      "get": {
+        "tags": ["Wallet - Admin"],
+        "summary": "Get wallet details by ID",
+        "parameters": [
+          {
+            "name": "walletId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Wallet details",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/WalletWithMember" }
+              }
+            }
+          },
+          "404": { "description": "Wallet not found" }
+        }
+      }
+    },
+    "/api/wallet/admin/wallets/{walletId}/adjust": {
+      "post": {
+        "tags": ["Wallet - Admin"],
+        "summary": "Manual wallet adjustment",
+        "parameters": [
+          {
+            "name": "walletId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["amount", "adjustmentType", "reason"],
+                "properties": {
+                  "amount": { "type": "number", "minimum": 0.01, "description": "Adjustment amount" },
+                  "adjustmentType": { "type": "string", "enum": ["credit", "debit"], "description": "Type of adjustment" },
+                  "reason": { "type": "string", "minLength": 1, "maxLength": 500, "description": "Reason for adjustment" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Wallet adjusted successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Wallet" }
+              }
+            }
+          },
+          "400": { "description": "Invalid adjustment or insufficient balance" },
+          "404": { "description": "Wallet not found" }
+        }
+      }
     }
     ,
     "ApprovalWorkflow": {
@@ -3910,6 +4545,113 @@
           "createdBy": { "type": "string", "description": "User who created the tier" },
           "updatedAt": { "type": "string", "format": "date-time", "nullable": true, "description": "Last update timestamp" },
           "updatedBy": { "type": "string", "nullable": true, "description": "User who last updated the tier" }
+        }
+      },
+      "Wallet": {
+        "type": "object",
+        "description": "Member wallet with balance information",
+        "properties": {
+          "walletId": { "type": "string", "format": "uuid" },
+          "memberId": { "type": "string", "format": "uuid" },
+          "currentBalance": { "type": "number", "format": "decimal" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time", "nullable": true }
+        }
+      },
+      "WalletWithMember": {
+        "allOf": [
+          { "$ref": "#/components/schemas/Wallet" },
+          {
+            "type": "object",
+            "properties": {
+              "member": {
+                "type": "object",
+                "properties": {
+                  "memberId": { "type": "string" },
+                  "memberCode": { "type": "string" },
+                  "firstName": { "type": "string" },
+                  "lastName": { "type": "string" }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "WalletTransaction": {
+        "type": "object",
+        "description": "Wallet transaction record",
+        "properties": {
+          "transactionId": { "type": "string", "format": "uuid" },
+          "walletId": { "type": "string", "format": "uuid" },
+          "transactionType": { "type": "string", "enum": ["Deposit", "Debit", "Refund", "Adjustment"] },
+          "amount": { "type": "number", "format": "decimal" },
+          "balanceAfter": { "type": "number", "format": "decimal" },
+          "sourceModule": { "type": "string" },
+          "sourceEntityId": { "type": "string", "format": "uuid", "nullable": true },
+          "description": { "type": "string" },
+          "journalEntryId": { "type": "string", "format": "uuid", "nullable": true },
+          "status": { "type": "string", "enum": ["Pending", "Completed", "Failed", "Reversed"] },
+          "createdBy": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "WalletSummary": {
+        "type": "object",
+        "description": "Wallet summary with recent transactions",
+        "properties": {
+          "walletId": { "type": "string", "format": "uuid" },
+          "memberId": { "type": "string", "format": "uuid" },
+          "currentBalance": { "type": "number", "format": "decimal" },
+          "recentTransactions": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/WalletTransaction" }
+          }
+        }
+      },
+      "WalletStatistics": {
+        "type": "object",
+        "description": "Aggregate wallet statistics",
+        "properties": {
+          "totalWallets": { "type": "integer" },
+          "totalBalance": { "type": "number", "format": "decimal" },
+          "averageBalance": { "type": "number", "format": "decimal" },
+          "lowBalanceCount": { "type": "integer" }
+        }
+      },
+      "WalletDepositRequest": {
+        "type": "object",
+        "description": "Deposit request for a wallet",
+        "properties": {
+          "depositRequestId": { "type": "string", "format": "uuid" },
+          "memberId": { "type": "string", "format": "uuid" },
+          "walletId": { "type": "string", "format": "uuid" },
+          "amount": { "type": "number", "format": "decimal" },
+          "collectionDate": { "type": "string", "format": "date-time" },
+          "collectedBy": { "type": "string" },
+          "notes": { "type": "string", "nullable": true },
+          "requestStatus": { "type": "string", "enum": ["Draft", "PendingApproval", "Approved", "Rejected"] },
+          "approvalRequestId": { "type": "string", "format": "uuid", "nullable": true },
+          "journalEntryId": { "type": "string", "format": "uuid", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "approvedAt": { "type": "string", "format": "date-time", "nullable": true },
+          "rejectedAt": { "type": "string", "format": "date-time", "nullable": true }
+        }
+      },
+      "WalletDebitRequest": {
+        "type": "object",
+        "description": "Debit request for a wallet",
+        "properties": {
+          "debitRequestId": { "type": "string", "format": "uuid" },
+          "memberId": { "type": "string", "format": "uuid" },
+          "walletId": { "type": "string", "format": "uuid" },
+          "amount": { "type": "number", "format": "decimal" },
+          "purpose": { "type": "string" },
+          "contributionCycleId": { "type": "string", "format": "uuid", "nullable": true },
+          "contributionId": { "type": "string", "format": "uuid", "nullable": true },
+          "status": { "type": "string", "enum": ["PendingAcknowledgment", "Acknowledged", "Completed", "Invalidated", "Failed"] },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "acknowledgedAt": { "type": "string", "format": "date-time", "nullable": true },
+          "completedAt": { "type": "string", "format": "date-time", "nullable": true }
         }
       }
     },

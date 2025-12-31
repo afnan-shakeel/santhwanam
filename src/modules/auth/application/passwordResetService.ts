@@ -37,7 +37,7 @@ export async function requestPasswordReset(email: string) {
   })
 
   // Build reset link
-  const appUrl = process.env.APP_URL
+  const appUrl = process.env.CLIENT_URL
   const resetLink = `${appUrl}/auth/reset-password?token=${token}`
 
   const { data, error } = await supabaseAdmin.auth.resetPasswordForEmail(email, {
