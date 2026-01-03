@@ -41,6 +41,10 @@ export const MemberResponseDto = z.object({
       tierId: z.string(),
       tierCode: z.string(),
       tierName: z.string(),
+      registrationFee: z.any(),
+      advanceDepositAmount: z.any(),
+      contributionAmount: z.any(),
+      deathBenefitAmount: z.any(),
     })
     .nullable()
     .optional(),
@@ -52,6 +56,7 @@ export const MemberResponseDto = z.object({
       agentId: z.string(),
       agentCode: z.string(),
       firstName: z.string(),
+      middleName: z.string().nullable().optional(),
       lastName: z.string(),
     })
     .nullable()
@@ -86,6 +91,22 @@ export const MemberResponseDto = z.object({
     .optional()
     .nullable()
     .optional(),
+  documents: z
+    .array(z.object({
+      documentId: z.string(),
+      documentType: z.string().optional().nullable(),
+      documentCategory: z.string().optional().nullable(),
+      documentName: z.string().min(1).max(255),
+      memberId: z.string(),
+      fileName: z.string().optional().nullable(),
+      fileType: z.string().optional(),
+      fileUrl: z.string(),
+      fileSize: z.number().optional().nullable(),
+      expiryDate: z.date().optional().nullable(),
+      uploadedAt: z.date(),
+    }))
+    .optional()
+    .nullable(),
   areaId: z.string(),
   forumId: z.string(),
 
@@ -93,7 +114,7 @@ export const MemberResponseDto = z.object({
   wallet: z
     .object({
       walletId: z.string(),
-      currentBalance: z.number(),
+      currentBalance: z.any(),
       createdAt: z.date(),
       updatedAt: z.date().nullable().optional(),
     })

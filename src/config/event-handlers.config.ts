@@ -70,6 +70,9 @@ export function registerEventHandlers(): void {
     memberDocumentRepo,
     registrationPaymentRepo,
     agentRepo,
+    userRepo,
+    roleRepo,
+    userRoleRepo,
     journalEntryService
   );
 

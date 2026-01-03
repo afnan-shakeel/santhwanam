@@ -127,6 +127,7 @@ export interface Member {
   areaId: string;
   forumId: string;
 
+  userId?: string | null;
   // Member Status (after approval)
   memberStatus: MemberStatus | null;
 

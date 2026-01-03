@@ -1046,6 +1046,7 @@ export class MemberService {
             agentCode: true,
             firstName: true,
             lastName: true,
+            middleName: true,
             contactNumber: true,
             email: true,
           },

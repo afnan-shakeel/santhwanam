@@ -16,18 +16,19 @@ datasource db {
 // Domain: IAM - User
 // See `docs/domain/1.iam.md` for the canonical shape.
 model User {
-  userId        String   @id @default(uuid())
-  externalAuthId String  @unique
-  email         String   @unique
-  firstName     String?
-  lastName      String?
-  isActive      Boolean  @default(true)
-  userMetadata  Json?
-  createdAt     DateTime @default(now())
-  lastSyncedAt  DateTime?
-  userRoles     UserRole[]
+  userId              String               @id @default(uuid())
+  externalAuthId      String               @unique
+  email               String               @unique
+  firstName           String?
+  lastName            String?
+  isActive            Boolean              @default(true)
+  userMetadata        Json?
+  createdAt           DateTime             @default(now())
+  lastSyncedAt        DateTime?
+  userRoles           UserRole[]
   passwordResetTokens PasswordResetToken[]
-  agents        Agent[]
+  agents              Agent[]
+  members             Member[]
 }
 
 // Enums for role scope and user role scope
@@ -40,14 +41,14 @@ enum ScopeType {
 }
 
 model Role {
-  roleId       String   @id @default(uuid())
-  roleCode     String   @unique
+  roleId       String    @id @default(uuid())
+  roleCode     String    @unique
   roleName     String
   description  String?
   scopeType    ScopeType
-  isActive     Boolean  @default(true)
-  isSystemRole Boolean  @default(false)
-  createdAt    DateTime @default(now())
+  isActive     Boolean   @default(true)
+  isSystemRole Boolean   @default(false)
+  createdAt    DateTime  @default(now())
   createdBy    String?
   updatedAt    DateTime?
 
@@ -70,40 +71,40 @@ model Permission {
 }
 
 model RolePermission {
-  rolePermissionId String   @id @default(uuid())
-  role             Role     @relation(fields: [roleId], references: [roleId])
+  rolePermissionId String     @id @default(uuid())
+  role             Role       @relation(fields: [roleId], references: [roleId])
   roleId           String
   permission       Permission @relation(fields: [permissionId], references: [permissionId])
   permissionId     String
   conditions       Json?
-  assignedAt       DateTime @default(now())
+  assignedAt       DateTime   @default(now())
   assignedBy       String?
 }
 
 model UserRole {
-  userRoleId     String   @id @default(uuid())
-  user           User     @relation(fields: [userId], references: [userId])
-  userId         String
-  role           Role     @relation(fields: [roleId], references: [roleId])
-  roleId         String
+  userRoleId      String     @id @default(uuid())
+  user            User       @relation(fields: [userId], references: [userId])
+  userId          String
+  role            Role       @relation(fields: [roleId], references: [roleId])
+  roleId          String
   scopeEntityType ScopeType?
-  scopeEntityId  String?
-  isActive       Boolean  @default(true)
-  assignedAt     DateTime @default(now())
-  assignedBy     String?
-  revokedAt      DateTime?
-  revokedBy      String?
+  scopeEntityId   String?
+  isActive        Boolean    @default(true)
+  assignedAt      DateTime   @default(now())
+  assignedBy      String?
+  revokedAt       DateTime?
+  revokedBy       String?
 }
 
 // Domain: Event Bus - Event Store for Audit Trail
 model Event {
-  eventId       String   @id @default(uuid())
-  eventType     String
-  aggregateId   String?
-  eventData     Json
-  userId        String?
-  ipAddress     String?
-  timestamp     DateTime @default(now())
+  eventId     String   @id @default(uuid())
+  eventType   String
+  aggregateId String?
+  eventData   Json
+  userId      String?
+  ipAddress   String?
+  timestamp   DateTime @default(now())
 
   @@index([eventType])
   @@index([aggregateId])
@@ -112,14 +113,14 @@ model Event {
 
 // Password reset tokens for backend-controlled reset flow
 model PasswordResetToken {
-  tokenId    String   @id @default(uuid())
-  user       User     @relation(fields: [userId], references: [userId])
-  userId     String
-  tokenHash  String   @unique
-  expiresAt  DateTime
-  used       Boolean  @default(false)
-  usedAt     DateTime?
-  createdAt  DateTime @default(now())
+  tokenId   String    @id @default(uuid())
+  user      User      @relation(fields: [userId], references: [userId])
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  used      Boolean   @default(false)
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
 
   @@index([tokenHash])
   @@index([userId, expiresAt])
@@ -170,46 +171,44 @@ enum ApprovalDecision {
 }
 
 model ApprovalWorkflow {
-  workflowId        String   @id @default(uuid())
-  workflowCode      String   @unique
+  workflowId        String         @id @default(uuid())
+  workflowCode      String         @unique
   workflowName      String
   description       String?
   module            WorkflowModule
   entityType        String
-  isActive          Boolean  @default(true)
-  requiresAllStages Boolean  @default(true)
-  createdAt         DateTime @default(now())
+  isActive          Boolean        @default(true)
+  requiresAllStages Boolean        @default(true)
+  createdAt         DateTime       @default(now())
   createdBy         String?
   updatedAt         DateTime?
   updatedBy         String?
 
-  stages            ApprovalStage[]
-  requests          ApprovalRequest[]
+  stages   ApprovalStage[]
+  requests ApprovalRequest[]
 
   @@index([workflowCode])
   @@index([isActive])
 }
 
 model ApprovalStage {
-  stageId        String         @id @default(uuid())
-  workflow       ApprovalWorkflow @relation(fields: [workflowId], references: [workflowId])
-  workflowId     String
-  stageName      String
-  stageOrder     Int
-  approverType   ApproverType
-  roleId         String?
-  userId         String?
+  stageId          String            @id @default(uuid())
+  workflow         ApprovalWorkflow  @relation(fields: [workflowId], references: [workflowId])
+  workflowId       String
+  stageName        String
+  stageOrder       Int
+  approverType     ApproverType
+  roleId           String?
+  userId           String?
   organizationBody OrganizationBody?
-  isOptional     Boolean        @default(false)
-  autoApprove    Boolean        @default(false)
-  createdBy      String?
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime?
-  updatedBy      String?
+  isOptional       Boolean           @default(false)
+  autoApprove      Boolean           @default(false)
+  createdBy        String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime?
+  updatedBy        String?
 
-  executions     ApprovalStageExecution[]
-
-
+  executions ApprovalStageExecution[]
 
   @@unique([workflowId, stageOrder])
   @@index([workflowId, stageOrder])
@@ -236,9 +235,9 @@ model ApprovalRequest {
   createdAt         DateTime              @default(now())
   updatedAt         DateTime?
 
-  stageExecutions        ApprovalStageExecution[]
-  agents                 Agent[]
-  walletDepositRequests  WalletDepositRequest[]
+  stageExecutions       ApprovalStageExecution[]
+  agents                Agent[]
+  walletDepositRequests WalletDepositRequest[]
 
   @@index([entityType, entityId])
   @@index([status])
@@ -246,19 +245,19 @@ model ApprovalRequest {
 }
 
 model ApprovalStageExecution {
-  executionId        String               @id @default(uuid())
-  request            ApprovalRequest      @relation(fields: [requestId], references: [requestId])
+  executionId        String              @id @default(uuid())
+  request            ApprovalRequest     @relation(fields: [requestId], references: [requestId])
   requestId          String
-  stage              ApprovalStage        @relation(fields: [stageId], references: [stageId])
+  stage              ApprovalStage       @relation(fields: [stageId], references: [stageId])
   stageId            String
   stageOrder         Int
-  status             ApprovalStageStatus  @default(Pending)
+  status             ApprovalStageStatus @default(Pending)
   assignedApproverId String?
   reviewedBy         String?
   reviewedAt         DateTime?
   decision           ApprovalDecision?
   comments           String?
-  createdAt          DateTime             @default(now())
+  createdAt          DateTime            @default(now())
   updatedAt          DateTime?
 
   @@index([requestId])
@@ -269,36 +268,36 @@ model ApprovalStageExecution {
 // See `docs/domain/3.organization_bodies.md` for details
 
 model Forum {
-  forumId         String   @id @default(uuid())
-  forumCode       String   @unique
+  forumId         String    @id @default(uuid())
+  forumCode       String    @unique
   forumName       String
   adminUserId     String
   establishedDate DateTime
-  createdAt       DateTime @default(now())
+  createdAt       DateTime  @default(now())
   createdBy       String
   updatedAt       DateTime?
   updatedBy       String?
 
-  areas           Area[]
+  areas Area[]
 
   @@index([forumCode])
   @@index([adminUserId])
 }
 
 model Area {
-  areaId          String   @id @default(uuid())
-  forum           Forum    @relation(fields: [forumId], references: [forumId])
+  areaId          String    @id @default(uuid())
+  forum           Forum     @relation(fields: [forumId], references: [forumId])
   forumId         String
   areaCode        String
   areaName        String
   adminUserId     String
   establishedDate DateTime
-  createdAt       DateTime @default(now())
+  createdAt       DateTime  @default(now())
   createdBy       String
   updatedAt       DateTime?
   updatedBy       String?
 
-  units           Unit[]
+  units Unit[]
 
   @@unique([forumId, areaCode])
   @@index([forumId])
@@ -306,21 +305,21 @@ model Area {
 }
 
 model Unit {
-  unitId          String   @id @default(uuid())
-  area            Area     @relation(fields: [areaId], references: [areaId])
+  unitId          String    @id @default(uuid())
+  area            Area      @relation(fields: [areaId], references: [areaId])
   areaId          String
   forumId         String
   unitCode        String
   unitName        String
   adminUserId     String
   establishedDate DateTime
-  createdAt       DateTime @default(now())
+  createdAt       DateTime  @default(now())
   createdBy       String
   updatedAt       DateTime?
   updatedBy       String?
 
-  agents          Agent[]
-  members         Member[]
+  agents  Agent[]
+  members Member[]
 
   @@unique([areaId, unitCode])
   @@index([areaId])
@@ -352,62 +351,62 @@ enum Gender {
 }
 
 model Agent {
-  agentId                  String             @id @default(uuid())
-  agentCode                String
-  registrationStatus       RegistrationStatus @default(Draft)
-  approvalRequest          ApprovalRequest?   @relation(fields: [approvalRequestId], references: [requestId])
-  approvalRequestId        String?
+  agentId            String             @id @default(uuid())
+  agentCode          String
+  registrationStatus RegistrationStatus @default(Draft)
+  approvalRequest    ApprovalRequest?   @relation(fields: [approvalRequestId], references: [requestId])
+  approvalRequestId  String?
 
   // Hierarchy (denormalized for query efficiency)
-  unit                     Unit               @relation(fields: [unitId], references: [unitId])
-  unitId                   String
-  areaId                   String
-  forumId                  String
+  unit    Unit   @relation(fields: [unitId], references: [unitId])
+  unitId  String
+  areaId  String
+  forumId String
 
   // User reference (set after approval)
-  user                     User?              @relation(fields: [userId], references: [userId])
-  userId                   String?
+  user   User?   @relation(fields: [userId], references: [userId])
+  userId String?
 
   // Personal Details
-  firstName                String
-  middleName               String?
-  lastName                 String
-  dateOfBirth              DateTime
-  gender                   Gender
+  firstName   String
+  middleName  String?
+  lastName    String
+  dateOfBirth DateTime
+  gender      Gender
 
   // Contact Information
-  contactNumber            String
-  alternateContactNumber   String?
-  email                    String             @unique
+  contactNumber          String
+  alternateContactNumber String?
+  email                  String  @unique
 
   // Address (optional)
-  addressLine1             String?
-  addressLine2             String?
-  city                     String?
-  state                    String?
-  postalCode               String?
-  country                  String?
+  addressLine1 String?
+  addressLine2 String?
+  city         String?
+  state        String?
+  postalCode   String?
+  country      String?
 
   // Agent Status
-  agentStatus              AgentStatus        @default(Active)
+  agentStatus AgentStatus @default(Active)
 
   // Statistics
-  totalActiveMembers       Int                @default(0)
-  totalRegistrations       Int                @default(0)
+  totalActiveMembers Int @default(0)
+  totalRegistrations Int @default(0)
 
   // Metadata
-  joinedDate               DateTime?
-  terminatedDate           DateTime?
-  terminationReason        String?
+  joinedDate        DateTime?
+  terminatedDate    DateTime?
+  terminationReason String?
 
   // Audit fields
-  createdAt                DateTime           @default(now())
-  createdBy                String
-  updatedAt                DateTime?
-  updatedBy                String?
+  createdAt DateTime  @default(now())
+  createdBy String
+  updatedAt DateTime?
+  updatedBy String?
 
   // Relations
-  members                  Member[]
+  members Member[]
 
   @@unique([unitId, agentCode])
   @@index([unitId])
@@ -506,68 +505,72 @@ enum PaymentApprovalStatus {
 }
 
 model Member {
-  memberId                 String                    @id @default(uuid())
-  memberCode               String                    @unique
+  memberId   String @id @default(uuid())
+  memberCode String @unique
 
   // Registration tracking
-  registrationStatus       MemberRegistrationStatus  @default(Draft)
-  registrationStep         MemberRegistrationStep    @default(PersonalDetails)
-  approvalRequestId        String?
+  registrationStatus MemberRegistrationStatus @default(Draft)
+  registrationStep   MemberRegistrationStep   @default(PersonalDetails)
+  approvalRequestId  String?
 
   // Personal Details
-  firstName                String
-  middleName               String?
-  lastName                 String
-  dateOfBirth              DateTime
-  gender                   Gender
-  contactNumber            String
-  alternateContactNumber   String?
-  email                    String?
+  firstName              String
+  middleName             String?
+  lastName               String
+  dateOfBirth            DateTime
+  gender                 Gender
+  contactNumber          String
+  alternateContactNumber String?
+  email                  String?
 
   // Address
-  addressLine1             String
-  addressLine2             String?
-  city                     String
-  state                    String
-  postalCode               String
-  country                  String
+  addressLine1 String
+  addressLine2 String?
+  city         String
+  state        String
+  postalCode   String
+  country      String
 
   // Membership details
-  tier                     MembershipTier            @relation(fields: [tierId], references: [tierId])
-  tierId                   String
+  tier   MembershipTier @relation(fields: [tierId], references: [tierId])
+  tierId String
 
   // Hierarchy
-  agent                    Agent                     @relation(fields: [agentId], references: [agentId])
-  agentId                  String
-  unit                     Unit                      @relation(fields: [unitId], references: [unitId])
-  unitId                   String
-  areaId                   String
-  forumId                  String
+  agent   Agent  @relation(fields: [agentId], references: [agentId])
+  agentId String
+  unit    Unit   @relation(fields: [unitId], references: [unitId])
+  unitId  String
+  areaId  String
+  forumId String
 
   // Member Status (after approval)
-  memberStatus             MemberStatus?
+  memberStatus MemberStatus?
 
   // Suspension tracking
-  suspensionCounter        Int                       @default(0)
-  suspensionReason         String?
-  suspendedAt              DateTime?
+  suspensionCounter Int       @default(0)
+  suspensionReason  String?
+  suspendedAt       DateTime?
+
+  // User reference (set after approval)
+  user   User?   @relation(fields: [userId], references: [userId])
+  userId String?
 
   // Timestamps
-  createdAt                DateTime                  @default(now())
-  registeredAt             DateTime?
-  updatedAt                DateTime?
+  createdAt    DateTime  @default(now())
+  registeredAt DateTime?
+  updatedAt    DateTime?
 
   // Audit
-  createdBy                String
-  approvedBy               String?
+  createdBy  String
+  approvedBy String?
 
   // Relations
-  nominees                 Nominee[]
-  documents                MemberDocument[]
-  payment                  RegistrationPayment?
-  wallet                   Wallet?
-  walletDepositRequests    WalletDepositRequest[]
-  walletDebitRequests      WalletDebitRequest[]
+  nominees              Nominee[]
+  documents             MemberDocument[]
+  payment               RegistrationPayment?
+  wallet                Wallet?
+  walletDepositRequests WalletDepositRequest[]
+  walletDebitRequests   WalletDebitRequest[]
 
   @@index([memberCode])
   @@index([registrationStatus])
@@ -579,83 +582,83 @@ model Member {
 }
 
 model Nominee {
-  nomineeId                String                    @id @default(uuid())
-  member                   Member                    @relation(fields: [memberId], references: [memberId])
-  memberId                 String
+  nomineeId String @id @default(uuid())
+  member    Member @relation(fields: [memberId], references: [memberId])
+  memberId  String
 
   // Nominee details
-  name                     String
-  relationType             RelationType
-  dateOfBirth              DateTime
-  contactNumber            String
-  alternateContactNumber   String?
+  name                   String
+  relationType           RelationType
+  dateOfBirth            DateTime
+  contactNumber          String
+  alternateContactNumber String?
 
   // Address
-  addressLine1             String
-  addressLine2             String?
-  city                     String
-  state                    String
-  postalCode               String
-  country                  String
+  addressLine1 String
+  addressLine2 String?
+  city         String
+  state        String
+  postalCode   String
+  country      String
 
   // ID Proof
-  idProofType              IdProofType
-  idProofNumber            String
-  idProofDocumentId        String?
+  idProofType       IdProofType
+  idProofNumber     String
+  idProofDocumentId String?
 
   // Priority (Phase 2 - default to 1)
-  priority                 Int                       @default(1)
+  priority Int @default(1)
 
   // Status
-  isActive                 Boolean                   @default(true)
+  isActive Boolean @default(true)
 
   // Timestamps
-  createdAt                DateTime                  @default(now())
-  updatedAt                DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
 
   // Relations
-  documents                MemberDocument[]
+  documents MemberDocument[]
 
   @@index([memberId])
   @@index([memberId, isActive])
 }
 
 model MemberDocument {
-  documentId               String                    @id @default(uuid())
-  member                   Member                    @relation(fields: [memberId], references: [memberId])
-  memberId                 String
-  nominee                  Nominee?                  @relation(fields: [nomineeId], references: [nomineeId])
-  nomineeId                String?
+  documentId String   @id @default(uuid())
+  member     Member   @relation(fields: [memberId], references: [memberId])
+  memberId   String
+  nominee    Nominee? @relation(fields: [nomineeId], references: [nomineeId])
+  nomineeId  String?
 
   // Document details
-  documentType             DocumentType
-  documentCategory         DocumentCategory
-  documentName             String
+  documentType     DocumentType
+  documentCategory DocumentCategory
+  documentName     String
 
   // File storage
-  fileUrl                  String
-  fileSize                 Int
-  mimeType                 String
+  fileUrl  String
+  fileSize Int
+  mimeType String
 
   // Metadata
-  uploadedBy               String
-  uploadedAt               DateTime                  @default(now())
+  uploadedBy String
+  uploadedAt DateTime @default(now())
 
   // Verification
-  verificationStatus       DocumentVerificationStatus @default(Pending)
-  verifiedBy               String?
-  verifiedAt               DateTime?
-  rejectionReason          String?
+  verificationStatus DocumentVerificationStatus @default(Pending)
+  verifiedBy         String?
+  verifiedAt         DateTime?
+  rejectionReason    String?
 
   // Optional
-  expiryDate               DateTime?
+  expiryDate DateTime?
 
   // Status
-  isActive                 Boolean                   @default(true)
+  isActive Boolean @default(true)
 
   // Timestamps
-  createdAt                DateTime                  @default(now())
-  updatedAt                DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
 
   @@index([memberId])
   @@index([nomineeId])
@@ -663,57 +666,57 @@ model MemberDocument {
 }
 
 model RegistrationPayment {
-  paymentId                String                    @id @default(uuid())
-  member                   Member                    @relation(fields: [memberId], references: [memberId])
-  memberId                 String                    @unique
+  paymentId String @id @default(uuid())
+  member    Member @relation(fields: [memberId], references: [memberId])
+  memberId  String @unique
 
   // Payment details
-  registrationFee          Decimal                   @db.Decimal(15, 2)
-  advanceDeposit           Decimal                   @db.Decimal(15, 2)
-  totalAmount              Decimal                   @db.Decimal(15, 2)
+  registrationFee Decimal @db.Decimal(15, 2)
+  advanceDeposit  Decimal @db.Decimal(15, 2)
+  totalAmount     Decimal @db.Decimal(15, 2)
 
   // Collection details
-  collectedBy              String // AgentId
-  collectionDate           DateTime
-  collectionMode           CollectionMode
-  referenceNumber          String?
+  collectedBy     String // AgentId
+  collectionDate  DateTime
+  collectionMode  CollectionMode
+  referenceNumber String?
 
   // Approval status
-  approvalStatus           PaymentApprovalStatus     @default(PendingApproval)
-  approvedBy               String?
-  approvedAt               DateTime?
-  rejectionReason          String?
+  approvalStatus  PaymentApprovalStatus @default(PendingApproval)
+  approvedBy      String?
+  approvedAt      DateTime?
+  rejectionReason String?
 
   // Timestamps
-  createdAt                DateTime                  @default(now())
-  updatedAt                DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
 
   @@index([memberId])
 }
 
 model MembershipTier {
-  tierId                   String                    @id @default(uuid())
-  tierCode                 String                    @unique
-  tierName                 String
-  description              String?
+  tierId      String  @id @default(uuid())
+  tierCode    String  @unique
+  tierName    String
+  description String?
 
   // Financial amounts
-  registrationFee          Decimal                   @db.Decimal(15, 2)
-  advanceDepositAmount     Decimal                   @db.Decimal(15, 2)
-  contributionAmount       Decimal                   @db.Decimal(15, 2)
-  deathBenefitAmount       Decimal                   @db.Decimal(15, 2)
+  registrationFee      Decimal @db.Decimal(15, 2)
+  advanceDepositAmount Decimal @db.Decimal(15, 2)
+  contributionAmount   Decimal @db.Decimal(15, 2)
+  deathBenefitAmount   Decimal @db.Decimal(15, 2)
 
   // Status
-  isActive                 Boolean                   @default(true)
-  isDefault                Boolean                   @default(false)
+  isActive  Boolean @default(true)
+  isDefault Boolean @default(false)
 
   // Timestamps
-  createdAt                DateTime                  @default(now())
-  createdBy                String
-  updatedAt                DateTime?
+  createdAt DateTime  @default(now())
+  createdBy String
+  updatedAt DateTime?
 
   // Relations
-  members                  Member[]
+  members Member[]
 
   @@index([tierCode])
   @@index([isActive])
@@ -751,34 +754,34 @@ enum PeriodStatus {
 
 // Chart of Accounts
 model ChartOfAccount {
-  accountId                String                    @id @default(uuid())
-  accountCode              String                    @unique
-  accountName              String
-  accountType              AccountType
-  accountCategory          String?
+  accountId       String      @id @default(uuid())
+  accountCode     String      @unique
+  accountName     String
+  accountType     AccountType
+  accountCategory String?
 
   // Hierarchy
-  parentAccount            ChartOfAccount?           @relation("AccountHierarchy", fields: [parentAccountId], references: [accountId])
-  parentAccountId          String?
-  childAccounts            ChartOfAccount[]          @relation("AccountHierarchy")
-  accountLevel             Int                       @default(1)
+  parentAccount   ChartOfAccount?  @relation("AccountHierarchy", fields: [parentAccountId], references: [accountId])
+  parentAccountId String?
+  childAccounts   ChartOfAccount[] @relation("AccountHierarchy")
+  accountLevel    Int              @default(1)
 
   // Balance tracking
-  normalBalance            NormalBalance
-  currentBalance           Decimal                   @db.Decimal(15, 2) @default(0)
+  normalBalance  NormalBalance
+  currentBalance Decimal       @default(0) @db.Decimal(15, 2)
 
   // Status
-  isActive                 Boolean                   @default(true)
-  isSystemAccount          Boolean                   @default(false)
+  isActive        Boolean @default(true)
+  isSystemAccount Boolean @default(false)
 
   // Timestamps
-  createdAt                DateTime                  @default(now())
-  createdBy                String
-  updatedAt                DateTime?
-  updatedBy                String?
+  createdAt DateTime  @default(now())
+  createdBy String
+  updatedAt DateTime?
+  updatedBy String?
 
   // Relations
-  journalEntryLines        JournalEntryLine[]
+  journalEntryLines JournalEntryLine[]
 
   @@index([accountCode])
   @@index([accountType])
@@ -789,47 +792,47 @@ model ChartOfAccount {
 
 // Journal Entry
 model JournalEntry {
-  entryId                  String                    @id @default(uuid())
-  entryNumber              String                    @unique
+  entryId     String @id @default(uuid())
+  entryNumber String @unique
 
   // Entry details
-  entryDate                DateTime
-  postingDate              DateTime?
-  description              String
-  reference                String?
+  entryDate   DateTime
+  postingDate DateTime?
+  description String
+  reference   String?
 
   // Source tracking
-  sourceModule             String
-  sourceEntityId           String?
-  sourceTransactionType    String
+  sourceModule          String
+  sourceEntityId        String?
+  sourceTransactionType String
 
   // Status
-  entryStatus              EntryStatus               @default(Draft)
+  entryStatus EntryStatus @default(Draft)
 
   // Reversal tracking
-  reversedEntry            JournalEntry?             @relation("EntryReversal", fields: [reversedEntryId], references: [entryId])
-  reversedEntryId          String?
-  reversedByEntry          JournalEntry[]            @relation("EntryReversal")
-  reversalReason           String?
-  reversedAt               DateTime?
-  reversedBy               String?
+  reversedEntry   JournalEntry?  @relation("EntryReversal", fields: [reversedEntryId], references: [entryId])
+  reversedEntryId String?
+  reversedByEntry JournalEntry[] @relation("EntryReversal")
+  reversalReason  String?
+  reversedAt      DateTime?
+  reversedBy      String?
 
   // Validation
-  totalDebit               Decimal                   @db.Decimal(15, 2) @default(0)
-  totalCredit              Decimal                   @db.Decimal(15, 2) @default(0)
-  isBalanced               Boolean                   @default(false)
+  totalDebit  Decimal @default(0) @db.Decimal(15, 2)
+  totalCredit Decimal @default(0) @db.Decimal(15, 2)
+  isBalanced  Boolean @default(false)
 
   // Timestamps
-  createdAt                DateTime                  @default(now())
-  createdBy                String
-  postedAt                 DateTime?
-  postedBy                 String?
-  updatedAt                DateTime?
+  createdAt DateTime  @default(now())
+  createdBy String
+  postedAt  DateTime?
+  postedBy  String?
+  updatedAt DateTime?
 
   // Relations
-  lines                    JournalEntryLine[]
-  walletTransactions       WalletTransaction[]
-  walletDepositRequests    WalletDepositRequest[]
+  lines                 JournalEntryLine[]
+  walletTransactions    WalletTransaction[]
+  walletDepositRequests WalletDepositRequest[]
 
   @@index([entryNumber])
   @@index([entryDate])
@@ -841,26 +844,26 @@ model JournalEntry {
 
 // Journal Entry Line
 model JournalEntryLine {
-  lineId                   String                    @id @default(uuid())
-  entry                    JournalEntry              @relation(fields: [entryId], references: [entryId], onDelete: Cascade)
-  entryId                  String
+  lineId  String       @id @default(uuid())
+  entry   JournalEntry @relation(fields: [entryId], references: [entryId], onDelete: Cascade)
+  entryId String
 
-  lineNumber               Int
+  lineNumber Int
 
   // Account reference
-  account                  ChartOfAccount            @relation(fields: [accountId], references: [accountId])
-  accountId                String
-  accountCode              String
-  accountName              String
+  account     ChartOfAccount @relation(fields: [accountId], references: [accountId])
+  accountId   String
+  accountCode String
+  accountName String
 
   // Amounts
-  debitAmount              Decimal                   @db.Decimal(15, 2) @default(0)
-  creditAmount             Decimal                   @db.Decimal(15, 2) @default(0)
+  debitAmount  Decimal @default(0) @db.Decimal(15, 2)
+  creditAmount Decimal @default(0) @db.Decimal(15, 2)
 
-  description              String
+  description String
 
   // Timestamps
-  createdAt                DateTime                  @default(now())
+  createdAt DateTime @default(now())
 
   @@index([entryId])
   @@index([accountId])
@@ -869,20 +872,20 @@ model JournalEntryLine {
 
 // Fiscal Period
 model FiscalPeriod {
-  periodId                 String                    @id @default(uuid())
-  fiscalYear               Int
-  periodNumber             Int
-  periodName               String
+  periodId     String @id @default(uuid())
+  fiscalYear   Int
+  periodNumber Int
+  periodName   String
 
-  startDate                DateTime
-  endDate                  DateTime
+  startDate DateTime
+  endDate   DateTime
 
-  status                   PeriodStatus              @default(Open)
+  status PeriodStatus @default(Open)
 
-  closedAt                 DateTime?
-  closedBy                 String?
+  closedAt DateTime?
+  closedBy String?
 
-  createdAt                DateTime                  @default(now())
+  createdAt DateTime @default(now())
 
   @@unique([fiscalYear, periodNumber])
   @@index([fiscalYear])
@@ -926,51 +929,51 @@ enum WalletDebitRequestStatus {
 
 // Member Wallet
 model Wallet {
-  walletId                 String                    @id @default(uuid())
-  member                   Member                    @relation(fields: [memberId], references: [memberId])
-  memberId                 String                    @unique
+  walletId String @id @default(uuid())
+  member   Member @relation(fields: [memberId], references: [memberId])
+  memberId String @unique
 
-  currentBalance           Decimal                   @db.Decimal(15, 2) @default(0)
+  currentBalance Decimal @default(0) @db.Decimal(15, 2)
 
   // Timestamps
-  createdAt                DateTime                  @default(now())
-  updatedAt                DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
 
   // Relations
-  transactions             WalletTransaction[]
-  depositRequests          WalletDepositRequest[]
-  debitRequests            WalletDebitRequest[]
+  transactions    WalletTransaction[]
+  depositRequests WalletDepositRequest[]
+  debitRequests   WalletDebitRequest[]
 
   @@index([memberId])
 }
 
 // Wallet Transaction
 model WalletTransaction {
-  transactionId            String                    @id @default(uuid())
-  wallet                   Wallet                    @relation(fields: [walletId], references: [walletId])
-  walletId                 String
+  transactionId String @id @default(uuid())
+  wallet        Wallet @relation(fields: [walletId], references: [walletId])
+  walletId      String
 
-  transactionType          WalletTransactionType
-  amount                   Decimal                   @db.Decimal(15, 2)
-  balanceAfter             Decimal                   @db.Decimal(15, 2)
+  transactionType WalletTransactionType
+  amount          Decimal               @db.Decimal(15, 2)
+  balanceAfter    Decimal               @db.Decimal(15, 2)
 
   // Reference
-  sourceModule             String
-  sourceEntityId           String?
+  sourceModule   String
+  sourceEntityId String?
 
   // Description
-  description              String
+  description String
 
   // Financial - GL reference
-  journalEntry             JournalEntry?             @relation(fields: [journalEntryId], references: [entryId])
-  journalEntryId           String?
+  journalEntry   JournalEntry? @relation(fields: [journalEntryId], references: [entryId])
+  journalEntryId String?
 
   // Status
-  status                   WalletTransactionStatus   @default(Completed)
+  status WalletTransactionStatus @default(Completed)
 
   // Audit
-  createdBy                String
-  createdAt                DateTime                  @default(now())
+  createdBy String
+  createdAt DateTime @default(now())
 
   @@index([walletId])
   @@index([transactionType])
@@ -980,32 +983,32 @@ model WalletTransaction {
 
 // Wallet Deposit Request
 model WalletDepositRequest {
-  depositRequestId         String                    @id @default(uuid())
-  member                   Member                    @relation(fields: [memberId], references: [memberId])
-  memberId                 String
-  wallet                   Wallet                    @relation(fields: [walletId], references: [walletId])
-  walletId                 String
+  depositRequestId String @id @default(uuid())
+  member           Member @relation(fields: [memberId], references: [memberId])
+  memberId         String
+  wallet           Wallet @relation(fields: [walletId], references: [walletId])
+  walletId         String
 
-  amount                   Decimal                   @db.Decimal(15, 2)
-  collectionDate           DateTime
-  collectedBy              String                    // AgentId
-  notes                    String?
+  amount         Decimal  @db.Decimal(15, 2)
+  collectionDate DateTime
+  collectedBy    String // AgentId
+  notes          String?
 
   // Status
-  requestStatus            WalletDepositRequestStatus @default(Draft)
+  requestStatus WalletDepositRequestStatus @default(Draft)
 
   // Approval
-  approvalRequest          ApprovalRequest?          @relation(fields: [approvalRequestId], references: [requestId])
-  approvalRequestId        String?
+  approvalRequest   ApprovalRequest? @relation(fields: [approvalRequestId], references: [requestId])
+  approvalRequestId String?
 
   // Financial - GL reference
-  journalEntry             JournalEntry?             @relation(fields: [journalEntryId], references: [entryId])
-  journalEntryId           String?
+  journalEntry   JournalEntry? @relation(fields: [journalEntryId], references: [entryId])
+  journalEntryId String?
 
   // Timestamps
-  createdAt                DateTime                  @default(now())
-  approvedAt               DateTime?
-  rejectedAt               DateTime?
+  createdAt  DateTime  @default(now())
+  approvedAt DateTime?
+  rejectedAt DateTime?
 
   @@index([memberId])
   @@index([walletId])
@@ -1015,26 +1018,26 @@ model WalletDepositRequest {
 
 // Wallet Debit Request
 model WalletDebitRequest {
-  debitRequestId           String                    @id @default(uuid())
-  member                   Member                    @relation(fields: [memberId], references: [memberId])
-  memberId                 String
-  wallet                   Wallet                    @relation(fields: [walletId], references: [walletId])
-  walletId                 String
+  debitRequestId String @id @default(uuid())
+  member         Member @relation(fields: [memberId], references: [memberId])
+  memberId       String
+  wallet         Wallet @relation(fields: [walletId], references: [walletId])
+  walletId       String
 
-  amount                   Decimal                   @db.Decimal(15, 2)
-  purpose                  String
+  amount  Decimal @db.Decimal(15, 2)
+  purpose String
 
   // References
-  contributionCycleId      String?
-  contributionId           String?
+  contributionCycleId String?
+  contributionId      String?
 
   // Status
-  status                   WalletDebitRequestStatus  @default(PendingAcknowledgment)
+  status WalletDebitRequestStatus @default(PendingAcknowledgment)
 
   // Timestamps
-  createdAt                DateTime                  @default(now())
-  acknowledgedAt           DateTime?
-  completedAt              DateTime?
+  createdAt      DateTime  @default(now())
+  acknowledgedAt DateTime?
+  completedAt    DateTime?
 
   @@index([memberId])
   @@index([walletId])
