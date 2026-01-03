@@ -4,11 +4,18 @@
 
 import type { Request, Response, NextFunction } from "express";
 import type { AgentService } from "../application/agentService";
+import type { AgentProfileService } from "../application/agentProfileService";
 import {
   AgentResponseDto,
   AgentListResponseDto,
   AgentSubmissionResponseDto,
   AgentsSearchResponseDto,
+  AgentProfileResponseDto,
+  AgentStatsResponseDto,
+  AgentMembersResponseDto,
+  AgentMembersExportResponseDto,
+  AgentPerformanceResponseDto,
+  AgentHierarchyResponseDto,
 } from './dtos/responseDtos'
 import {
   StartAgentRegistrationHandler,
@@ -21,6 +28,7 @@ import {
 export class AgentsController {
   constructor(
     private readonly agentService: AgentService,
+    private readonly agentProfileService: AgentProfileService,
     private readonly startRegistrationCmd: StartAgentRegistrationHandler,
     private readonly updateDraftCmd: UpdateAgentDraftHandler,
     private readonly submitRegistrationCmd: SubmitAgentRegistrationHandler,
@@ -147,5 +155,103 @@ export class AgentsController {
   searchAgents = async (req: Request, res: Response, next: NextFunction) => {
     const result = await this.agentService.searchAgents(req.body);
     next({ responseSchema: AgentsSearchResponseDto, data: result, status: 200 });
+  };
+
+  // ===== AGENT PROFILE APIs =====
+
+  /**
+   * GET /api/agents/:agentId/profile
+   * Get agent profile with hierarchy
+   */
+  getAgentProfile = async (req: Request, res: Response, next: NextFunction) => {
+    const { agentId } = req.params;
+    const profile = await this.agentProfileService.getAgentProfile(agentId);
+    next({ responseSchema: AgentProfileResponseDto, data: profile, status: 200 });
+  };
+
+  /**
+   * GET /api/agents/my-profile
+   * Get logged-in agent's profile
+   */
+  getMyProfile = async (req: Request, res: Response, next: NextFunction) => {
+    const userId = (req as any).user?.userId;
+    if (!userId) {
+      return next({ status: 401, message: "Unauthorized" });
+    }
+    const profile = await this.agentProfileService.getAgentProfileByUserId(userId);
+    next({ responseSchema: AgentProfileResponseDto, data: profile, status: 200 });
+  };
+
+  /**
+   * PUT /api/agents/:agentId/profile
+   * Update agent profile
+   */
+  updateAgentProfile = async (req: Request, res: Response, next: NextFunction) => {
+    const { agentId } = req.params;
+    const userId = (req as any).user?.userId;
+    const profile = await this.agentProfileService.updateAgentProfile(agentId, {
+      ...req.body,
+      updatedBy: userId,
+    });
+    next({ responseSchema: AgentProfileResponseDto, data: profile, status: 200 });
+  };
+
+  /**
+   * GET /api/agents/:agentId/stats
+   * Get agent dashboard stats
+   */
+  getAgentStats = async (req: Request, res: Response, next: NextFunction) => {
+    const { agentId } = req.params;
+    const stats = await this.agentProfileService.getAgentStats(agentId);
+    next({ responseSchema: AgentStatsResponseDto, data: stats, status: 200 });
+  };
+
+  /**
+   * GET /api/agents/:agentId/members
+   * Get agent's members with pagination and filtering
+   */
+  getAgentMembers = async (req: Request, res: Response, next: NextFunction) => {
+    const { agentId } = req.params;
+    const query = {
+      page: parseInt(req.query.page as string) || 1,
+      limit: parseInt(req.query.limit as string) || 20,
+      status: req.query.status as string | undefined,
+      tier: req.query.tier as string | undefined,
+      search: req.query.search as string | undefined,
+    };
+    const members = await this.agentProfileService.getAgentMembers(agentId, query);
+    next({ responseSchema: AgentMembersResponseDto, data: members, status: 200 });
+  };
+
+  /**
+   * GET /api/agents/:agentId/members/export
+   * Export agent's members as CSV/Excel
+   */
+  exportAgentMembers = async (req: Request, res: Response, next: NextFunction) => {
+    const { agentId } = req.params;
+    const format = (req.query.format as "csv" | "excel") || "csv";
+    const members = await this.agentProfileService.exportAgentMembers(agentId, format);
+    next({ responseSchema: AgentMembersExportResponseDto, data: { members }, status: 200 });
+  };
+
+  /**
+   * GET /api/agents/:agentId/performance
+   * Get agent performance metrics
+   */
+  getAgentPerformance = async (req: Request, res: Response, next: NextFunction) => {
+    const { agentId } = req.params;
+    const period = (req.query.period as string) || "thisMonth";
+    const performance = await this.agentProfileService.getAgentPerformance(agentId, period);
+    next({ responseSchema: AgentPerformanceResponseDto, data: performance, status: 200 });
+  };
+
+  /**
+   * GET /api/agents/:agentId/hierarchy
+   * Get agent's organization hierarchy
+   */
+  getAgentHierarchy = async (req: Request, res: Response, next: NextFunction) => {
+    const { agentId } = req.params;
+    const hierarchy = await this.agentProfileService.getAgentHierarchy(agentId);
+    next({ responseSchema: AgentHierarchyResponseDto, data: hierarchy, status: 200 });
   };
 }

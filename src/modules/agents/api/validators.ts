@@ -111,6 +111,55 @@ export const terminateAgentSchema = z.object({
   terminationReason: z.string().min(10).max(500),
 });
 
+// ===== AGENT PROFILE APIs =====
+
+// Update Agent Profile
+export const updateAgentProfileSchema = z.object({
+  firstName: z.string().min(1).max(100).optional(),
+  middleName: z.string().max(100).optional().nullable(),
+  lastName: z.string().min(1).max(100).optional(),
+  contactNumber: z.string().min(10).max(20).optional(),
+  alternateContactNumber: z.string().min(10).max(20).optional().nullable(),
+  email: z.string().email().optional(),
+  addressLine1: z.string().max(255).optional().nullable(),
+  addressLine2: z.string().max(255).optional().nullable(),
+  city: z.string().max(100).optional().nullable(),
+  state: z.string().max(100).optional().nullable(),
+  postalCode: z.string().max(20).optional().nullable(),
+  country: z.string().max(100).optional().nullable(),
+});
+
+// Agent Stats Query
+export const agentStatsQuerySchema = z.object({
+  period: z.enum(["thisMonth", "lastMonth", "thisYear"]).optional().default("thisMonth"),
+});
+
+// Agent Members Query
+export const agentMembersQuerySchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().max(100).default(20),
+  status: z.enum(["Active", "Suspended", "Frozen", "Closed", "Deceased"]).optional(),
+  tier: z.string().uuid().optional(),
+  search: z.string().max(100).optional(),
+});
+
+// Agent Members Export Query
+export const agentMembersExportQuerySchema = z.object({
+  format: z.enum(["csv", "excel"]).optional().default("csv"),
+});
+
+// Agent Performance Query
+export const agentPerformanceQuerySchema = z.object({
+  period: z.enum(["thisMonth", "lastMonth", "thisYear"]).optional().default("thisMonth"),
+  startDate: z.coerce.date().optional(),
+  endDate: z.coerce.date().optional(),
+});
+
+// Path Params
+export const agentIdParamSchema = z.object({
+  agentId: z.string().uuid(),
+});
+
 // Type exports
 export type StartAgentRegistrationDTO = z.infer<
   typeof startAgentRegistrationSchema
@@ -118,3 +167,9 @@ export type StartAgentRegistrationDTO = z.infer<
 export type UpdateAgentDraftDTO = z.infer<typeof updateAgentDraftSchema>;
 export type UpdateAgentDTO = z.infer<typeof updateAgentSchema>;
 export type TerminateAgentDTO = z.infer<typeof terminateAgentSchema>;
+export type UpdateAgentProfileDTO = z.infer<typeof updateAgentProfileSchema>;
+export type AgentStatsQueryDTO = z.infer<typeof agentStatsQuerySchema>;
+export type AgentMembersQueryDTO = z.infer<typeof agentMembersQuerySchema>;
+export type AgentMembersExportQueryDTO = z.infer<typeof agentMembersExportQuerySchema>;
+export type AgentPerformanceQueryDTO = z.infer<typeof agentPerformanceQuerySchema>;
+

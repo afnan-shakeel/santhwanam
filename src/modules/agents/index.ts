@@ -5,6 +5,7 @@
 
 import { PrismaAgentRepository } from "./infrastructure/prisma/agentRepository";
 import { AgentService } from "./application/agentService";
+import { AgentProfileService } from "./application/agentProfileService";
 import {
   StartAgentRegistrationHandler,
   UpdateAgentDraftHandler,
@@ -21,8 +22,9 @@ import { requestService as approvalRequestService } from "@/modules/approval-wor
 // Initialize repositories
 const agentRepo = new PrismaAgentRepository();
 
-// Initialize service
+// Initialize services
 const agentService = new AgentService(agentRepo);
+const agentProfileService = new AgentProfileService(agentRepo);
 
 // Initialize command handlers
 const startRegistrationCmd = new StartAgentRegistrationHandler(agentService);
@@ -37,6 +39,7 @@ const terminateAgentCmd = new TerminateAgentHandler(agentService);
 // Initialize controller
 const controller = new AgentsController(
   agentService,
+  agentProfileService,
   startRegistrationCmd,
   updateDraftCmd,
   submitRegistrationCmd,
@@ -48,4 +51,4 @@ const controller = new AgentsController(
 export const agentsRouter = createAgentsRouter(controller);
 
 // Export service and repositories for use in other modules
-export { agentService, agentRepo };
+export { agentService, agentProfileService, agentRepo };

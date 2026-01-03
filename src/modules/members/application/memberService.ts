@@ -1029,4 +1029,142 @@ export class MemberService {
       }))
     };
   }
+
+  // ===== PROFILE MANAGEMENT =====
+
+  /**
+   * Get member profile with wallet information
+   * Enhanced version of getMemberDetails for profile page
+   */
+  async getMemberProfile(memberId: string): Promise<any> {
+    const member = await prisma.member.findUnique({
+      where: { memberId },
+      include: {
+        agent: {
+          select: {
+            agentId: true,
+            agentCode: true,
+            firstName: true,
+            lastName: true,
+            contactNumber: true,
+            email: true,
+          },
+        },
+        unit: {
+          select: {
+            unitId: true,
+            unitCode: true,
+            unitName: true,
+            forumId: true,
+            area: {
+              select: {
+                areaId: true,
+                areaCode: true,
+                areaName: true,
+                forum: {
+                  select: {
+                    forumId: true,
+                    forumCode: true,
+                    forumName: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+        tier: {
+          select: {
+            tierId: true,
+            tierCode: true,
+            tierName: true,
+            registrationFee: true,
+            advanceDepositAmount: true,
+            contributionAmount: true,
+            deathBenefitAmount: true,
+          },
+        },
+        nominees: {
+          where: { isActive: true },
+          orderBy: { priority: "asc" },
+        },
+        documents: {
+          where: { isActive: true },
+          orderBy: { uploadedAt: "desc" },
+        },
+        payment: true,
+        wallet: {
+          select: {
+            walletId: true,
+            currentBalance: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
+      },
+    });
+
+    if (!member) {
+      throw new NotFoundError("Member not found");
+    }
+
+    return member;
+  }
+
+  /**
+   * Update member profile (only for approved members)
+   * Limited fields: contact info and address
+   */
+  async updateMemberProfile(
+    memberId: string,
+    input: {
+      firstName?: string;
+      middleName?: string;
+      lastName?: string;
+      dateOfBirth?: Date;
+      gender?: Gender;
+      contactNumber?: string;
+      email?: string;
+      addressLine1?: string;
+      addressLine2?: string;
+      city?: string;
+      state?: string;
+      postalCode?: string;
+      country?: string;
+    }
+  ): Promise<Member> {
+    return prisma.$transaction(async (tx: any) => {
+      const member = await this.memberRepository.findById(memberId, tx);
+
+      if (!member) {
+        throw new NotFoundError("Member not found");
+      }
+
+      // Only approved members can update profile
+      if (member.registrationStatus !== RegistrationStatus.Approved) {
+        throw new BadRequestError(
+          "Profile can only be updated for approved members"
+        );
+      }
+
+      // Validate age if dateOfBirth is being updated
+      if (input.dateOfBirth) {
+        const age = calculateAge(input.dateOfBirth);
+        if (age < 18) {
+          throw new BadRequestError("Member must be at least 18 years old");
+        }
+      }
+
+      // Update member profile
+      const updated = await this.memberRepository.update(
+        memberId,
+        {
+          ...input,
+          updatedAt: new Date(),
+        },
+        tx
+      );
+
+      return updated;
+    });
+  }
 }

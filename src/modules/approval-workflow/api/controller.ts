@@ -41,7 +41,12 @@ export class ApprovalWorkflowController {
     try {
       const dto = req.body as CreateWorkflowDTO;
       const result = await this.createWorkflowCommand.execute(dto);
-      return next({ responseSchema: ApprovalWorkflowResponseDto, data: result, status: 201 });
+      // Transform the result to match the response DTO structure
+      const responseData = {
+        ...result.workflow,
+        stages: result.stages,
+      };
+      return next({ responseSchema: ApprovalWorkflowResponseDto, data: responseData, status: 201 });
     } catch (err) {
       next(err)
     }
@@ -55,7 +60,12 @@ export class ApprovalWorkflowController {
         workflowId,
         ...dto,
       });
-      return next({ responseSchema: ApprovalWorkflowResponseDto, data: result, status: 200 });
+      // Transform the result to match the response DTO structure
+      const responseData = {
+        ...result.workflow,
+        stages: result.stages,
+      };
+      return next({ responseSchema: ApprovalWorkflowResponseDto, data: responseData, status: 200 });
     } catch (err) {
       next(err)
     }

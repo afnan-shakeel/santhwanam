@@ -202,3 +202,30 @@ export const closeMemberAccountSchema = z.object({
   refundedBy: z.string().uuid(),
   closureDate: z.coerce.date(),
 });
+
+// ===== PROFILE MANAGEMENT =====
+
+export const updateMemberProfileSchema = z.object({
+  firstName: z.string().min(2).max(100).optional(),
+  middleName: z.string().max(100).optional(),
+  lastName: z.string().min(2).max(100).optional(),
+  dateOfBirth: dateOfBirthSchema.optional(),
+  gender: GenderEnum.optional(),
+  contactNumber: z.string().min(10).max(20).optional(),
+  email: z.string().email().optional(),
+  addressLine1: z.string().min(1).max(255).optional(),
+  addressLine2: z.string().max(255).optional(),
+  city: z.string().min(1).max(100).optional(),
+  state: z.string().min(1).max(100).optional(),
+  postalCode: z.string().min(1).max(20).optional(),
+  country: z.string().min(1).max(100).optional(),
+});
+
+export const memberIdParamSchema = z.object({
+  memberId: z.string().uuid(),
+});
+
+export const documentIdParamSchema = z.object({
+  memberId: z.string().uuid(),
+  documentId: z.string().uuid(),
+});

@@ -30,7 +30,8 @@ export class PrismaJournalEntryLineRepository implements JournalEntryLineReposit
     tx?: any
   ): Promise<JournalEntryLine[]> {
     const db = tx || prisma;
-    const created = await db.$transaction(
+    // Use direct db calls for each create (no transaction wrapper here)
+    const created = await Promise.all(
       lines.map((line) =>
         db.journalEntryLine.create({
           data: {

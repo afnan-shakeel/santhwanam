@@ -1972,6 +1972,280 @@
         }
       }
     },
+    "/api/agents/my-profile": {
+      "get": {
+        "tags": ["Agent Profile"],
+        "summary": "Get logged-in agent's profile",
+        "description": "Returns the profile of the currently logged-in agent based on their user token",
+        "responses": {
+          "200": {
+            "description": "Agent profile",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AgentProfile" }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "Agent profile not found for user" }
+        }
+      }
+    },
+    "/api/agents/{agentId}/profile": {
+      "get": {
+        "tags": ["Agent Profile"],
+        "summary": "Get agent profile with hierarchy",
+        "parameters": [
+          {
+            "name": "agentId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Agent profile with hierarchy details",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AgentProfile" }
+              }
+            }
+          },
+          "404": { "description": "Agent not found" }
+        }
+      },
+      "put": {
+        "tags": ["Agent Profile"],
+        "summary": "Update agent profile",
+        "parameters": [
+          {
+            "name": "agentId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "firstName": { "type": "string", "minLength": 1, "maxLength": 100 },
+                  "middleName": { "type": "string", "maxLength": 100, "nullable": true },
+                  "lastName": { "type": "string", "minLength": 1, "maxLength": 100 },
+                  "contactNumber": { "type": "string", "minLength": 10, "maxLength": 20 },
+                  "alternateContactNumber": { "type": "string", "nullable": true },
+                  "email": { "type": "string", "format": "email" },
+                  "addressLine1": { "type": "string", "nullable": true },
+                  "addressLine2": { "type": "string", "nullable": true },
+                  "city": { "type": "string", "nullable": true },
+                  "state": { "type": "string", "nullable": true },
+                  "postalCode": { "type": "string", "nullable": true },
+                  "country": { "type": "string", "nullable": true }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated agent profile",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AgentProfile" }
+              }
+            }
+          },
+          "404": { "description": "Agent not found" }
+        }
+      }
+    },
+    "/api/agents/{agentId}/stats": {
+      "get": {
+        "tags": ["Agent Profile"],
+        "summary": "Get agent dashboard stats",
+        "parameters": [
+          {
+            "name": "agentId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "period",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["thisMonth", "lastMonth", "thisYear"], "default": "thisMonth" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Agent stats",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AgentStats" }
+              }
+            }
+          },
+          "404": { "description": "Agent not found" }
+        }
+      }
+    },
+    "/api/agents/{agentId}/members": {
+      "get": {
+        "tags": ["Agent Profile"],
+        "summary": "Get agent's members",
+        "parameters": [
+          {
+            "name": "agentId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "default": 1 }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["Active", "Suspended", "Frozen", "Closed", "Deceased"] }
+          },
+          {
+            "name": "tier",
+            "in": "query",
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": { "type": "string", "maxLength": 100 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated list of members under agent",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AgentMembersResponse" }
+              }
+            }
+          },
+          "404": { "description": "Agent not found" }
+        }
+      }
+    },
+    "/api/agents/{agentId}/members/export": {
+      "get": {
+        "tags": ["Agent Profile"],
+        "summary": "Export agent's members",
+        "parameters": [
+          {
+            "name": "agentId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["csv", "excel"], "default": "csv" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of members for export",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "members": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/AgentMember" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "description": "Agent not found" }
+        }
+      }
+    },
+    "/api/agents/{agentId}/performance": {
+      "get": {
+        "tags": ["Agent Profile"],
+        "summary": "Get agent performance metrics",
+        "parameters": [
+          {
+            "name": "agentId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "period",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["thisMonth", "lastMonth", "thisYear"], "default": "thisMonth" }
+          },
+          {
+            "name": "startDate",
+            "in": "query",
+            "schema": { "type": "string", "format": "date-time" }
+          },
+          {
+            "name": "endDate",
+            "in": "query",
+            "schema": { "type": "string", "format": "date-time" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Agent performance metrics with trends",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AgentPerformance" }
+              }
+            }
+          },
+          "404": { "description": "Agent not found" }
+        }
+      }
+    },
+    "/api/agents/{agentId}/hierarchy": {
+      "get": {
+        "tags": ["Agent Profile"],
+        "summary": "Get agent's organization hierarchy",
+        "parameters": [
+          {
+            "name": "agentId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Agent hierarchy",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AgentHierarchy" }
+              }
+            }
+          },
+          "404": { "description": "Agent not found" }
+        }
+      }
+    },
     "/api/members/search": {
       "post": {
         "tags": ["Members - Queries"],
@@ -2665,6 +2939,149 @@
         },
         "responses": {
           "200": { "description": "Member account closed successfully" }
+        }
+      }
+    },
+    "/api/members/{memberId}/profile": {
+      "get": {
+        "tags": ["Members - Profile"],
+        "summary": "Get member profile with wallet information",
+        "parameters": [
+          {
+            "name": "memberId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Member profile with wallet details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "memberId": { "type": "string", "format": "uuid" },
+                    "memberCode": { "type": "string" },
+                    "firstName": { "type": "string" },
+                    "lastName": { "type": "string" },
+                    "wallet": {
+                      "type": "object",
+                      "properties": {
+                        "walletId": { "type": "string", "format": "uuid" },
+                        "currentBalance": { "type": "number" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["Members - Profile"],
+        "summary": "Update member profile (approved members only)",
+        "parameters": [
+          {
+            "name": "memberId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "firstName": { "type": "string" },
+                  "middleName": { "type": "string" },
+                  "lastName": { "type": "string" },
+                  "dateOfBirth": { "type": "string", "format": "date" },
+                  "gender": { "type": "string", "enum": ["Male", "Female", "Other"] },
+                  "contactNumber": { "type": "string" },
+                  "email": { "type": "string", "format": "email" },
+                  "addressLine1": { "type": "string" },
+                  "addressLine2": { "type": "string" },
+                  "city": { "type": "string" },
+                  "state": { "type": "string" },
+                  "postalCode": { "type": "string" },
+                  "country": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Profile updated successfully" },
+          "400": { "description": "Profile can only be updated for approved members" }
+        }
+      }
+    },
+    "/api/my-profile": {
+      "get": {
+        "tags": ["Members - Profile"],
+        "summary": "Get logged-in member's profile",
+        "responses": {
+          "200": {
+            "description": "Current member's profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "memberId": { "type": "string", "format": "uuid" },
+                    "memberCode": { "type": "string" },
+                    "firstName": { "type": "string" },
+                    "lastName": { "type": "string" },
+                    "wallet": {
+                      "type": "object",
+                      "properties": {
+                        "walletId": { "type": "string", "format": "uuid" },
+                        "currentBalance": { "type": "number" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "description": "Member profile not found" }
+        }
+      }
+    },
+    "/api/members/{memberId}/documents/{documentId}/download": {
+      "get": {
+        "tags": ["Members - Profile"],
+        "summary": "Download member document",
+        "parameters": [
+          {
+            "name": "memberId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "documentId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File stream",
+            "content": {
+              "application/pdf": {},
+              "image/jpeg": {},
+              "image/png": {}
+            }
+          },
+          "404": { "description": "Document not found" }
         }
       }
     },
@@ -4652,6 +5069,190 @@
           "createdAt": { "type": "string", "format": "date-time" },
           "acknowledgedAt": { "type": "string", "format": "date-time", "nullable": true },
           "completedAt": { "type": "string", "format": "date-time", "nullable": true }
+        }
+      },
+      "AgentProfile": {
+        "type": "object",
+        "description": "Agent profile with hierarchy details",
+        "properties": {
+          "agentId": { "type": "string", "format": "uuid" },
+          "agentCode": { "type": "string" },
+          "registrationStatus": { "type": "string", "enum": ["Draft", "PendingApproval", "Approved", "Rejected"] },
+          "agentStatus": { "type": "string", "enum": ["Active", "Inactive", "Suspended", "Terminated"] },
+          "firstName": { "type": "string" },
+          "middleName": { "type": "string", "nullable": true },
+          "lastName": { "type": "string" },
+          "dateOfBirth": { "type": "string", "format": "date-time" },
+          "gender": { "type": "string", "enum": ["Male", "Female", "Other"] },
+          "contactNumber": { "type": "string" },
+          "alternateContactNumber": { "type": "string", "nullable": true },
+          "email": { "type": "string", "format": "email" },
+          "addressLine1": { "type": "string", "nullable": true },
+          "addressLine2": { "type": "string", "nullable": true },
+          "city": { "type": "string", "nullable": true },
+          "state": { "type": "string", "nullable": true },
+          "postalCode": { "type": "string", "nullable": true },
+          "country": { "type": "string", "nullable": true },
+          "totalActiveMembers": { "type": "integer" },
+          "totalRegistrations": { "type": "integer" },
+          "joinedDate": { "type": "string", "format": "date-time", "nullable": true },
+          "terminatedDate": { "type": "string", "format": "date-time", "nullable": true },
+          "terminationReason": { "type": "string", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "unit": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "unitId": { "type": "string", "format": "uuid" },
+              "unitCode": { "type": "string" },
+              "unitName": { "type": "string" }
+            }
+          },
+          "area": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "areaId": { "type": "string", "format": "uuid" },
+              "areaCode": { "type": "string" },
+              "areaName": { "type": "string" }
+            }
+          },
+          "forum": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "forumId": { "type": "string", "format": "uuid" },
+              "forumCode": { "type": "string" },
+              "forumName": { "type": "string" }
+            }
+          }
+        }
+      },
+      "AgentStats": {
+        "type": "object",
+        "description": "Agent dashboard statistics",
+        "properties": {
+          "totalMembers": { "type": "integer", "description": "Total approved members" },
+          "activeMembers": { "type": "integer", "description": "Active members" },
+          "suspendedMembers": { "type": "integer", "description": "Suspended members" },
+          "frozenMembers": { "type": "integer", "description": "Frozen members" },
+          "closedMembers": { "type": "integer", "description": "Closed members" },
+          "pendingApprovals": { "type": "integer", "description": "Pending approval requests" },
+          "newMembersThisMonth": { "type": "integer", "description": "New members registered this month" }
+        }
+      },
+      "AgentMember": {
+        "type": "object",
+        "description": "Member under an agent",
+        "properties": {
+          "memberId": { "type": "string", "format": "uuid" },
+          "memberCode": { "type": "string" },
+          "firstName": { "type": "string" },
+          "lastName": { "type": "string" },
+          "contactNumber": { "type": "string" },
+          "email": { "type": "string", "nullable": true },
+          "memberStatus": { "type": "string", "nullable": true, "enum": ["Active", "Suspended", "Frozen", "Closed", "Deceased"] },
+          "registrationStatus": { "type": "string" },
+          "tier": {
+            "type": "object",
+            "properties": {
+              "tierId": { "type": "string", "format": "uuid" },
+              "tierCode": { "type": "string" },
+              "tierName": { "type": "string" }
+            }
+          },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "registeredAt": { "type": "string", "format": "date-time", "nullable": true }
+        }
+      },
+      "AgentMembersResponse": {
+        "type": "object",
+        "description": "Paginated list of members under an agent",
+        "properties": {
+          "members": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AgentMember" }
+          },
+          "total": { "type": "integer" },
+          "page": { "type": "integer" },
+          "limit": { "type": "integer" }
+        }
+      },
+      "AgentPerformance": {
+        "type": "object",
+        "description": "Agent performance metrics with trends",
+        "properties": {
+          "period": { "type": "string", "description": "Period label (e.g., 'January 2025')" },
+          "memberAcquisition": {
+            "type": "object",
+            "properties": {
+              "newMembersThisMonth": { "type": "integer" },
+              "monthlyTrend": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "month": { "type": "string" },
+                    "count": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          },
+          "retention": {
+            "type": "object",
+            "properties": {
+              "retentionRate": { "type": "integer", "description": "Percentage of active members" },
+              "totalMembers": { "type": "integer" },
+              "activeMembers": { "type": "integer" },
+              "suspendedMembers": { "type": "integer" },
+              "frozenMembers": { "type": "integer" },
+              "closedMembers": { "type": "integer" },
+              "retentionTrend": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "month": { "type": "string" },
+                    "rate": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "AgentHierarchy": {
+        "type": "object",
+        "description": "Agent's organization hierarchy",
+        "properties": {
+          "unit": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "unitId": { "type": "string", "format": "uuid" },
+              "unitCode": { "type": "string" },
+              "unitName": { "type": "string" }
+            }
+          },
+          "area": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "areaId": { "type": "string", "format": "uuid" },
+              "areaCode": { "type": "string" },
+              "areaName": { "type": "string" }
+            }
+          },
+          "forum": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "forumId": { "type": "string", "format": "uuid" },
+              "forumCode": { "type": "string" },
+              "forumName": { "type": "string" }
+            }
+          }
         }
       }
     },

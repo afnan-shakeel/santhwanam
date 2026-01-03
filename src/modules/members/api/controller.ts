@@ -21,6 +21,9 @@ import type { SubmitMemberRegistrationHandler } from "../application/commands/su
 import type { SuspendMemberCommand } from "../application/commands/suspendMemberCommand";
 import type { ReactivateMemberCommand } from "../application/commands/reactivateMemberCommand";
 import type { CloseMemberAccountCommand } from "../application/commands/closeMemberAccountCommand";
+import { asyncLocalStorage } from "@/shared/infrastructure/context/AsyncLocalStorageManager";
+import { NotFoundError } from "@/shared/utils/error-handling/httpErrors";
+import prisma from "@/shared/infrastructure/prisma/prismaClient";
 
 export class MembersController {
   constructor(
@@ -384,6 +387,114 @@ export class MembersController {
     try {
       const metadata = await this.memberService.getMetadata();
       return next({ responseSchema: MemberMetadataResponseDto, data: metadata, status: 200 });
+    } catch (err) {
+      next(err)
+    }
+  };
+
+  // ===== PROFILE MANAGEMENT =====
+
+  /**
+   * GET /api/members/:memberId/profile
+   * Get member profile with wallet information
+   */
+  getMemberProfile = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    const { memberId } = req.params;
+    try {
+      const profile = await this.memberService.getMemberProfile(memberId);
+      return next({ responseSchema: MemberResponseDto, data: profile, status: 200 });
+    } catch (err) {
+      next(err)
+    }
+  };
+
+  /**
+   * GET /api/my-profile
+   * Get logged-in member's profile
+   */
+  getMyProfile = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = asyncLocalStorage.getUserId();
+      
+      // Find member by user ID
+      const member = await prisma.member.findFirst({
+        where: { createdBy: userId },
+      });
+
+      if (!member) {
+        throw new NotFoundError("Member profile not found");
+      }
+
+      const profile = await this.memberService.getMemberProfile(member.memberId);
+      return next({ responseSchema: MemberResponseDto, data: profile, status: 200 });
+    } catch (err) {
+      next(err)
+    }
+  };
+
+  /**
+   * PUT /api/members/:memberId/profile
+   * Update member profile (only for approved members)
+   */
+  updateMemberProfile = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    const { memberId } = req.params;
+    try {
+      const updated = await this.memberService.updateMemberProfile(
+        memberId,
+        req.body
+      );
+      return next({ responseSchema: MemberResponseDto, data: updated, status: 200 });
+    } catch (err) {
+      next(err)
+    }
+  };
+
+  /**
+   * GET /api/members/:memberId/documents/:documentId/download
+   * Download document file
+   */
+  downloadDocument = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    const { documentId } = req.params;
+    try {
+      const document = await this.memberService.getDocumentsByMemberId(
+        req.params.memberId
+      );
+      
+      const doc = document.find((d) => d.documentId === documentId);
+      
+      if (!doc) {
+        throw new NotFoundError("Document not found");
+      }
+
+      // Stream file from local path
+      const fs = require('fs');
+      const path = require('path');
+      
+      const filePath = doc.fileUrl;
+      
+      if (!fs.existsSync(filePath)) {
+        throw new NotFoundError("File not found on server");
+      }
+
+      const fileName = path.basename(filePath);
+      
+      res.setHeader('Content-Type', doc.mimeType);
+      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+      
+      const fileStream = fs.createReadStream(filePath);
+      fileStream.pipe(res);
     } catch (err) {
       next(err)
     }

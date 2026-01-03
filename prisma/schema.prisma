@@ -618,7 +618,6 @@ model Nominee {
 
   @@index([memberId])
   @@index([memberId, isActive])
-  @@unique([memberId, priority])
 }
 
 model MemberDocument {

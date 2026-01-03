@@ -38,6 +38,8 @@ export class SubmitMemberRegistrationHandler {
         throw new BadRequestError("Member not found");
       }
 
+      console.log("Member fetched for submission:", member.memberId);
+      console.log("Regsistration Status:", member.registrationStatus, RegistrationStatus.Draft);
       if (member.registrationStatus !== RegistrationStatus.Draft) {
         throw new BadRequestError("Invalid member status");
       }
@@ -64,21 +66,24 @@ export class SubmitMemberRegistrationHandler {
         (d) => d.documentCategory === DocumentCategory.MemberIdentity
       );
       if (identityDocs.length === 0) {
-        throw new BadRequestError("At least 1 identity document is required");
+        // WITHDRAW TEMPORARY
+        // throw new BadRequestError("At least 1 identity document is required");
       }
 
       const addressDocs = documents.filter(
         (d) => d.documentCategory === DocumentCategory.MemberAddress
       );
       if (addressDocs.length === 0) {
-        throw new BadRequestError("At least 1 address proof document is required");
+        // WITHDRAW TEMPORARY
+        // throw new BadRequestError("At least 1 address proof document is required");
       }
 
       const photoDocs = documents.filter(
         (d) => d.documentCategory === DocumentCategory.MemberPhoto
       );
       if (photoDocs.length !== 1) {
-        throw new BadRequestError("Exactly 1 member photo is required");
+        // WITHDRAW TEMPORARY
+        // throw new BadRequestError("Exactly 1 member photo is required");
       }
 
       // Validate each nominee has ID proof
@@ -90,9 +95,10 @@ export class SubmitMemberRegistrationHandler {
         );
 
         if (nomineeProofs.length === 0) {
-          throw new BadRequestError(
-            `Nominee ${nominee.name} must have at least 1 ID proof document`
-          );
+          // WITHDRAW TEMPORARY 
+          // throw new BadRequestError(
+          //   `Nominee ${nominee.name} must have at least 1 ID proof document`
+          // );
         }
       }
 

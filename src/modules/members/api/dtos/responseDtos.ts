@@ -89,6 +89,17 @@ export const MemberResponseDto = z.object({
   areaId: z.string(),
   forumId: z.string(),
 
+  // Wallet (optional, only for approved members)
+  wallet: z
+    .object({
+      walletId: z.string(),
+      currentBalance: z.number(),
+      createdAt: z.date(),
+      updatedAt: z.date().nullable().optional(),
+    })
+    .nullable()
+    .optional(),
+
   // Member Status (after approval)
   memberStatus: z.string().nullable().optional(),
 

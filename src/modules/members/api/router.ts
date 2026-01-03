@@ -4,7 +4,7 @@
 
 import { Router } from "express";
 import type { MembersController } from "./controller";
-import { validateBody } from "@/shared/middleware/validateZod";
+import { validateBody, validateParams } from "@/shared/middleware/validateZod";
 import {
   startMemberRegistrationSchema,
   savePersonalDetailsAsDraftSchema,
@@ -15,6 +15,9 @@ import {
   suspendMemberSchema,
   reactivateMemberSchema,
   closeMemberAccountSchema,
+  updateMemberProfileSchema,
+  memberIdParamSchema,
+  documentIdParamSchema,
 } from "./validators";
 import { searchValidationSchema } from "@/shared/validators/searchValidator";
 
@@ -117,6 +120,29 @@ export function createMembersRouter(controller: MembersController): Router {
   // ===== QUERIES =====
 
   router.get("/metadata", controller.getMetadata);
+
+  // ===== PROFILE MANAGEMENT =====
+
+  router.get("/my-profile", controller.getMyProfile);
+
+  router.get(
+    "/:memberId/profile",
+    validateParams(memberIdParamSchema),
+    controller.getMemberProfile
+  );
+
+  router.put(
+    "/:memberId/profile",
+    validateParams(memberIdParamSchema),
+    validateBody(updateMemberProfileSchema),
+    controller.updateMemberProfile
+  );
+
+  router.get(
+    "/:memberId/documents/:documentId/download",
+    validateParams(documentIdParamSchema),
+    controller.downloadDocument
+  );
 
   router.get("/:memberId", controller.getMemberDetails);
 
