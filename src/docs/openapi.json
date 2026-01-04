@@ -4866,6 +4866,375 @@
         "pageSize": { "type": "integer" },
         "totalPages": { "type": "integer" }
       }
+    },
+    "/api/death-claims/report": {
+      "post": {
+        "tags": ["Death Claims"],
+        "summary": "Report a new death claim",
+        "description": "Creates a new death claim for a deceased member",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["memberId", "deathDate"],
+                "properties": {
+                  "memberId": { "type": "string", "format": "uuid" },
+                  "deathDate": { "type": "string", "format": "date" },
+                  "deathPlace": { "type": "string" },
+                  "causeOfDeath": { "type": "string" },
+                  "initialNotes": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Death claim created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": { "$ref": "#/components/schemas/DeathClaim" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid request or business rule violation" },
+          "404": { "description": "Member not found" }
+        }
+      }
+    },
+    "/api/death-claims/{claimId}/documents": {
+      "post": {
+        "tags": ["Death Claims"],
+        "summary": "Upload a claim document",
+        "description": "Uploads a supporting document for a death claim",
+        "parameters": [
+          {
+            "name": "claimId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["documentType", "documentName", "fileBuffer", "mimeType"],
+                "properties": {
+                  "documentType": {
+                    "type": "string",
+                    "enum": ["DeathCertificate", "NewspaperClipping", "PoliceReport", "MedicalReport", "PostMortemReport", "Other"]
+                  },
+                  "documentName": { "type": "string" },
+                  "fileBuffer": { "type": "string", "description": "Base64 encoded file content" },
+                  "mimeType": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Document uploaded successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": { "$ref": "#/components/schemas/DeathClaimDocument" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid file or claim status" },
+          "404": { "description": "Claim not found" }
+        }
+      },
+      "get": {
+        "tags": ["Death Claims"],
+        "summary": "Get claim documents",
+        "description": "Retrieves all documents for a death claim",
+        "parameters": [
+          {
+            "name": "claimId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Documents retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/DeathClaimDocument" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/death-claims/{claimId}/verify": {
+      "post": {
+        "tags": ["Death Claims"],
+        "summary": "Verify claim documents",
+        "description": "Verifies all uploaded documents and marks claim as ready for approval",
+        "parameters": [
+          {
+            "name": "claimId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "verificationNotes": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Documents verified successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": { "$ref": "#/components/schemas/DeathClaim" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid claim status or missing documents" },
+          "404": { "description": "Claim not found" }
+        }
+      }
+    },
+    "/api/death-claims/{claimId}/submit": {
+      "post": {
+        "tags": ["Death Claims"],
+        "summary": "Submit claim for approval",
+        "description": "Submits a verified claim to the approval workflow",
+        "parameters": [
+          {
+            "name": "claimId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Claim submitted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": { "$ref": "#/components/schemas/DeathClaim" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Claim not verified" },
+          "404": { "description": "Claim not found" }
+        }
+      }
+    },
+    "/api/death-claims/{claimId}/settle": {
+      "post": {
+        "tags": ["Death Claims"],
+        "summary": "Settle an approved claim",
+        "description": "Records payment to nominee and creates GL entry",
+        "parameters": [
+          {
+            "name": "claimId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["paymentMethod", "paymentDate"],
+                "properties": {
+                  "paymentMethod": {
+                    "type": "string",
+                    "enum": ["Cash", "BankTransfer", "Cheque"]
+                  },
+                  "paymentReference": { "type": "string" },
+                  "paymentDate": { "type": "string", "format": "date" },
+                  "acknowledgmentFileBuffer": { "type": "string", "description": "Base64 encoded acknowledgment file" },
+                  "acknowledgmentFileName": { "type": "string" },
+                  "acknowledgmentMimeType": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Claim settled successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": { "$ref": "#/components/schemas/DeathClaim" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Claim not approved" },
+          "404": { "description": "Claim not found" }
+        }
+      }
+    },
+    "/api/death-claims/{claimId}": {
+      "get": {
+        "tags": ["Death Claims"],
+        "summary": "Get claim details",
+        "description": "Retrieves details of a specific death claim",
+        "parameters": [
+          {
+            "name": "claimId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Claim details retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": { "$ref": "#/components/schemas/DeathClaim" }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "description": "Claim not found" }
+        }
+      }
+    },
+    "/api/death-claims": {
+      "get": {
+        "tags": ["Death Claims"],
+        "summary": "List death claims",
+        "description": "Lists death claims with optional filters",
+        "parameters": [
+          {
+            "name": "claimStatus",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["Reported", "UnderVerification", "Verified", "PendingApproval", "Approved", "Settled", "Rejected"]
+            }
+          },
+          {
+            "name": "forumId",
+            "in": "query",
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "areaId",
+            "in": "query",
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "unitId",
+            "in": "query",
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "agentId",
+            "in": "query",
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": { "type": "integer", "default": 1 }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 20, "maximum": 100 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Claims retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/DeathClaim" }
+                    },
+                    "pagination": {
+                      "type": "object",
+                      "properties": {
+                        "page": { "type": "integer" },
+                        "limit": { "type": "integer" },
+                        "total": { "type": "integer" },
+                        "totalPages": { "type": "integer" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -5253,6 +5622,93 @@
               "forumName": { "type": "string" }
             }
           }
+        }
+      },
+      "DeathClaim": {
+        "type": "object",
+        "description": "Death claim entity",
+        "properties": {
+          "claimId": { "type": "string", "format": "uuid" },
+          "claimNumber": { "type": "string", "description": "Format: DC-YYYY-NNNNN" },
+          "claimStatus": {
+            "type": "string",
+            "enum": ["Reported", "UnderVerification", "Verified", "PendingApproval", "Approved", "Settled", "Rejected"]
+          },
+          "approvalRequestId": { "type": "string", "format": "uuid", "nullable": true },
+          "memberId": { "type": "string", "format": "uuid" },
+          "memberCode": { "type": "string" },
+          "memberName": { "type": "string" },
+          "tierId": { "type": "string", "format": "uuid" },
+          "agentId": { "type": "string", "format": "uuid" },
+          "unitId": { "type": "string", "format": "uuid" },
+          "areaId": { "type": "string", "format": "uuid" },
+          "forumId": { "type": "string", "format": "uuid" },
+          "deathDate": { "type": "string", "format": "date" },
+          "deathPlace": { "type": "string", "nullable": true },
+          "causeOfDeath": { "type": "string", "nullable": true },
+          "reportedBy": { "type": "string", "format": "uuid" },
+          "reportedByRole": { "type": "string" },
+          "reportedDate": { "type": "string", "format": "date-time" },
+          "initialNotes": { "type": "string", "nullable": true },
+          "nomineeId": { "type": "string", "format": "uuid" },
+          "nomineeName": { "type": "string" },
+          "nomineeRelation": { "type": "string" },
+          "nomineeContactNumber": { "type": "string" },
+          "nomineeAddress": { "type": "object" },
+          "benefitAmount": { "type": "number", "nullable": true },
+          "verificationStatus": {
+            "type": "string",
+            "enum": ["Pending", "InProgress", "Completed", "Rejected"]
+          },
+          "verifiedBy": { "type": "string", "format": "uuid", "nullable": true },
+          "verifiedDate": { "type": "string", "format": "date-time", "nullable": true },
+          "verificationNotes": { "type": "string", "nullable": true },
+          "settlementStatus": {
+            "type": "string",
+            "enum": ["Pending", "Completed"]
+          },
+          "paymentMethod": {
+            "type": "string",
+            "enum": ["Cash", "BankTransfer", "Cheque"],
+            "nullable": true
+          },
+          "paymentReference": { "type": "string", "nullable": true },
+          "paymentDate": { "type": "string", "format": "date", "nullable": true },
+          "paidBy": { "type": "string", "format": "uuid", "nullable": true },
+          "nomineeAcknowledgment": { "type": "string", "nullable": true },
+          "journalEntryId": { "type": "string", "format": "uuid", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "approvedAt": { "type": "string", "format": "date-time", "nullable": true },
+          "settledAt": { "type": "string", "format": "date-time", "nullable": true },
+          "updatedAt": { "type": "string", "format": "date-time", "nullable": true },
+          "approvedBy": { "type": "string", "format": "uuid", "nullable": true },
+          "rejectedBy": { "type": "string", "format": "uuid", "nullable": true },
+          "rejectionReason": { "type": "string", "nullable": true }
+        }
+      },
+      "DeathClaimDocument": {
+        "type": "object",
+        "description": "Death claim document entity",
+        "properties": {
+          "documentId": { "type": "string", "format": "uuid" },
+          "claimId": { "type": "string", "format": "uuid" },
+          "documentType": {
+            "type": "string",
+            "enum": ["DeathCertificate", "NewspaperClipping", "PoliceReport", "MedicalReport", "PostMortemReport", "Other"]
+          },
+          "documentName": { "type": "string" },
+          "fileUrl": { "type": "string" },
+          "fileSize": { "type": "integer" },
+          "mimeType": { "type": "string" },
+          "uploadedBy": { "type": "string", "format": "uuid" },
+          "uploadedAt": { "type": "string", "format": "date-time" },
+          "verificationStatus": {
+            "type": "string",
+            "enum": ["Pending", "Verified", "Rejected"]
+          },
+          "verifiedBy": { "type": "string", "format": "uuid", "nullable": true },
+          "verifiedAt": { "type": "string", "format": "date-time", "nullable": true },
+          "rejectionReason": { "type": "string", "nullable": true }
         }
       }
     },

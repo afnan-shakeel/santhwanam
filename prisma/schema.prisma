@@ -238,6 +238,7 @@ model ApprovalRequest {
   stageExecutions       ApprovalStageExecution[]
   agents                Agent[]
   walletDepositRequests WalletDepositRequest[]
+  deathClaims           DeathClaim[]
 
   @@index([entityType, entityId])
   @@index([status])
@@ -318,8 +319,9 @@ model Unit {
   updatedAt       DateTime?
   updatedBy       String?
 
-  agents  Agent[]
-  members Member[]
+  agents      Agent[]
+  members     Member[]
+  deathClaims DeathClaim[]
 
   @@unique([areaId, unitCode])
   @@index([areaId])
@@ -406,7 +408,8 @@ model Agent {
   updatedBy String?
 
   // Relations
-  members Member[]
+  members     Member[]
+  deathClaims DeathClaim[]
 
   @@unique([unitId, agentCode])
   @@index([unitId])
@@ -571,6 +574,7 @@ model Member {
   wallet                Wallet?
   walletDepositRequests WalletDepositRequest[]
   walletDebitRequests   WalletDebitRequest[]
+  deathClaims           DeathClaim[]
 
   @@index([memberCode])
   @@index([registrationStatus])
@@ -716,7 +720,8 @@ model MembershipTier {
   updatedAt DateTime?
 
   // Relations
-  members Member[]
+  members     Member[]
+  deathClaims DeathClaim[]
 
   @@index([tierCode])
   @@index([isActive])
@@ -833,6 +838,7 @@ model JournalEntry {
   lines                 JournalEntryLine[]
   walletTransactions    WalletTransaction[]
   walletDepositRequests WalletDepositRequest[]
+  deathClaims           DeathClaim[]
 
   @@index([entryNumber])
   @@index([entryDate])
@@ -1043,4 +1049,162 @@ model WalletDebitRequest {
   @@index([walletId])
   @@index([status])
   @@index([contributionId])
+}
+
+// ===== DEATH CLAIMS CONTEXT =====
+// See docs/domain/8.death_claims_and_contribution.md
+
+enum DeathClaimStatus {
+  Reported
+  UnderVerification
+  Verified
+  PendingApproval
+  Approved
+  Settled
+  Rejected
+}
+
+enum DeathClaimVerificationStatus {
+  Pending
+  InProgress
+  Completed
+  Rejected
+}
+
+enum DeathClaimSettlementStatus {
+  Pending
+  Completed
+}
+
+enum PaymentMethod {
+  Cash
+  BankTransfer
+  Cheque
+}
+
+enum ClaimDocumentType {
+  DeathCertificate
+  NewspaperClipping
+  PoliceReport
+  MedicalReport
+  PostMortemReport
+  Other
+}
+
+enum ClaimDocumentVerificationStatus {
+  Pending
+  Verified
+  Rejected
+}
+
+model DeathClaim {
+  claimId     String @id @default(uuid())
+  claimNumber String @unique
+
+  // Registration tracking
+  claimStatus DeathClaimStatus @default(Reported)
+
+  // Approval tracking
+  approvalRequest   ApprovalRequest? @relation(fields: [approvalRequestId], references: [requestId])
+  approvalRequestId String?
+
+  // Member info
+  member     Member         @relation(fields: [memberId], references: [memberId])
+  memberId   String
+  memberCode String
+  memberName String
+  tier       MembershipTier @relation(fields: [tierId], references: [tierId])
+  tierId     String
+
+  // Hierarchy
+  agent   Agent  @relation(fields: [agentId], references: [agentId])
+  agentId String
+  unit    Unit   @relation(fields: [unitId], references: [unitId])
+  unitId  String
+  areaId  String
+  forumId String
+
+  // Death details
+  deathDate    DateTime
+  deathPlace   String?
+  causeOfDeath String?
+
+  // Reporting
+  reportedBy     String
+  reportedByRole String
+  reportedDate   DateTime @default(now())
+  initialNotes   String?
+
+  // Nominee info (snapshot at time of death)
+  nomineeId            String
+  nomineeName          String
+  nomineeRelation      String
+  nomineeContactNumber String
+  nomineeAddress       Json
+
+  // Benefit
+  benefitAmount Decimal? @db.Decimal(15, 2)
+
+  // Verification
+  verificationStatus DeathClaimVerificationStatus @default(Pending)
+  verifiedBy         String?
+  verifiedDate       DateTime?
+  verificationNotes  String?
+
+  // Settlement
+  settlementStatus      DeathClaimSettlementStatus @default(Pending)
+  paymentMethod         PaymentMethod?
+  paymentReference      String?
+  paymentDate           DateTime?
+  paidBy                String?
+  nomineeAcknowledgment String? // File URL
+
+  // Financial
+  journalEntry   JournalEntry? @relation(fields: [journalEntryId], references: [entryId])
+  journalEntryId String?
+
+  // Timestamps
+  createdAt  DateTime  @default(now())
+  approvedAt DateTime?
+  settledAt  DateTime?
+  updatedAt  DateTime?
+
+  // Audit
+  approvedBy      String?
+  rejectedBy      String?
+  rejectionReason String?
+
+  // Relations
+  documents DeathClaimDocument[]
+
+  @@index([claimNumber])
+  @@index([memberId])
+  @@index([claimStatus])
+  @@index([approvalRequestId])
+  @@index([agentId])
+  @@index([unitId])
+  @@index([forumId])
+}
+
+model DeathClaimDocument {
+  documentId String     @id @default(uuid())
+  claim      DeathClaim @relation(fields: [claimId], references: [claimId])
+  claimId    String
+
+  documentType ClaimDocumentType
+  documentName String
+  fileUrl      String
+  fileSize     Int
+  mimeType     String
+
+  uploadedBy String
+  uploadedAt DateTime @default(now())
+
+  verificationStatus ClaimDocumentVerificationStatus @default(Pending)
+  verifiedBy         String?
+  verifiedAt         DateTime?
+  rejectionReason    String?
+
+  @@index([claimId])
+  @@index([documentType])
 }
