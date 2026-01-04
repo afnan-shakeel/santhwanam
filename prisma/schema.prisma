@@ -279,7 +279,8 @@ model Forum {
   updatedAt       DateTime?
   updatedBy       String?
 
-  areas Area[]
+  areas              Area[]
+  contributionCycles ContributionCycle[]
 
   @@index([forumCode])
   @@index([adminUserId])
@@ -408,8 +409,9 @@ model Agent {
   updatedBy String?
 
   // Relations
-  members     Member[]
-  deathClaims DeathClaim[]
+  members       Member[]
+  deathClaims   DeathClaim[]
+  contributions MemberContribution[]
 
   @@unique([unitId, agentCode])
   @@index([unitId])
@@ -575,6 +577,7 @@ model Member {
   walletDepositRequests WalletDepositRequest[]
   walletDebitRequests   WalletDebitRequest[]
   deathClaims           DeathClaim[]
+  contributions         MemberContribution[]
 
   @@index([memberCode])
   @@index([registrationStatus])
@@ -720,8 +723,9 @@ model MembershipTier {
   updatedAt DateTime?
 
   // Relations
-  members     Member[]
-  deathClaims DeathClaim[]
+  members       Member[]
+  deathClaims   DeathClaim[]
+  contributions MemberContribution[]
 
   @@index([tierCode])
   @@index([isActive])
@@ -839,6 +843,7 @@ model JournalEntry {
   walletTransactions    WalletTransaction[]
   walletDepositRequests WalletDepositRequest[]
   deathClaims           DeathClaim[]
+  contributions         MemberContribution[]
 
   @@index([entryNumber])
   @@index([entryDate])
@@ -1045,6 +1050,9 @@ model WalletDebitRequest {
   acknowledgedAt DateTime?
   completedAt    DateTime?
 
+  // Relations
+  contributions MemberContribution[]
+
   @@index([memberId])
   @@index([walletId])
   @@index([status])
@@ -1175,7 +1183,8 @@ model DeathClaim {
   rejectionReason String?
 
   // Relations
-  documents DeathClaimDocument[]
+  documents          DeathClaimDocument[]
+  contributionCycles ContributionCycle[]
 
   @@index([claimNumber])
   @@index([memberId])
@@ -1207,4 +1216,128 @@ model DeathClaimDocument {
 
   @@index([claimId])
   @@index([documentType])
+}
+
+// ===== CONTRIBUTION COLLECTION CONTEXT =====
+// See docs/domain/8.death_claims_and_contribution.md (Part 2)
+
+enum ContributionCycleStatus {
+  Active
+  Closed
+}
+
+enum MemberContributionStatus {
+  Pending
+  WalletDebitRequested
+  Acknowledged
+  Collected
+  Missed
+  Exempted
+}
+
+enum ContributionPaymentMethod {
+  Wallet
+  DirectCash
+}
+
+model ContributionCycle {
+  cycleId     String @id @default(uuid())
+  cycleNumber String @unique
+
+  // Linked to death claim
+  deathClaim          DeathClaim @relation(fields: [deathClaimId], references: [claimId])
+  deathClaimId        String
+  claimNumber         String
+  deceasedMemberId    String
+  deceasedMemberName  String
+  benefitAmount       Decimal    @db.Decimal(15, 2)
+
+  // Hierarchy
+  forum   Forum  @relation(fields: [forumId], references: [forumId])
+  forumId String
+
+  // Cycle details
+  startDate          DateTime
+  collectionDeadline DateTime
+
+  // Status
+  cycleStatus ContributionCycleStatus @default(Active)
+
+  // Statistics
+  totalMembers          Int
+  totalExpectedAmount   Decimal @db.Decimal(15, 2)
+  totalCollectedAmount  Decimal @default(0) @db.Decimal(15, 2)
+  totalPendingAmount    Decimal @db.Decimal(15, 2)
+  membersCollected      Int     @default(0)
+  membersPending        Int
+  membersMissed         Int     @default(0)
+
+  // Closure
+  closedDate DateTime?
+  closedBy   String?
+
+  // Timestamps
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+
+  // Relations
+  contributions MemberContribution[]
+
+  @@index([cycleNumber])
+  @@index([deathClaimId])
+  @@index([cycleStatus])
+  @@index([forumId])
+}
+
+model MemberContribution {
+  contributionId String @id @default(uuid())
+
+  cycle   ContributionCycle @relation(fields: [cycleId], references: [cycleId])
+  cycleId String
+
+  // Member info
+  member     Member @relation(fields: [memberId], references: [memberId])
+  memberId   String
+  memberCode String
+  memberName String
+  tier       MembershipTier @relation(fields: [tierId], references: [tierId])
+  tierId     String
+  agent      Agent          @relation(fields: [agentId], references: [agentId])
+  agentId    String
+
+  // Amount
+  expectedAmount Decimal @db.Decimal(15, 2)
+
+  // Status
+  contributionStatus MemberContributionStatus @default(Pending)
+
+  // Payment details
+  paymentMethod   ContributionPaymentMethod?
+  collectionDate  DateTime?
+  collectedBy     String?
+
+  // Wallet tracking
+  walletDebitRequest   WalletDebitRequest? @relation(fields: [walletDebitRequestId], references: [debitRequestId])
+  walletDebitRequestId String?
+  debitAcknowledgedAt  DateTime?
+
+  // Direct cash tracking
+  cashReceiptReference String?
+
+  // Financial
+  journalEntry   JournalEntry? @relation(fields: [journalEntryId], references: [entryId])
+  journalEntryId String?
+
+  // Consecutive miss tracking
+  isConsecutiveMiss Boolean @default(false)
+
+  // Timestamps
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+
+  @@index([cycleId])
+  @@index([memberId])
+  @@index([contributionStatus])
+  @@index([agentId])
+  @@index([tierId])
 }

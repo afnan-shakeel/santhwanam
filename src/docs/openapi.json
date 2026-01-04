@@ -5235,6 +5235,312 @@
           }
         }
       }
+    },
+    "/api/contributions/cycles/{cycleId}": {
+      "get": {
+        "tags": ["Contributions"],
+        "summary": "Get contribution cycle by ID",
+        "parameters": [
+          {
+            "name": "cycleId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cycle retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": { "$ref": "#/components/schemas/ContributionCycle" }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "description": "Cycle not found" }
+        }
+      }
+    },
+    "/api/contributions/cycles/search": {
+      "post": {
+        "tags": ["Contributions"],
+        "summary": "Search contribution cycles",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SearchRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Search results",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SearchResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/contributions/cycles/{cycleId}/close": {
+      "post": {
+        "tags": ["Contributions"],
+        "summary": "Close a contribution cycle",
+        "parameters": [
+          {
+            "name": "cycleId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cycle closed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": { "$ref": "#/components/schemas/ContributionCycle" }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "description": "Cycle not found" }
+        }
+      }
+    },
+    "/api/contributions/{contributionId}": {
+      "get": {
+        "tags": ["Contributions"],
+        "summary": "Get contribution by ID",
+        "parameters": [
+          {
+            "name": "contributionId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contribution retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": { "$ref": "#/components/schemas/MemberContribution" }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "description": "Contribution not found" }
+        }
+      }
+    },
+    "/api/contributions/{contributionId}/acknowledge": {
+      "post": {
+        "tags": ["Contributions"],
+        "summary": "Acknowledge wallet debit for contribution",
+        "parameters": [
+          {
+            "name": "contributionId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contribution acknowledged successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": { "$ref": "#/components/schemas/MemberContribution" }
+                  }
+                }
+              }
+            }
+          },
+          "403": { "description": "Only assigned agent can acknowledge" },
+          "404": { "description": "Contribution not found" }
+        }
+      }
+    },
+    "/api/contributions/{contributionId}/record-cash": {
+      "post": {
+        "tags": ["Contributions"],
+        "summary": "Record direct cash contribution",
+        "parameters": [
+          {
+            "name": "contributionId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "cashReceiptReference": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Cash contribution recorded successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": { "$ref": "#/components/schemas/MemberContribution" }
+                  }
+                }
+              }
+            }
+          },
+          "403": { "description": "Only assigned agent can record" },
+          "404": { "description": "Contribution not found" }
+        }
+      }
+    },
+    "/api/contributions/{contributionId}/mark-missed": {
+      "post": {
+        "tags": ["Contributions"],
+        "summary": "Mark contribution as missed",
+        "parameters": [
+          {
+            "name": "contributionId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contribution marked as missed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": { "$ref": "#/components/schemas/MemberContribution" }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "description": "Contribution not found" }
+        }
+      }
+    },
+    "/api/contributions/search": {
+      "post": {
+        "tags": ["Contributions"],
+        "summary": "Search member contributions",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SearchRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Search results",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SearchResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/contributions/member/{memberId}/history": {
+      "get": {
+        "tags": ["Contributions"],
+        "summary": "Get member's contribution history",
+        "parameters": [
+          {
+            "name": "memberId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["Pending", "WalletDebitRequested", "Acknowledged", "Collected", "Missed", "Exempted"]
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": { "type": "integer", "default": 1 }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 20 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contribution history retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "contributions": {
+                          "type": "array",
+                          "items": { "$ref": "#/components/schemas/MemberContribution" }
+                        },
+                        "total": { "type": "integer" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -5709,6 +6015,61 @@
           "verifiedBy": { "type": "string", "format": "uuid", "nullable": true },
           "verifiedAt": { "type": "string", "format": "date-time", "nullable": true },
           "rejectionReason": { "type": "string", "nullable": true }
+        }
+      },
+      "ContributionCycle": {
+        "type": "object",
+        "description": "Contribution cycle entity",
+        "properties": {
+          "cycleId": { "type": "string", "format": "uuid" },
+          "cycleNumber": { "type": "string", "description": "Format: CC-YYYY-NNNNN" },
+          "cycleStatus": {
+            "type": "string",
+            "enum": ["Active", "Closed"]
+          },
+          "deathClaimId": { "type": "string", "format": "uuid" },
+          "membershipTierId": { "type": "string", "format": "uuid" },
+          "forumId": { "type": "string", "format": "uuid" },
+          "contributionAmount": { "type": "number" },
+          "totalMembers": { "type": "integer" },
+          "totalCollected": { "type": "number" },
+          "totalMissed": { "type": "number" },
+          "collectedCount": { "type": "integer" },
+          "missedCount": { "type": "integer" },
+          "pendingCount": { "type": "integer" },
+          "startDate": { "type": "string", "format": "date-time" },
+          "endDate": { "type": "string", "format": "date-time", "nullable": true },
+          "gracePeriodEnds": { "type": "string", "format": "date-time" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "MemberContribution": {
+        "type": "object",
+        "description": "Member contribution entity",
+        "properties": {
+          "contributionId": { "type": "string", "format": "uuid" },
+          "cycleId": { "type": "string", "format": "uuid" },
+          "memberId": { "type": "string", "format": "uuid" },
+          "agentId": { "type": "string", "format": "uuid" },
+          "contributionAmount": { "type": "number" },
+          "contributionStatus": {
+            "type": "string",
+            "enum": ["Pending", "WalletDebitRequested", "Acknowledged", "Collected", "Missed", "Exempted"]
+          },
+          "paymentMethod": {
+            "type": "string",
+            "enum": ["WalletDebit", "DirectCash"],
+            "nullable": true
+          },
+          "walletDebitRequestId": { "type": "string", "format": "uuid", "nullable": true },
+          "cashReceiptReference": { "type": "string", "nullable": true },
+          "journalEntryId": { "type": "string", "format": "uuid", "nullable": true },
+          "collectedAt": { "type": "string", "format": "date-time", "nullable": true },
+          "missedAt": { "type": "string", "format": "date-time", "nullable": true },
+          "exemptionReason": { "type": "string", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
         }
       }
     },
