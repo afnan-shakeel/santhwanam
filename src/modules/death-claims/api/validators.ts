@@ -6,18 +6,17 @@ import { z } from 'zod';
 import {
   DeathClaimStatus,
   ClaimDocumentType,
+  ClaimDocumentVerificationStatus,
   PaymentMethod,
 } from '../domain/entities';
 
 // ===== Report Death =====
 export const reportDeathSchema = z.object({
-  body: z.object({
     memberId: z.string().uuid('Invalid member ID'),
     deathDate: z.coerce.date(),
     deathPlace: z.string().optional(),
     causeOfDeath: z.string().optional(),
     initialNotes: z.string().optional(),
-  }),
 });
 
 // ===== Upload Document =====
@@ -66,9 +65,7 @@ export const settleDeathClaimSchema = z.object({
 
 // ===== Get Claim =====
 export const getClaimByIdSchema = z.object({
-  params: z.object({
     claimId: z.string().uuid('Invalid claim ID'),
-  }),
 });
 
 // ===== List Claims =====
@@ -86,7 +83,26 @@ export const listClaimsSchema = z.object({
 
 // ===== Get Claim Documents =====
 export const getClaimDocumentsSchema = z.object({
+    claimId: z.string().uuid('Invalid claim ID'),
+});
+
+// ===== Verify Individual Document =====
+export const verifyIndividualDocumentSchema = z.object({
   params: z.object({
     claimId: z.string().uuid('Invalid claim ID'),
+    documentId: z.string().uuid('Invalid document ID'),
+  }),
+  body: z.object({
+    verificationStatus: z.nativeEnum(ClaimDocumentVerificationStatus),
+    notes: z.string().optional(),
+    rejectionReason: z.string().optional(),
+  }),
+});
+
+// ===== Download Document =====
+export const downloadDocumentSchema = z.object({
+  params: z.object({
+    claimId: z.string().uuid('Invalid claim ID'),
+    documentId: z.string().uuid('Invalid document ID'),
   }),
 });

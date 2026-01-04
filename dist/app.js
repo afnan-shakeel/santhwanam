@@ -10,6 +10,10 @@ import { organizationBodiesRouter } from '@/modules/organization-bodies';
 import { agentsRouter } from '@/modules/agents';
 import { membersRouter } from '@/modules/members';
 import { glRouter } from '@/modules/gl';
+import { membershipRouter } from '@/modules/membership';
+import { walletRouter } from '@/modules/wallet';
+import { deathClaimsRouter } from '@/modules/death-claims';
+import { contributionsRouter } from '@/modules/contributions';
 import { contextMiddleware } from '@/shared/infrastructure/context';
 import { authenticate } from '@/shared/infrastructure/auth/middleware/authenticate';
 import { registerEventHandlers } from '@/config/event-handlers.config';
@@ -47,10 +51,19 @@ app.use('/api/organization-bodies', organizationBodiesRouter);
 app.use('/api/agents', agentsRouter);
 // Members API
 app.use('/api/members', membersRouter);
+// Membership API
+app.use('/api/membership', membershipRouter);
+// Wallet API
+app.use('/api/wallet', walletRouter);
 // GL API
 app.use('/api/gl', glRouter);
+// Death Claims API
+app.use('/api/death-claims', deathClaimsRouter);
+// Contributions API
+app.use('/api/contributions', contributionsRouter);
 // Global response handler: support controllers calling `next({ SomeDto, payload, status })`
 app.use(responseHandler);
 // Global error handler (keep as last middleware)
 app.use(errorHandler);
 export default app;
+//# sourceMappingURL=app.js.map

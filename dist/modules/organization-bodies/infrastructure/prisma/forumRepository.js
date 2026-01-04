@@ -62,3 +62,4 @@ export class PrismaForumRepository {
         return count > 0;
     }
 }
+//# sourceMappingURL=forumRepository.js.map

@@ -8,3 +8,4 @@ export class MemberRegistrationRejectedEvent extends DomainEvent {
         return this.payload;
     }
 }
+//# sourceMappingURL=member-registration-rejected.event.js.map

@@ -2,8 +2,8 @@
  * Router for Members API
  */
 import { Router } from "express";
-import { validateBody } from "@/shared/middleware/validateZod";
-import { startMemberRegistrationSchema, savePersonalDetailsAsDraftSchema, addNomineeSchema, updateNomineeSchema, uploadMemberDocumentSchema, recordRegistrationPaymentSchema, suspendMemberSchema, reactivateMemberSchema, closeMemberAccountSchema, } from "./validators";
+import { validateBody, validateParams } from "@/shared/middleware/validateZod";
+import { startMemberRegistrationSchema, savePersonalDetailsAsDraftSchema, addNomineeSchema, updateNomineeSchema, uploadMemberDocumentSchema, recordRegistrationPaymentSchema, suspendMemberSchema, reactivateMemberSchema, closeMemberAccountSchema, updateMemberProfileSchema, memberIdParamSchema, documentIdParamSchema, } from "./validators";
 import { searchValidationSchema } from "@/shared/validators/searchValidator";
 export function createMembersRouter(controller) {
     const router = Router();
@@ -32,7 +32,15 @@ export function createMembersRouter(controller) {
     router.post("/:memberId/reactivate", validateBody(reactivateMemberSchema), controller.reactivateMember);
     router.post("/:memberId/close", validateBody(closeMemberAccountSchema), controller.closeMemberAccount);
     // ===== QUERIES =====
+    router.get("/metadata", controller.getMetadata);
+    // ===== PROFILE MANAGEMENT =====
+    router.get("/my-profile", controller.getMyProfile);
+    router.get("/:memberId/profile", validateParams(memberIdParamSchema), controller.getMemberProfile);
+    router.put("/:memberId/profile", validateParams(memberIdParamSchema), validateBody(updateMemberProfileSchema), controller.updateMemberProfile);
+    router.get("/:memberId/documents/:documentId/download", validateParams(documentIdParamSchema), controller.downloadDocument);
+    router.get("/:memberId/benefit", validateParams(memberIdParamSchema), controller.getMemberBenefit);
     router.get("/:memberId", controller.getMemberDetails);
     router.get("/", controller.listMembers);
     return router;
 }
+//# sourceMappingURL=router.js.map

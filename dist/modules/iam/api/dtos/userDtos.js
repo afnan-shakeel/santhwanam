@@ -18,3 +18,4 @@ export const UsersSearchResponseDto = z.object({
     pageSize: z.number(),
     totalPages: z.number(),
 });
+//# sourceMappingURL=userDtos.js.map

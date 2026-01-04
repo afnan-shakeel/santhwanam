@@ -8,3 +8,4 @@ export class NomineesStepCompletedEvent extends DomainEvent {
         return this.payload;
     }
 }
+//# sourceMappingURL=nominees-step-completed.event.js.map

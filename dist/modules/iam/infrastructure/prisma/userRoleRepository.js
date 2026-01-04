@@ -37,3 +37,4 @@ export class PrismaUserRoleRepository {
     }
 }
 export default PrismaUserRoleRepository;
+//# sourceMappingURL=userRoleRepository.js.map

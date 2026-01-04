@@ -14,3 +14,4 @@ export * from "./member-registration-rejected.event";
 export * from "./member-suspended.event";
 export * from "./member-reactivated.event";
 export * from "./member-account-closed.event";
+//# sourceMappingURL=index.js.map

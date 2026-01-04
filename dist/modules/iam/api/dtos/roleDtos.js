@@ -19,3 +19,4 @@ export const RolesSearchResponseDto = z.object({
     totalPages: z.number(),
 });
 export default RoleDto;
+//# sourceMappingURL=roleDtos.js.map

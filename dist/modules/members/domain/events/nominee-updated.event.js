@@ -8,3 +8,4 @@ export class NomineeUpdatedEvent extends DomainEvent {
         return this.payload;
     }
 }
+//# sourceMappingURL=nominee-updated.event.js.map

@@ -100,3 +100,4 @@ export class RoleService {
         return this.repo.updateById(roleId, updates);
     }
 }
+//# sourceMappingURL=roleService.js.map

@@ -55,3 +55,4 @@ export class SuspendMemberCommand {
         });
     }
 }
+//# sourceMappingURL=suspendMemberCommand.js.map

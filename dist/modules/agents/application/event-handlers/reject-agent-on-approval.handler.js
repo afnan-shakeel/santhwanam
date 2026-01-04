@@ -23,3 +23,4 @@ export class RejectAgentOnApprovalHandler {
         logger.info('Agent registration rejected successfully', { agentId });
     }
 }
+//# sourceMappingURL=reject-agent-on-approval.handler.js.map

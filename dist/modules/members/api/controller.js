@@ -1,6 +1,10 @@
 /**
  * Controller for Members API
  */
+import { MemberResponseDto, NomineeResponseDto, NomineeListResponseDto, MemberDocumentResponseDto, MemberDocumentListResponseDto, RegistrationPaymentResponseDto, MemberSubmissionResponseDto, MemberListResponseDto, SuccessResponseDto, MemberMetadataResponseDto, MemberBenefitResponseDto, } from './dtos/responseDtos';
+import { asyncLocalStorage } from "@/shared/infrastructure/context/AsyncLocalStorageManager";
+import { NotFoundError } from "@/shared/utils/error-handling/httpErrors";
+import prisma from "@/shared/infrastructure/prisma/prismaClient";
 export class MembersController {
     memberService;
     submitRegistrationCmd;
@@ -20,8 +24,13 @@ export class MembersController {
      * Start member registration (creates in Draft status)
      */
     startRegistration = async (req, res, next) => {
-        const member = await this.memberService.startRegistration(req.body);
-        next({ dto: "Member", data: member, status: 201 });
+        try {
+            const member = await this.memberService.startRegistration(req.body);
+            return next({ responseSchema: MemberResponseDto, data: member, status: 201 });
+        }
+        catch (err) {
+            next(err);
+        }
     };
     /**
      * PATCH /api/members/:memberId/draft/personal-details
@@ -29,8 +38,13 @@ export class MembersController {
      */
     savePersonalDetailsAsDraft = async (req, res, next) => {
         const { memberId } = req.params;
-        const member = await this.memberService.savePersonalDetailsAsDraft(memberId, req.body);
-        next({ dto: "Member", data: member, status: 200 });
+        try {
+            const member = await this.memberService.savePersonalDetailsAsDraft(memberId, req.body);
+            return next({ responseSchema: MemberResponseDto, data: member, status: 200 });
+        }
+        catch (err) {
+            next(err);
+        }
     };
     /**
      * POST /api/members/:memberId/complete/personal-details
@@ -38,8 +52,13 @@ export class MembersController {
      */
     completePersonalDetailsStep = async (req, res, next) => {
         const { memberId } = req.params;
-        const member = await this.memberService.completePersonalDetailsStep(memberId);
-        next({ dto: "Member", data: member, status: 200 });
+        try {
+            const member = await this.memberService.completePersonalDetailsStep(memberId);
+            return next({ responseSchema: MemberResponseDto, data: member, status: 200 });
+        }
+        catch (err) {
+            next(err);
+        }
     };
     // ===== STEP 2: NOMINEES =====
     /**
@@ -48,11 +67,16 @@ export class MembersController {
      */
     addNominee = async (req, res, next) => {
         const { memberId } = req.params;
-        const nominee = await this.memberService.addNominee({
-            memberId,
-            ...req.body,
-        });
-        next({ dto: "Nominee", data: nominee, status: 201 });
+        try {
+            const nominee = await this.memberService.addNominee({
+                memberId,
+                ...req.body,
+            });
+            return next({ responseSchema: NomineeResponseDto, data: nominee, status: 201 });
+        }
+        catch (err) {
+            next(err);
+        }
     };
     /**
      * PATCH /api/members/:memberId/nominees/:nomineeId
@@ -60,8 +84,13 @@ export class MembersController {
      */
     updateNominee = async (req, res, next) => {
         const { nomineeId } = req.params;
-        const nominee = await this.memberService.updateNominee(nomineeId, req.body);
-        next({ dto: "Nominee", data: nominee, status: 200 });
+        try {
+            const nominee = await this.memberService.updateNominee(nomineeId, req.body);
+            return next({ responseSchema: NomineeResponseDto, data: nominee, status: 200 });
+        }
+        catch (err) {
+            next(err);
+        }
     };
     /**
      * DELETE /api/members/:memberId/nominees/:nomineeId
@@ -69,8 +98,13 @@ export class MembersController {
      */
     removeNominee = async (req, res, next) => {
         const { nomineeId } = req.params;
-        await this.memberService.removeNominee(nomineeId);
-        next({ status: 204 });
+        try {
+            await this.memberService.removeNominee(nomineeId);
+            return next({ status: 204 });
+        }
+        catch (err) {
+            next(err);
+        }
     };
     /**
      * GET /api/members/:memberId/nominees
@@ -78,8 +112,13 @@ export class MembersController {
      */
     getNominees = async (req, res, next) => {
         const { memberId } = req.params;
-        const nominees = await this.memberService.getNomineesByMemberId(memberId);
-        next({ dto: "NomineeList", data: nominees, status: 200 });
+        try {
+            const nominees = await this.memberService.getNomineesByMemberId(memberId);
+            return next({ responseSchema: NomineeListResponseDto, data: nominees, status: 200 });
+        }
+        catch (err) {
+            next(err);
+        }
     };
     /**
      * POST /api/members/:memberId/complete/nominees
@@ -87,8 +126,13 @@ export class MembersController {
      */
     completeNomineesStep = async (req, res, next) => {
         const { memberId } = req.params;
-        const member = await this.memberService.completeNomineesStep(memberId);
-        next({ dto: "Member", data: member, status: 200 });
+        try {
+            const member = await this.memberService.completeNomineesStep(memberId);
+            return next({ responseSchema: MemberResponseDto, data: member, status: 200 });
+        }
+        catch (err) {
+            next(err);
+        }
     };
     // ===== STEP 3: DOCUMENTS & PAYMENT =====
     /**
@@ -97,11 +141,16 @@ export class MembersController {
      */
     uploadDocument = async (req, res, next) => {
         const { memberId } = req.params;
-        const document = await this.memberService.uploadMemberDocument({
-            memberId,
-            ...req.body,
-        });
-        next({ dto: "MemberDocument", data: document, status: 201 });
+        try {
+            const document = await this.memberService.uploadMemberDocument({
+                memberId,
+                ...req.body,
+            });
+            return next({ responseSchema: MemberDocumentResponseDto, data: document, status: 201 });
+        }
+        catch (err) {
+            next(err);
+        }
     };
     /**
      * DELETE /api/members/:memberId/documents/:documentId
@@ -109,8 +158,13 @@ export class MembersController {
      */
     removeDocument = async (req, res, next) => {
         const { documentId } = req.params;
-        await this.memberService.removeMemberDocument(documentId);
-        next({ status: 204 });
+        try {
+            await this.memberService.removeMemberDocument(documentId);
+            return next({ status: 204 });
+        }
+        catch (err) {
+            next(err);
+        }
     };
     /**
      * GET /api/members/:memberId/documents
@@ -118,8 +172,13 @@ export class MembersController {
      */
     getDocuments = async (req, res, next) => {
         const { memberId } = req.params;
-        const documents = await this.memberService.getDocumentsByMemberId(memberId);
-        next({ dto: "MemberDocumentList", data: documents, status: 200 });
+        try {
+            const documents = await this.memberService.getDocumentsByMemberId(memberId);
+            return next({ responseSchema: MemberDocumentListResponseDto, data: documents, status: 200 });
+        }
+        catch (err) {
+            next(err);
+        }
     };
     /**
      * POST /api/members/:memberId/payment
@@ -127,11 +186,16 @@ export class MembersController {
      */
     recordPayment = async (req, res, next) => {
         const { memberId } = req.params;
-        const payment = await this.memberService.recordRegistrationPayment({
-            memberId,
-            ...req.body,
-        });
-        next({ dto: "RegistrationPayment", data: payment, status: 201 });
+        try {
+            const payment = await this.memberService.recordRegistrationPayment({
+                memberId,
+                ...req.body,
+            });
+            return next({ responseSchema: RegistrationPaymentResponseDto, data: payment, status: 201 });
+        }
+        catch (err) {
+            next(err);
+        }
     };
     /**
      * GET /api/members/:memberId/payment
@@ -139,8 +203,13 @@ export class MembersController {
      */
     getPayment = async (req, res, next) => {
         const { memberId } = req.params;
-        const payment = await this.memberService.getPaymentByMemberId(memberId);
-        next({ dto: "RegistrationPayment", data: payment, status: 200 });
+        try {
+            const payment = await this.memberService.getPaymentByMemberId(memberId);
+            return next({ responseSchema: RegistrationPaymentResponseDto, data: payment, status: 200 });
+        }
+        catch (err) {
+            next(err);
+        }
     };
     // ===== SUBMISSION =====
     /**
@@ -149,8 +218,13 @@ export class MembersController {
      */
     submitRegistration = async (req, res, next) => {
         const { memberId } = req.params;
-        const result = await this.submitRegistrationCmd.execute({ memberId });
-        next({ dto: "MemberSubmission", data: result, status: 200 });
+        try {
+            const result = await this.submitRegistrationCmd.execute({ memberId });
+            return next({ responseSchema: MemberSubmissionResponseDto, data: result, status: 200 });
+        }
+        catch (err) {
+            next(err);
+        }
     };
     // ===== QUERIES =====
     /**
@@ -159,16 +233,26 @@ export class MembersController {
      */
     getMemberDetails = async (req, res, next) => {
         const { memberId } = req.params;
-        const member = await this.memberService.getMemberDetails(memberId);
-        next({ dto: "MemberDetails", data: member, status: 200 });
+        try {
+            const member = await this.memberService.getMemberDetails(memberId);
+            return next({ responseSchema: MemberResponseDto, data: member, status: 200 });
+        }
+        catch (err) {
+            next(err);
+        }
     };
     /**
      * GET /api/members
      * List members with filters and pagination
      */
     listMembers = async (req, res, next) => {
-        const result = await this.memberService.listMembers(req.query);
-        next({ dto: "MemberList", data: result, status: 200 });
+        try {
+            const result = await this.memberService.listMembers(req.query);
+            return next({ responseSchema: MemberListResponseDto, data: result, status: 200 });
+        }
+        catch (err) {
+            next(err);
+        }
     };
     // ===== MEMBER MANAGEMENT =====
     /**
@@ -178,8 +262,13 @@ export class MembersController {
     suspendMember = async (req, res, next) => {
         const { memberId } = req.params;
         const { reason, suspendedBy } = req.body;
-        await this.suspendMemberCmd.execute({ memberId, reason, suspendedBy });
-        next({ dto: "Success", data: { success: true }, status: 200 });
+        try {
+            await this.suspendMemberCmd.execute({ memberId, reason, suspendedBy });
+            return next({ responseSchema: SuccessResponseDto, data: { success: true }, status: 200 });
+        }
+        catch (err) {
+            next(err);
+        }
     };
     /**
      * POST /api/members/:memberId/reactivate
@@ -188,8 +277,13 @@ export class MembersController {
     reactivateMember = async (req, res, next) => {
         const { memberId } = req.params;
         const { reactivatedBy } = req.body;
-        await this.reactivateMemberCmd.execute({ memberId, reactivatedBy });
-        next({ dto: "Success", data: { success: true }, status: 200 });
+        try {
+            await this.reactivateMemberCmd.execute({ memberId, reactivatedBy });
+            return next({ responseSchema: SuccessResponseDto, data: { success: true }, status: 200 });
+        }
+        catch (err) {
+            next(err);
+        }
     };
     /**
      * POST /api/members/:memberId/close
@@ -198,21 +292,138 @@ export class MembersController {
     closeMemberAccount = async (req, res, next) => {
         const { memberId } = req.params;
         const { closureReason, walletBalanceRefunded, refundedBy, closureDate } = req.body;
-        await this.closeMemberAccountCmd.execute({
-            memberId,
-            closureReason,
-            walletBalanceRefunded,
-            refundedBy,
-            closureDate: new Date(closureDate),
-        });
-        next({ dto: "Success", data: { success: true }, status: 200 });
+        try {
+            await this.closeMemberAccountCmd.execute({
+                memberId,
+                closureReason,
+                walletBalanceRefunded,
+                refundedBy,
+                closureDate: new Date(closureDate),
+            });
+            return next({ responseSchema: SuccessResponseDto, data: { success: true }, status: 200 });
+        }
+        catch (err) {
+            next(err);
+        }
     };
     /**
      * POST /api/members/search
      * Search members with advanced filtering
      */
     searchMembers = async (req, res, next) => {
-        const result = await this.memberService.searchMembers(req.body);
-        next({ dto: "SearchResult", data: result, status: 200 });
+        try {
+            const result = await this.memberService.searchMembers(req.body);
+            return next({ responseSchema: MemberListResponseDto, data: result, status: 200 });
+        }
+        catch (err) {
+            next(err);
+        }
+    };
+    /**
+     * GET /api/members/metadata
+     * Get metadata for member documents and payments (document types, categories, collection modes)
+     */
+    getMetadata = async (req, res, next) => {
+        try {
+            const metadata = await this.memberService.getMetadata();
+            return next({ responseSchema: MemberMetadataResponseDto, data: metadata, status: 200 });
+        }
+        catch (err) {
+            next(err);
+        }
+    };
+    // ===== PROFILE MANAGEMENT =====
+    /**
+     * GET /api/members/:memberId/profile
+     * Get member profile with wallet information
+     */
+    getMemberProfile = async (req, res, next) => {
+        const { memberId } = req.params;
+        try {
+            const profile = await this.memberService.getMemberProfile(memberId);
+            return next({ responseSchema: MemberResponseDto, data: profile, status: 200 });
+        }
+        catch (err) {
+            next(err);
+        }
+    };
+    /**
+     * GET /api/my-profile
+     * Get logged-in member's profile
+     */
+    getMyProfile = async (req, res, next) => {
+        try {
+            const userId = asyncLocalStorage.getUserId();
+            // Find member by user ID
+            const member = await prisma.member.findFirst({
+                where: { createdBy: userId },
+            });
+            if (!member) {
+                throw new NotFoundError("Member profile not found");
+            }
+            const profile = await this.memberService.getMemberProfile(member.memberId);
+            return next({ responseSchema: MemberResponseDto, data: profile, status: 200 });
+        }
+        catch (err) {
+            next(err);
+        }
+    };
+    /**
+     * PUT /api/members/:memberId/profile
+     * Update member profile (only for approved members)
+     */
+    updateMemberProfile = async (req, res, next) => {
+        const { memberId } = req.params;
+        try {
+            const updated = await this.memberService.updateMemberProfile(memberId, req.body);
+            return next({ responseSchema: MemberResponseDto, data: updated, status: 200 });
+        }
+        catch (err) {
+            next(err);
+        }
+    };
+    /**
+     * GET /api/members/:memberId/documents/:documentId/download
+     * Download document file
+     */
+    downloadDocument = async (req, res, next) => {
+        const { documentId } = req.params;
+        try {
+            const document = await this.memberService.getDocumentsByMemberId(req.params.memberId);
+            const doc = document.find((d) => d.documentId === documentId);
+            if (!doc) {
+                throw new NotFoundError("Document not found");
+            }
+            // Stream file from local path
+            const fs = require('fs');
+            const path = require('path');
+            const filePath = doc.fileUrl;
+            if (!fs.existsSync(filePath)) {
+                throw new NotFoundError("File not found on server");
+            }
+            const fileName = path.basename(filePath);
+            res.setHeader('Content-Type', doc.mimeType);
+            res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+            const fileStream = fs.createReadStream(filePath);
+            fileStream.pipe(res);
+        }
+        catch (err) {
+            next(err);
+        }
+    };
+    /**
+     * GET /api/members/:memberId/benefit
+     * Get member's death benefit amount
+     */
+    getMemberBenefit = async (req, res, next) => {
+        try {
+            const { memberId } = req.params;
+            const benefit = await this.memberService.getMemberBenefitAmount(memberId);
+            return next({ responseSchema: MemberBenefitResponseDto, data: benefit, status: 200 });
+        }
+        catch (err) {
+            next(err);
+        }
     };
 }
+//# sourceMappingURL=controller.js.map

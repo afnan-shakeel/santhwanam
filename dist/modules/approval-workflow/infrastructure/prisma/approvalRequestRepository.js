@@ -60,4 +60,14 @@ export class PrismaApprovalRequestRepository {
             orderBy: { requestedAt: 'desc' },
         });
     }
+    async countPendingByWorkflow(workflowId, tx) {
+        const client = tx ?? prisma;
+        return client.approvalRequest.count({
+            where: {
+                workflowId,
+                status: 'Pending',
+            },
+        });
+    }
 }
+//# sourceMappingURL=approvalRequestRepository.js.map

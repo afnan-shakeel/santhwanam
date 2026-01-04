@@ -24,3 +24,4 @@ export const validateResponse = (schema) => (req, res, next) => {
     return next();
 };
 export default validateResponse;
+//# sourceMappingURL=validateResponse.js.map

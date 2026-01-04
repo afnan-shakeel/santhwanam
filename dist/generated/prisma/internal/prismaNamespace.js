@@ -90,7 +90,15 @@ export const ModelName = {
     ChartOfAccount: 'ChartOfAccount',
     JournalEntry: 'JournalEntry',
     JournalEntryLine: 'JournalEntryLine',
-    FiscalPeriod: 'FiscalPeriod'
+    FiscalPeriod: 'FiscalPeriod',
+    Wallet: 'Wallet',
+    WalletTransaction: 'WalletTransaction',
+    WalletDepositRequest: 'WalletDepositRequest',
+    WalletDebitRequest: 'WalletDebitRequest',
+    DeathClaim: 'DeathClaim',
+    DeathClaimDocument: 'DeathClaimDocument',
+    ContributionCycle: 'ContributionCycle',
+    MemberContribution: 'MemberContribution'
 };
 /**
  * Enums
@@ -195,10 +203,13 @@ export const ApprovalStageScalarFieldEnum = {
     approverType: 'approverType',
     roleId: 'roleId',
     userId: 'userId',
-    hierarchyLevel: 'hierarchyLevel',
+    organizationBody: 'organizationBody',
     isOptional: 'isOptional',
     autoApprove: 'autoApprove',
-    createdAt: 'createdAt'
+    createdBy: 'createdBy',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt',
+    updatedBy: 'updatedBy'
 };
 export const ApprovalRequestScalarFieldEnum = {
     requestId: 'requestId',
@@ -333,6 +344,7 @@ export const MemberScalarFieldEnum = {
     suspensionCounter: 'suspensionCounter',
     suspensionReason: 'suspensionReason',
     suspendedAt: 'suspendedAt',
+    userId: 'userId',
     createdAt: 'createdAt',
     registeredAt: 'registeredAt',
     updatedAt: 'updatedAt',
@@ -479,6 +491,160 @@ export const FiscalPeriodScalarFieldEnum = {
     closedBy: 'closedBy',
     createdAt: 'createdAt'
 };
+export const WalletScalarFieldEnum = {
+    walletId: 'walletId',
+    memberId: 'memberId',
+    currentBalance: 'currentBalance',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+};
+export const WalletTransactionScalarFieldEnum = {
+    transactionId: 'transactionId',
+    walletId: 'walletId',
+    transactionType: 'transactionType',
+    amount: 'amount',
+    balanceAfter: 'balanceAfter',
+    sourceModule: 'sourceModule',
+    sourceEntityId: 'sourceEntityId',
+    description: 'description',
+    journalEntryId: 'journalEntryId',
+    status: 'status',
+    createdBy: 'createdBy',
+    createdAt: 'createdAt'
+};
+export const WalletDepositRequestScalarFieldEnum = {
+    depositRequestId: 'depositRequestId',
+    memberId: 'memberId',
+    walletId: 'walletId',
+    amount: 'amount',
+    collectionDate: 'collectionDate',
+    collectedBy: 'collectedBy',
+    notes: 'notes',
+    requestStatus: 'requestStatus',
+    approvalRequestId: 'approvalRequestId',
+    journalEntryId: 'journalEntryId',
+    createdAt: 'createdAt',
+    approvedAt: 'approvedAt',
+    rejectedAt: 'rejectedAt'
+};
+export const WalletDebitRequestScalarFieldEnum = {
+    debitRequestId: 'debitRequestId',
+    memberId: 'memberId',
+    walletId: 'walletId',
+    amount: 'amount',
+    purpose: 'purpose',
+    contributionCycleId: 'contributionCycleId',
+    contributionId: 'contributionId',
+    status: 'status',
+    createdAt: 'createdAt',
+    acknowledgedAt: 'acknowledgedAt',
+    completedAt: 'completedAt'
+};
+export const DeathClaimScalarFieldEnum = {
+    claimId: 'claimId',
+    claimNumber: 'claimNumber',
+    claimStatus: 'claimStatus',
+    approvalRequestId: 'approvalRequestId',
+    memberId: 'memberId',
+    memberCode: 'memberCode',
+    memberName: 'memberName',
+    tierId: 'tierId',
+    agentId: 'agentId',
+    unitId: 'unitId',
+    areaId: 'areaId',
+    forumId: 'forumId',
+    deathDate: 'deathDate',
+    deathPlace: 'deathPlace',
+    causeOfDeath: 'causeOfDeath',
+    reportedBy: 'reportedBy',
+    reportedByRole: 'reportedByRole',
+    reportedDate: 'reportedDate',
+    initialNotes: 'initialNotes',
+    nomineeId: 'nomineeId',
+    nomineeName: 'nomineeName',
+    nomineeRelation: 'nomineeRelation',
+    nomineeContactNumber: 'nomineeContactNumber',
+    nomineeAddress: 'nomineeAddress',
+    benefitAmount: 'benefitAmount',
+    verificationStatus: 'verificationStatus',
+    verifiedBy: 'verifiedBy',
+    verifiedDate: 'verifiedDate',
+    verificationNotes: 'verificationNotes',
+    settlementStatus: 'settlementStatus',
+    paymentMethod: 'paymentMethod',
+    paymentReference: 'paymentReference',
+    paymentDate: 'paymentDate',
+    paidBy: 'paidBy',
+    nomineeAcknowledgment: 'nomineeAcknowledgment',
+    journalEntryId: 'journalEntryId',
+    createdAt: 'createdAt',
+    approvedAt: 'approvedAt',
+    settledAt: 'settledAt',
+    updatedAt: 'updatedAt',
+    approvedBy: 'approvedBy',
+    rejectedBy: 'rejectedBy',
+    rejectionReason: 'rejectionReason'
+};
+export const DeathClaimDocumentScalarFieldEnum = {
+    documentId: 'documentId',
+    claimId: 'claimId',
+    documentType: 'documentType',
+    documentName: 'documentName',
+    fileUrl: 'fileUrl',
+    fileSize: 'fileSize',
+    mimeType: 'mimeType',
+    uploadedBy: 'uploadedBy',
+    uploadedAt: 'uploadedAt',
+    verificationStatus: 'verificationStatus',
+    verifiedBy: 'verifiedBy',
+    verifiedAt: 'verifiedAt',
+    rejectionReason: 'rejectionReason'
+};
+export const ContributionCycleScalarFieldEnum = {
+    cycleId: 'cycleId',
+    cycleNumber: 'cycleNumber',
+    deathClaimId: 'deathClaimId',
+    claimNumber: 'claimNumber',
+    deceasedMemberId: 'deceasedMemberId',
+    deceasedMemberName: 'deceasedMemberName',
+    benefitAmount: 'benefitAmount',
+    forumId: 'forumId',
+    startDate: 'startDate',
+    collectionDeadline: 'collectionDeadline',
+    cycleStatus: 'cycleStatus',
+    totalMembers: 'totalMembers',
+    totalExpectedAmount: 'totalExpectedAmount',
+    totalCollectedAmount: 'totalCollectedAmount',
+    totalPendingAmount: 'totalPendingAmount',
+    membersCollected: 'membersCollected',
+    membersPending: 'membersPending',
+    membersMissed: 'membersMissed',
+    closedDate: 'closedDate',
+    closedBy: 'closedBy',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+};
+export const MemberContributionScalarFieldEnum = {
+    contributionId: 'contributionId',
+    cycleId: 'cycleId',
+    memberId: 'memberId',
+    memberCode: 'memberCode',
+    memberName: 'memberName',
+    tierId: 'tierId',
+    agentId: 'agentId',
+    expectedAmount: 'expectedAmount',
+    contributionStatus: 'contributionStatus',
+    paymentMethod: 'paymentMethod',
+    collectionDate: 'collectionDate',
+    collectedBy: 'collectedBy',
+    walletDebitRequestId: 'walletDebitRequestId',
+    debitAcknowledgedAt: 'debitAcknowledgedAt',
+    cashReceiptReference: 'cashReceiptReference',
+    journalEntryId: 'journalEntryId',
+    isConsecutiveMiss: 'isConsecutiveMiss',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+};
 export const SortOrder = {
     asc: 'asc',
     desc: 'desc'
@@ -504,3 +670,4 @@ export const NullsOrder = {
     last: 'last'
 };
 export const defineExtension = runtime.Extensions.defineExtension;
+//# sourceMappingURL=prismaNamespace.js.map

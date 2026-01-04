@@ -21,3 +21,4 @@ export const UnitsSearchResponseDto = z.object({
     totalPages: z.number(),
 });
 export default UnitDto;
+//# sourceMappingURL=unitDtos.js.map

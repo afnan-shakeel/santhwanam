@@ -4,6 +4,7 @@
  */
 export var WorkflowModule;
 (function (WorkflowModule) {
+    WorkflowModule["Agents"] = "Agents";
     WorkflowModule["Membership"] = "Membership";
     WorkflowModule["Wallet"] = "Wallet";
     WorkflowModule["Claims"] = "Claims";
@@ -15,13 +16,14 @@ export var ApproverType;
     ApproverType["Role"] = "Role";
     ApproverType["SpecificUser"] = "SpecificUser";
     ApproverType["Hierarchy"] = "Hierarchy";
+    ApproverType["OrganizationAdmin"] = "OrganizationAdmin";
 })(ApproverType || (ApproverType = {}));
-export var HierarchyLevel;
-(function (HierarchyLevel) {
-    HierarchyLevel["Unit"] = "Unit";
-    HierarchyLevel["Area"] = "Area";
-    HierarchyLevel["Forum"] = "Forum";
-})(HierarchyLevel || (HierarchyLevel = {}));
+export var organizationBody;
+(function (organizationBody) {
+    organizationBody["Unit"] = "Unit";
+    organizationBody["Area"] = "Area";
+    organizationBody["Forum"] = "Forum";
+})(organizationBody || (organizationBody = {}));
 export var ApprovalRequestStatus;
 (function (ApprovalRequestStatus) {
     ApprovalRequestStatus["Pending"] = "Pending";
@@ -41,3 +43,4 @@ export var ApprovalDecision;
     ApprovalDecision["Approve"] = "Approve";
     ApprovalDecision["Reject"] = "Reject";
 })(ApprovalDecision || (ApprovalDecision = {}));
+//# sourceMappingURL=entities.js.map

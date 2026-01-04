@@ -8,3 +8,4 @@ export class MemberDocumentRemovedEvent extends DomainEvent {
         return this.payload;
     }
 }
+//# sourceMappingURL=member-document-removed.event.js.map

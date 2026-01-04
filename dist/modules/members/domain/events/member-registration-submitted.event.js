@@ -8,3 +8,4 @@ export class MemberRegistrationSubmittedEvent extends DomainEvent {
         return this.payload;
     }
 }
+//# sourceMappingURL=member-registration-submitted.event.js.map

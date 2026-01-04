@@ -20,3 +20,4 @@ export var Gender;
     Gender["Female"] = "Female";
     Gender["Other"] = "Other";
 })(Gender || (Gender = {}));
+//# sourceMappingURL=entities.js.map

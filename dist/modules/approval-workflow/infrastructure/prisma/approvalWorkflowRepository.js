@@ -22,6 +22,7 @@ export class PrismaApprovalWorkflowRepository {
         const client = tx ?? prisma;
         return client.approvalWorkflow.findUnique({
             where: { workflowId },
+            include: { stages: true },
         });
     }
     async findByCode(workflowCode, tx) {
@@ -57,3 +58,4 @@ export class PrismaApprovalWorkflowRepository {
         });
     }
 }
+//# sourceMappingURL=approvalWorkflowRepository.js.map

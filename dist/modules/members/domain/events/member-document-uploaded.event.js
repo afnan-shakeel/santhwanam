@@ -8,3 +8,4 @@ export class MemberDocumentUploadedEvent extends DomainEvent {
         return this.payload;
     }
 }
+//# sourceMappingURL=member-document-uploaded.event.js.map

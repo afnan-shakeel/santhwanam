@@ -381,6 +381,82 @@ export class DeathClaimService {
   }
 
   /**
+   * Command: VerifyIndividualDocument
+   * Verifies a single document and checks if all documents are verified
+   */
+  async verifyIndividualDocument(
+    claimId: string,
+    documentId: string,
+    verifiedBy: string,
+    verificationStatus: ClaimDocumentVerificationStatus,
+    notes?: string,
+    rejectionReason?: string
+  ): Promise<DeathClaimDocument> {
+    return await prisma.$transaction(async (tx: any) => {
+      // 1. Validate claim exists
+      const claim = await this.deathClaimRepo.findById(claimId, tx);
+      if (!claim) {
+        throw new NotFoundError('Death claim not found');
+      }
+
+      // 2. Validate document exists and belongs to claim
+      const document = await this.deathClaimDocumentRepo.findById(documentId, tx);
+      if (!document || document.claimId !== claimId) {
+        throw new NotFoundError('Document not found or does not belong to this claim');
+      }
+
+      // 3. Update document verification status
+      const updatedDocument = await this.deathClaimDocumentRepo.update(
+        documentId,
+        {
+          verificationStatus,
+          verifiedBy,
+          verifiedAt: new Date(),
+          rejectionReason: verificationStatus === ClaimDocumentVerificationStatus.Rejected ? rejectionReason : null,
+        },
+        tx
+      );
+
+      // 4. Check if all documents are now verified
+      const allDocuments = await this.deathClaimDocumentRepo.findByClaimId(claimId, tx);
+      const allVerified = allDocuments.every(
+        (doc) => doc.verificationStatus === ClaimDocumentVerificationStatus.Verified
+      );
+
+      // 5. If all documents verified, update claim status
+      if (allVerified && claim.claimStatus === DeathClaimStatus.UnderVerification) {
+        await this.deathClaimRepo.update(
+          claimId,
+          {
+            claimStatus: DeathClaimStatus.Verified,
+            verificationStatus: DeathClaimVerificationStatus.Completed,
+            verifiedBy,
+            verifiedDate: new Date(),
+            verificationNotes: notes || 'All documents verified individually',
+            updatedAt: new Date(),
+          },
+          tx
+        );
+
+        // Emit event
+        eventBus.publish(
+          new ClaimDocumentsVerifiedEvent(
+            {
+              claimId: claim.claimId,
+              claimNumber: claim.claimNumber,
+              verifiedBy,
+              verifiedDate: new Date(),
+            },
+            verifiedBy
+          )
+        );
+      }
+
+      return updatedDocument;
+    });
+  }
+
+  /**
    * Command: SubmitClaimForApproval
    * Submits a verified claim to the approval workflow
    */
@@ -654,10 +730,38 @@ export class DeathClaimService {
   }
 
   /**
+   * Query: Get claim by ID with full details
+   */
+  async getClaimByIdWithDetails(claimId: string): Promise<any> {
+    const claim = await this.deathClaimRepo.findByIdWithDetails(claimId);
+    if (!claim) {
+      throw new NotFoundError('Death claim not found');
+    }
+    console.log(JSON.stringify(claim, null, 2));
+    return claim;
+  }
+
+  /**
    * Query: Get claim documents
    */
   async getClaimDocuments(claimId: string): Promise<DeathClaimDocument[]> {
     return await this.deathClaimDocumentRepo.findByClaimId(claimId);
+  }
+
+  /**
+   * Query: Get document file
+   */
+  async getDocumentFile(claimId: string, documentId: string): Promise<{ buffer: Buffer; document: DeathClaimDocument }> {
+    // 1. Validate document exists and belongs to claim
+    const document = await this.deathClaimDocumentRepo.findById(documentId);
+    if (!document || document.claimId !== claimId) {
+      throw new NotFoundError('Document not found or does not belong to this claim');
+    }
+
+    // 2. Get file from storage
+    const fileBuffer = await this.fileUploadService.getFile(document.fileUrl);
+
+    return { buffer: fileBuffer, document };
   }
 
   /**
@@ -671,8 +775,8 @@ export class DeathClaimService {
     agentId?: string;
     skip?: number;
     take?: number;
-  }): Promise<{ claims: DeathClaim[]; total: number }> {
-    return await this.deathClaimRepo.list({
+  }): Promise<{ items: DeathClaim[]; total: number, page: number, pageSize: number, totalPages: number }> {
+     const result = await this.deathClaimRepo.list({
       claimStatus: filters.claimStatus,
       forumId: filters.forumId,
       areaId: filters.areaId,
@@ -681,5 +785,22 @@ export class DeathClaimService {
       skip: filters.skip || 0,
       take: filters.take || 20,
     });
+
+    const page = filters.skip && filters.take ? Math.floor(filters.skip / filters.take) + 1 : 1;
+
+    return {
+        items: result.claims,
+        total: result.total,
+        page: page,
+        pageSize: result.claims.length,
+        totalPages: Math.ceil(result.total / (filters.take || 20)),
+    } 
+  }
+
+  /**
+   * Query: Get dashboard statistics
+   */
+  async getDashboardStats() {
+    return await this.deathClaimRepo.getDashboardStats();
   }
 }

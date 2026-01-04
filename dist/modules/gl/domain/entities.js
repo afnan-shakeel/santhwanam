@@ -106,3 +106,4 @@ export const STANDARD_CHART_OF_ACCOUNTS = [
         isSystemAccount: false,
     },
 ];
+//# sourceMappingURL=entities.js.map

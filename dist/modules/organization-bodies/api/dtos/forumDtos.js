@@ -19,3 +19,4 @@ export const ForumsSearchResponseDto = z.object({
     totalPages: z.number(),
 });
 export default ForumDto;
+//# sourceMappingURL=forumDtos.js.map

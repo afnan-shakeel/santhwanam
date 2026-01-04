@@ -28,3 +28,4 @@ export class RevokeRoleFromUserHandler {
     }
 }
 export const revokeRoleFromUserHandler = new RevokeRoleFromUserHandler();
+//# sourceMappingURL=revokeRoleFromUserCommand.js.map

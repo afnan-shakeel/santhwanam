@@ -38,3 +38,4 @@ router.get('/docs', (_req, res) => {
     res.type('html').send(html);
 });
 export default router;
+//# sourceMappingURL=router.js.map

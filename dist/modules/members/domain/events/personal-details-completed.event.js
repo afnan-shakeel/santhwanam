@@ -8,3 +8,4 @@ export class PersonalDetailsCompletedEvent extends DomainEvent {
         return this.payload;
     }
 }
+//# sourceMappingURL=personal-details-completed.event.js.map

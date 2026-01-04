@@ -69,6 +69,167 @@ export class PrismaDeathClaimRepository implements DeathClaimRepository {
     return claim ? this.mapToDomain(claim) : null;
   }
 
+  async findByIdWithDetails(claimId: string, tx?: any): Promise<any | null> {
+    const db = tx || prisma;
+
+    const claim = await db.deathClaim.findUnique({
+      where: { claimId },
+      include: {
+        member: {
+          include: {
+            tier: true,
+            agent: true,
+            unit: {
+              include: {
+                area: {
+                  include: {
+                    forum: true,
+                  },
+                },
+              },
+            },
+            nominees: true,
+            wallet: true,
+          },
+        },
+        documents: {
+          orderBy: { uploadedAt: 'desc' },
+        },
+        contributionCycles: {
+          include: {
+            contributions: {
+              where: { contributionStatus: { in: ['Collected', 'Pending', 'Missed'] } },
+              select: {
+                contributionStatus: true,
+                expectedAmount: true,
+              },
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
+      },
+    });
+
+    if (!claim) return null;
+
+    // Get member's contribution stats
+    const contributionStats = await db.memberContribution.aggregate({
+      where: { memberId: claim.memberId },
+      _count: { contributionId: true },
+      _sum: { expectedAmount: true },
+    });
+
+    // Get member's wallet balance
+    const memberWallet = await db.wallet.findUnique({
+      where: { memberId: claim.memberId },
+      select: { currentBalance: true },
+    });
+
+    return {
+      ...this.mapToDomain(claim),
+      memberDetails: {
+        memberId: claim.member.memberId,
+        memberCode: claim.member.memberCode,
+        fullName: `${claim.member.firstName} ${claim.member.lastName}`,
+        dateOfBirth: claim.member.dateOfBirth,
+        tier: {
+          tierId: claim.member.tier.tierId,
+          tierName: claim.member.tier.tierName,
+          deathBenefit: Number(claim.member.tier.deathBenefitAmount),
+          contributionAmount: Number(claim.member.tier.expectedAmount),
+        },
+        agent: {
+          agentId: claim.member.agent.agentId,
+          agentCode: claim.member.agent.agentCode,
+          fullName: `${claim.member.agent.firstName} ${claim.member.agent.lastName}`,
+        },
+        unit: {
+          unitId: claim.member.unit.unitId,
+          unitName: claim.member.unit.unitName,
+          area: {
+            areaId: claim.member.unit.area.areaId,
+            areaName: claim.member.unit.area.areaName,
+            forum: {
+              forumId: claim.member.unit.area.forum.forumId,
+              forumName: claim.member.unit.area.forum.forumName,
+            },
+          },
+        },
+        membershipStartDate: claim.member.createdAt,
+        membershipDuration: this.calculateDuration(claim.member.createdAt, claim.deathDate),
+        contributionsPaid: contributionStats._count.contributionId || 0,
+        totalContributed: Number(contributionStats._sum.expectedAmount || 0),
+        walletBalance: Number(memberWallet?.currentBalance || 0),
+      },
+      nominees: claim.member.nominees.map((nominee: any) => ({
+        nomineeId: nominee.nomineeId,
+        fullName: nominee.name,
+        relationship: nominee.relationType,
+        phone: nominee.contactNumber,
+        idNumber: nominee.idProofNumber,
+        dateOfBirth: nominee.dateOfBirth,
+        addressLine1: nominee.addressLine1,
+        addressLine2: nominee.addressLine2,
+        city: nominee.city,
+        postalCode: nominee.postalCode,
+        state: nominee.state,
+        country: nominee.country,
+        priority: nominee.priority,
+      })),
+      documents: claim.documents.map((doc: any) => ({
+        documentId: doc.documentId,
+        documentType: doc.documentType,
+        documentName: doc.documentName,
+        fileSize: doc.fileSize,
+        fileUrl: doc.fileUrl,
+        uploadedAt: doc.uploadedAt,
+        uploadedBy: doc.uploadedBy,
+        verificationStatus: doc.verificationStatus,
+        verifiedBy: doc.verifiedBy,
+        verifiedAt: doc.verifiedAt,
+        rejectionReason: doc.rejectionReason,
+      })),
+      contributionCycle: claim.contributionCycles[0] ? {
+        cycleId: claim.contributionCycles[0].cycleId,
+        cycleNumber: claim.contributionCycles[0].cycleNumber,
+        cycleStatus: claim.contributionCycles[0].cycleStatus,
+        benefitAmount: Number(claim.contributionCycles[0].benefitAmount),
+        expectedAmount: claim.contributionCycles[0].totalMembers > 0
+          ? Number(claim.contributionCycles[0].benefitAmount) / claim.contributionCycles[0].totalMembers
+          : 0,
+        totalMembers: claim.contributionCycles[0].totalMembers,
+        collectedAmount: Number(claim.contributionCycles[0].totalCollectedAmount),
+        collectionPercentage: claim.contributionCycles[0].totalMembers > 0
+          ? Math.round((claim.contributionCycles[0].membersCollected / claim.contributionCycles[0].totalMembers) * 100)
+          : 0,
+        paidMembers: claim.contributionCycles[0].membersCollected,
+        pendingMembers: claim.contributionCycles[0].membersPending,
+        failedMembers: claim.contributionCycles[0].membersMissed,
+        startDate: claim.contributionCycles[0].startDate,
+        collectionDeadline: claim.contributionCycles[0].collectionDeadline,
+        daysRemaining: this.calculateDaysRemaining(claim.contributionCycles[0].collectionDeadline),
+      } : null,
+    };
+  }
+
+  private calculateDuration(startDate: Date, endDate: Date): string {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const diffMs = end.getTime() - start.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const months = Math.floor(diffDays / 30);
+    const days = diffDays % 30;
+    return `${months} months, ${days} days`;
+  }
+
+  private calculateDaysRemaining(gracePeriodEnds: Date): number {
+    const now = new Date();
+    const diffMs = new Date(gracePeriodEnds).getTime() - now.getTime();
+    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    return diffDays > 0 ? diffDays : 0;
+  }
+
   async findByClaimNumber(claimNumber: string, tx?: any): Promise<DeathClaim | null> {
     const db = tx || prisma;
 
@@ -171,6 +332,103 @@ export class PrismaDeathClaimRepository implements DeathClaimRepository {
     return {
       claims: claims.map((c: any) => this.mapToDomain(c)),
       total,
+    };
+  }
+
+  async getDashboardStats(tx?: any): Promise<{
+    pendingVerification: number;
+    underContribution: number;
+    approvedForPayout: number;
+    totalThisYear: number;
+    totalBenefitsPaidYTD: number;
+    pendingCollections: number;
+    successRate: number;
+  }> {
+    const db = tx || prisma;
+    const currentYear = new Date().getFullYear();
+    const yearStart = new Date(currentYear, 0, 1);
+
+    // Count claims by status
+    const [
+      pendingVerification,
+      underContribution,
+      approvedForPayout,
+      totalThisYear,
+      totalAllTime,
+      approvedAllTime,
+      settledClaims,
+    ] = await Promise.all([
+      db.deathClaim.count({
+        where: { claimStatus: 'UnderVerification' },
+      }),
+      db.deathClaim.count({
+        where: { claimStatus: 'Approved' },
+      }),
+      db.deathClaim.count({
+        where: { 
+          claimStatus: 'Approved',
+          settlementStatus: 'Pending',
+        },
+      }),
+      db.deathClaim.count({
+        where: {
+          createdAt: { gte: yearStart },
+        },
+      }),
+      db.deathClaim.count(),
+      db.deathClaim.count({
+        where: { claimStatus: 'Approved' },
+      }),
+      db.deathClaim.findMany({
+        where: {
+          settlementStatus: 'Completed',
+          settledAt: { gte: yearStart },
+        },
+        select: {
+          benefitAmount: true,
+        },
+      }),
+    ]);
+
+    // Calculate total benefits paid YTD
+    const totalBenefitsPaidYTD = settledClaims.reduce(
+      (sum, claim) => sum + (claim.benefitAmount ? Number(claim.benefitAmount) : 0),
+      0
+    );
+
+    // Get pending collections from contribution cycles
+    const contributionCycles = await db.contributionCycle.findMany({
+      where: {
+        cycleStatus: 'Active',
+      },
+      select: {
+        benefitAmount: true,
+        totalMembers: true,
+        membersCollected: true,
+      },
+    });
+
+    const pendingCollections = contributionCycles.reduce(
+      (sum, cycle) => {
+        const pendingMembers = cycle.totalMembers - cycle.collectedCount;
+        return sum + pendingMembers * Number(cycle.benefitAmount);
+      },
+      0
+    );
+
+    // Calculate success rate (Approved claims / Total claims)
+    const successRate = totalAllTime > 0 
+      ? Math.round((approvedAllTime / totalAllTime) * 100) 
+      : 0;
+
+    return {
+      pendingVerification,
+      underContribution,
+      approvedForPayout,
+      totalThisYear,
+      totalBenefitsPaidYTD,
+      pendingCollections,
+      successRate,
     };
   }
 

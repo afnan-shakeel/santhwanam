@@ -233,6 +233,14 @@ export const MemberMetadataResponseDto = z.object({
   ),
 });
 
+// Member benefit response
+export const MemberBenefitResponseDto = z.object({
+  memberId: z.string(),
+  memberCode: z.string(),
+  tierName: z.string(),
+  deathBenefitAmount: z.any(),
+});
+
 // Type exports
 export type MemberResponse = z.infer<typeof MemberResponseDto>;
 export type NomineeResponse = z.infer<typeof NomineeResponseDto>;
@@ -245,3 +253,4 @@ export type MemberDetailsResponse = z.infer<typeof MemberDetailsResponseDto>;
 export type MemberListResponse = z.infer<typeof MemberListResponseDto>;
 export type SuccessResponse = z.infer<typeof SuccessResponseDto>;
 export type MemberMetadataResponse = z.infer<typeof MemberMetadataResponseDto>;
+export type MemberBenefitResponse = z.infer<typeof MemberBenefitResponseDto>;

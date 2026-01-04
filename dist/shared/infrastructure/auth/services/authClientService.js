@@ -79,3 +79,4 @@ export class AuthClientService {
 }
 // Default singleton
 export const authClientService = new AuthClientService();
+//# sourceMappingURL=authClientService.js.map

@@ -32,3 +32,4 @@ export class PermissionService {
         return this.repo.updateById(permissionId, updates);
     }
 }
+//# sourceMappingURL=permissionService.js.map

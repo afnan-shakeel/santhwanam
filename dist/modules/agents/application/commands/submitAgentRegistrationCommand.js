@@ -51,3 +51,4 @@ export class SubmitAgentRegistrationHandler {
         };
     }
 }
+//# sourceMappingURL=submitAgentRegistrationCommand.js.map

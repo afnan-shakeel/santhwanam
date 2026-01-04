@@ -8,3 +8,4 @@ export class AgentTerminatedEvent extends DomainEvent {
         return this.payload;
     }
 }
+//# sourceMappingURL=agent-terminated.event.js.map

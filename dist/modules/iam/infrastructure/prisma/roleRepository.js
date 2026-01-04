@@ -99,3 +99,4 @@ export class PrismaRoleRepository {
         };
     }
 }
+//# sourceMappingURL=roleRepository.js.map

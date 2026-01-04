@@ -15,6 +15,7 @@ import {
   MemberListResponseDto,
   SuccessResponseDto,
   MemberMetadataResponseDto,
+  MemberBenefitResponseDto,
 } from './dtos/responseDtos'
 import type { MemberService } from "../application/memberService";
 import type { SubmitMemberRegistrationHandler } from "../application/commands/submitMemberRegistrationCommand";
@@ -497,6 +498,21 @@ export class MembersController {
       fileStream.pipe(res);
     } catch (err) {
       next(err)
+    }
+  };
+
+  /**
+   * GET /api/members/:memberId/benefit
+   * Get member's death benefit amount
+   */
+  getMemberBenefit = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { memberId } = req.params;
+      const benefit = await this.memberService.getMemberBenefitAmount(memberId);
+      
+      return next({ responseSchema: MemberBenefitResponseDto, data: benefit, status: 200 });
+    } catch (err) {
+      next(err);
     }
   };
 }

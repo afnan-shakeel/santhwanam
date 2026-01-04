@@ -1,13 +1,14 @@
 // Application: Member Service
 // Handles member registration workflow (Steps 1-3)
 import { v4 as uuidv4 } from "uuid";
-import { RegistrationStatus, RegistrationStep, DocumentCategory, } from "../domain/entities";
+import { RegistrationStatus, RegistrationStep, DocumentType, DocumentCategory, CollectionMode, } from "../domain/entities";
 import { BadRequestError, NotFoundError, } from "@/shared/utils/error-handling/httpErrors";
 import prisma from "@/shared/infrastructure/prisma/prismaClient";
 import { eventBus } from "@/shared/domain/events/event-bus";
 import { searchService } from "@/shared/infrastructure/search";
 import { MemberRegistrationStartedEvent, MemberDraftSavedEvent, PersonalDetailsCompletedEvent, NomineeAddedEvent, NomineeUpdatedEvent, NomineeRemovedEvent, NomineesStepCompletedEvent, MemberDocumentUploadedEvent, MemberDocumentRemovedEvent, RegistrationPaymentRecordedEvent, } from "../domain/events";
 import { generateMemberCode, calculateAge } from "./helpers";
+import { asyncLocalStorage } from "@/shared/infrastructure/context";
 export class MemberService {
     memberRepository;
     nomineeRepository;
@@ -42,6 +43,8 @@ export class MemberService {
             // Get unit details for denormalization (assuming unit exists from validation in controller)
             // In production, fetch unit to get areaId and forumId
             // For now, we'll need to pass these or fetch from a unit repository
+            // if not createdBy, add it
+            const userId = asyncLocalStorage.getUserId();
             // Create member record
             const memberId = uuidv4();
             const member = await this.memberRepository.create({
@@ -74,7 +77,7 @@ export class MemberService {
                 suspensionReason: null,
                 suspendedAt: null,
                 registeredAt: null,
-                createdBy: input.createdBy,
+                createdBy: userId,
                 approvedBy: null,
             }, tx);
             // Emit event
@@ -282,9 +285,10 @@ export class MemberService {
             if (!member || member.registrationStatus !== RegistrationStatus.Draft) {
                 throw new BadRequestError("Invalid member or status");
             }
-            if (member.registrationStep !== RegistrationStep.Nominees) {
-                throw new BadRequestError("Invalid registration step");
-            }
+            // commenting to allow backward compatibility
+            // if (member.registrationStep !== RegistrationStep.Nominees) {
+            //   throw new BadRequestError("Invalid registration step");
+            // }
             // Validate nominees exist
             const nominees = await this.nomineeRepository.findActiveByMemberId(memberId, tx);
             if (nominees.length === 0) {
@@ -332,6 +336,7 @@ export class MemberService {
                     throw new NotFoundError("Nominee not found");
                 }
             }
+            const uploadedBy = asyncLocalStorage.getUserId();
             // Create document record
             const documentId = uuidv4();
             const document = await this.memberDocumentRepository.create({
@@ -344,7 +349,7 @@ export class MemberService {
                 fileUrl: input.fileUrl,
                 fileSize: input.fileSize,
                 mimeType: input.mimeType,
-                uploadedBy: input.uploadedBy,
+                uploadedBy: uploadedBy,
                 uploadedAt: new Date(),
                 verificationStatus: "Pending",
                 verifiedBy: null,
@@ -419,10 +424,10 @@ export class MemberService {
             if (member.registrationStep !== RegistrationStep.DocumentsPayment) {
                 throw new BadRequestError("Cannot record payment at this step");
             }
-            // Verify agent
-            if (member.agentId !== input.collectedBy) {
-                throw new BadRequestError("Only assigned agent can record payment");
-            }
+            // // Verify agent
+            // if (member.agentId !== input.collectedBy) {
+            //   throw new BadRequestError("Only assigned agent can record payment");
+            // } temp commentingg
             // Validate amounts match tier
             const tier = await this.membershipTierRepository.findById(member.tierId, tx);
             if (!tier) {
@@ -630,4 +635,152 @@ export class MemberService {
             model: "Member"
         });
     }
+    /**
+     * Get metadata for member documents and payments
+     * Returns lists of document types, categories, and collection modes
+     */
+    async getMetadata() {
+        return {
+            documentTypes: Object.values(DocumentType).map(type => ({
+                value: type,
+                label: type.replace(/([A-Z])/g, ' $1').trim()
+            })),
+            documentCategories: Object.values(DocumentCategory).map(category => ({
+                value: category,
+                label: category.replace(/([A-Z])/g, ' $1').trim()
+            })),
+            collectionModes: Object.values(CollectionMode).map(mode => ({
+                value: mode,
+                label: mode.replace(/([A-Z])/g, ' $1').trim()
+            }))
+        };
+    }
+    // ===== PROFILE MANAGEMENT =====
+    /**
+     * Get member profile with wallet information
+     * Enhanced version of getMemberDetails for profile page
+     */
+    async getMemberProfile(memberId) {
+        const member = await prisma.member.findUnique({
+            where: { memberId },
+            include: {
+                agent: {
+                    select: {
+                        agentId: true,
+                        agentCode: true,
+                        firstName: true,
+                        lastName: true,
+                        middleName: true,
+                        contactNumber: true,
+                        email: true,
+                    },
+                },
+                unit: {
+                    select: {
+                        unitId: true,
+                        unitCode: true,
+                        unitName: true,
+                        forumId: true,
+                        area: {
+                            select: {
+                                areaId: true,
+                                areaCode: true,
+                                areaName: true,
+                                forum: {
+                                    select: {
+                                        forumId: true,
+                                        forumCode: true,
+                                        forumName: true,
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+                tier: {
+                    select: {
+                        tierId: true,
+                        tierCode: true,
+                        tierName: true,
+                        registrationFee: true,
+                        advanceDepositAmount: true,
+                        contributionAmount: true,
+                        deathBenefitAmount: true,
+                    },
+                },
+                nominees: {
+                    where: { isActive: true },
+                    orderBy: { priority: "asc" },
+                },
+                documents: {
+                    where: { isActive: true },
+                    orderBy: { uploadedAt: "desc" },
+                },
+                payment: true,
+                wallet: {
+                    select: {
+                        walletId: true,
+                        currentBalance: true,
+                        createdAt: true,
+                        updatedAt: true,
+                    },
+                },
+            },
+        });
+        if (!member) {
+            throw new NotFoundError("Member not found");
+        }
+        return member;
+    }
+    /**
+     * Update member profile (only for approved members)
+     * Limited fields: contact info and address
+     */
+    async updateMemberProfile(memberId, input) {
+        return prisma.$transaction(async (tx) => {
+            const member = await this.memberRepository.findById(memberId, tx);
+            if (!member) {
+                throw new NotFoundError("Member not found");
+            }
+            // Only approved members can update profile
+            if (member.registrationStatus !== RegistrationStatus.Approved) {
+                throw new BadRequestError("Profile can only be updated for approved members");
+            }
+            // Validate age if dateOfBirth is being updated
+            if (input.dateOfBirth) {
+                const age = calculateAge(input.dateOfBirth);
+                if (age < 18) {
+                    throw new BadRequestError("Member must be at least 18 years old");
+                }
+            }
+            // Update member profile
+            const updated = await this.memberRepository.update(memberId, {
+                ...input,
+                updatedAt: new Date(),
+            }, tx);
+            return updated;
+        });
+    }
+    /**
+     * Get member's death benefit amount from their tier
+     */
+    async getMemberBenefitAmount(memberId) {
+        const member = await this.memberRepository.findById(memberId);
+        if (!member) {
+            throw new NotFoundError("Member not found");
+        }
+        const tier = await this.membershipTierRepository.findById(member.tierId);
+        if (!tier) {
+            throw new NotFoundError("Membership tier not found");
+        }
+        return {
+            memberId: member.memberId,
+            memberCode: member.memberCode,
+            memberName: `${member.firstName} ${member.lastName}`,
+            tierId: tier.tierId,
+            tierName: tier.tierName,
+            deathBenefit: Number(tier.deathBenefitAmount),
+        };
+    }
 }
+//# sourceMappingURL=memberService.js.map

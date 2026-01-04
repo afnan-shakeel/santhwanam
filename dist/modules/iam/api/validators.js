@@ -49,3 +49,4 @@ export const updateUserSchema = z.object({
     isActive: z.boolean().optional(),
     userMetadata: z.any().optional(),
 });
+//# sourceMappingURL=validators.js.map

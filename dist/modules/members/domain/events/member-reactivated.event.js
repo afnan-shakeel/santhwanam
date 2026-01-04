@@ -8,3 +8,4 @@ export class MemberReactivatedEvent extends DomainEvent {
         return this.payload;
     }
 }
+//# sourceMappingURL=member-reactivated.event.js.map

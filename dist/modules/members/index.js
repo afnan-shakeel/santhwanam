@@ -63,3 +63,4 @@ const membersController = new MembersController(memberService, submitRegistratio
 const membersRouter = createMembersRouter(membersController);
 // Exports
 export { membersRouter, memberService, memberRepo, nomineeRepo, memberDocumentRepo, registrationPaymentRepo, membershipTierRepo, };
+//# sourceMappingURL=index.js.map

@@ -4,9 +4,20 @@
 
 import { DeathClaim, DeathClaimDocument } from './entities';
 
+export interface DashboardStats {
+  pendingVerification: number;
+  underContribution: number;
+  approvedForPayout: number;
+  totalThisYear: number;
+  totalBenefitsPaidYTD: number;
+  pendingCollections: number;
+  successRate: number;
+}
+
 export interface DeathClaimRepository {
   create(data: Omit<DeathClaim, 'createdAt' | 'updatedAt'>, tx?: any): Promise<DeathClaim>;
   findById(claimId: string, tx?: any): Promise<DeathClaim | null>;
+  findByIdWithDetails(claimId: string, tx?: any): Promise<any | null>;
   findByClaimNumber(claimNumber: string, tx?: any): Promise<DeathClaim | null>;
   findByMemberId(memberId: string, tx?: any): Promise<DeathClaim | null>;
   update(claimId: string, data: Partial<DeathClaim>, tx?: any): Promise<DeathClaim>;
@@ -20,6 +31,7 @@ export interface DeathClaimRepository {
     skip?: number;
     take?: number;
   }, tx?: any): Promise<{ claims: DeathClaim[]; total: number }>;
+  getDashboardStats(tx?: any): Promise<DashboardStats>;
 }
 
 export interface DeathClaimDocumentRepository {

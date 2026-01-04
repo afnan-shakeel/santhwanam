@@ -64,3 +64,4 @@ router.get('/reports/trial-balance', validateBody(validators.trialBalanceSchema)
 router.get('/reports/income-statement', validateBody(validators.incomeStatementSchema), glController.getIncomeStatement);
 router.get('/reports/balance-sheet', validateBody(validators.balanceSheetSchema), glController.getBalanceSheet);
 export default router;
+//# sourceMappingURL=router.js.map

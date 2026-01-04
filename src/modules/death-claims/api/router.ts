@@ -9,6 +9,8 @@ import {
   reportDeathSchema,
   uploadClaimDocumentSchema,
   verifyClaimDocumentsSchema,
+  verifyIndividualDocumentSchema,
+  downloadDocumentSchema,
   submitClaimForApprovalSchema,
   settleDeathClaimSchema,
   getClaimByIdSchema,
@@ -42,7 +44,20 @@ export function createDeathClaimsRouter(controller: DeathClaimsController): Rout
     controller.getClaimDocuments
   );
 
+  router.get(
+    '/:claimId/documents/:documentId/download',
+    validateParams(downloadDocumentSchema),
+    controller.downloadDocument
+  );
+
   // ===== VERIFICATION =====
+
+  router.post(
+    '/:claimId/documents/:documentId/verify',
+    validateParams(verifyIndividualDocumentSchema),
+    validateBody(verifyIndividualDocumentSchema),
+    controller.verifyIndividualDocument
+  );
 
   router.post(
     '/:claimId/verify',
@@ -69,6 +84,21 @@ export function createDeathClaimsRouter(controller: DeathClaimsController): Rout
   );
 
   // ===== QUERIES =====
+
+  router.get(
+    '/dashboard/stats',
+    controller.getDashboardStats
+  );
+
+  router.get(
+    '/requiring-action',
+    controller.getRequiringAction
+  );
+
+  router.post(
+    '/search',
+    controller.searchClaims
+  );
 
   router.get(
     '/:claimId',

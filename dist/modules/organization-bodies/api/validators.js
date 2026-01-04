@@ -46,3 +46,4 @@ export const updateUnitSchema = z.object({
 export const assignUnitAdminSchema = z.object({
     newAdminUserId: z.string().uuid(),
 });
+//# sourceMappingURL=validators.js.map

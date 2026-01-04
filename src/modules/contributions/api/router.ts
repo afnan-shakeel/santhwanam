@@ -3,7 +3,7 @@
 
 import { Router } from 'express';
 import { ContributionController } from './controller';
-import { validateBody, validateParams, validateQuery } from '@/shared/validators/validatorMiddleware';
+import { validateBody, validateParams, validateQuery } from '@/shared/middleware/validateZod';
 import {
   getCycleByIdParamsSchema,
   searchCyclesBodySchema,

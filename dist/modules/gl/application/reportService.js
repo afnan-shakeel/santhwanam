@@ -127,3 +127,4 @@ export class GLReportService {
         return { assets, liabilities, equity, totalAssets, totalLiabilities, totalEquity };
     }
 }
+//# sourceMappingURL=reportService.js.map

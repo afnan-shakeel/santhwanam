@@ -7,3 +7,4 @@ const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // For admin operations
 export const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+//# sourceMappingURL=supaBaseClient.js.map

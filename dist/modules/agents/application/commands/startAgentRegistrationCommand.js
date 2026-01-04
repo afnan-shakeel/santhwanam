@@ -18,3 +18,4 @@ export class StartAgentRegistrationHandler {
         });
     }
 }
+//# sourceMappingURL=startAgentRegistrationCommand.js.map

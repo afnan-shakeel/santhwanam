@@ -32,3 +32,4 @@ export function createOrganizationBodiesRouter(controller) {
     router.get('/forums/:forumId/units', controller.listUnitsByForum);
     return router;
 }
+//# sourceMappingURL=router.js.map

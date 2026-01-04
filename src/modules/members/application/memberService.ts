@@ -1168,4 +1168,28 @@ export class MemberService {
       return updated;
     });
   }
+
+  /**
+   * Get member's death benefit amount from their tier
+   */
+  async getMemberBenefitAmount(memberId: string): Promise<{ memberId: string; memberCode: string; memberName: string; tierId: string; tierName: string; deathBenefit: number }> {
+    const member = await this.memberRepository.findById(memberId);
+    if (!member) {
+      throw new NotFoundError("Member not found");
+    }
+
+    const tier = await this.membershipTierRepository.findById(member.tierId);
+    if (!tier) {
+      throw new NotFoundError("Membership tier not found");
+    }
+
+    return {
+      memberId: member.memberId,
+      memberCode: member.memberCode,
+      memberName: `${member.firstName} ${member.lastName}`,
+      tierId: tier.tierId,
+      tierName: tier.tierName,
+      deathBenefit: Number(tier.deathBenefitAmount),
+    };
+  }
 }

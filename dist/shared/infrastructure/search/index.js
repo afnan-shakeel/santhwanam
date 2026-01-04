@@ -9,3 +9,4 @@ export * from './modelConfig';
 // Export default configured instance
 export const searchService = new SearchService(prisma, modelConfigs);
 export default searchService;
+//# sourceMappingURL=index.js.map

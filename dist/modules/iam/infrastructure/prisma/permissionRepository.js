@@ -101,3 +101,4 @@ export class PrismaPermissionRepository {
         return c;
     }
 }
+//# sourceMappingURL=permissionRepository.js.map

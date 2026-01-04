@@ -121,3 +121,4 @@ export class AssignUnitAdminCommand {
         return this.unitService.assignUnitAdmin(unitId, dto.newAdminUserId, assignedBy);
     }
 }
+//# sourceMappingURL=index.js.map

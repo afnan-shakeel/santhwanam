@@ -1,116 +1,165 @@
 /**
  * Controller for Approval Workflow API
  */
+import { ApprovalWorkflowResponseDto, ApprovalWorkflowListResponseDto, ApprovalWorkflowsSearchResponseDto, ApprovalRequestsSearchResponseDto, SubmitRequestResponseDto, ProcessApprovalResponseDto, PendingApprovalsListResponseDto, ApprovalRequestWithExecutionsResponseDto, } from './dtos/responseDtos';
 export class ApprovalWorkflowController {
     workflowService;
     requestService;
     createWorkflowCommand;
+    updateWorkflowCommand;
     submitRequestCommand;
     processApprovalCommand;
-    constructor(workflowService, requestService, createWorkflowCommand, submitRequestCommand, processApprovalCommand) {
+    constructor(workflowService, requestService, createWorkflowCommand, updateWorkflowCommand, submitRequestCommand, processApprovalCommand) {
         this.workflowService = workflowService;
         this.requestService = requestService;
         this.createWorkflowCommand = createWorkflowCommand;
+        this.updateWorkflowCommand = updateWorkflowCommand;
         this.submitRequestCommand = submitRequestCommand;
         this.processApprovalCommand = processApprovalCommand;
     }
     createWorkflow = async (req, res, next) => {
-        const dto = req.body;
-        const result = await this.createWorkflowCommand.execute(dto);
-        next({
-            dto: 'CreateWorkflowResponse',
-            data: result,
-            status: 201,
-        });
+        try {
+            const dto = req.body;
+            const result = await this.createWorkflowCommand.execute(dto);
+            // Transform the result to match the response DTO structure
+            const responseData = {
+                ...result.workflow,
+                stages: result.stages,
+            };
+            return next({ responseSchema: ApprovalWorkflowResponseDto, data: responseData, status: 201 });
+        }
+        catch (err) {
+            next(err);
+        }
     };
     updateWorkflow = async (req, res, next) => {
-        const { workflowId } = req.params;
-        const dto = req.body;
-        const workflow = await this.workflowService.updateWorkflow(workflowId, dto);
-        next({
-            dto: 'ApprovalWorkflow',
-            data: workflow,
-            status: 200,
-        });
+        try {
+            const { workflowId } = req.params;
+            const dto = req.body;
+            const result = await this.updateWorkflowCommand.execute({
+                workflowId,
+                ...dto,
+            });
+            // Transform the result to match the response DTO structure
+            const responseData = {
+                ...result.workflow,
+                stages: result.stages,
+            };
+            return next({ responseSchema: ApprovalWorkflowResponseDto, data: responseData, status: 200 });
+        }
+        catch (err) {
+            next(err);
+        }
     };
     getWorkflowById = async (req, res, next) => {
-        const { workflowId } = req.params;
-        const result = await this.workflowService.getWorkflowById(workflowId);
-        next({
-            dto: 'ApprovalWorkflowWithStages',
-            data: result,
-            status: 200,
-        });
+        try {
+            const { workflowId } = req.params;
+            const result = await this.workflowService.getWorkflowById(workflowId);
+            return next({ responseSchema: ApprovalWorkflowResponseDto, data: result, status: 200 });
+        }
+        catch (err) {
+            next(err);
+        }
     };
     getWorkflowByCode = async (req, res, next) => {
-        const { workflowCode } = req.params;
-        const result = await this.workflowService.getWorkflowByCode(workflowCode);
-        next({
-            dto: 'ApprovalWorkflowWithStages',
-            data: result,
-            status: 200,
-        });
+        try {
+            const { workflowCode } = req.params;
+            const result = await this.workflowService.getWorkflowByCode(workflowCode);
+            return next({ responseSchema: ApprovalWorkflowResponseDto, data: result, status: 200 });
+        }
+        catch (err) {
+            next(err);
+        }
     };
     listActiveWorkflows = async (req, res, next) => {
-        const { module } = req.query;
-        const workflows = await this.workflowService.listActiveWorkflows(module);
-        next({
-            dto: 'ApprovalWorkflowList',
-            data: workflows,
-            status: 200,
-        });
+        try {
+            const { module } = req.query;
+            const workflows = await this.workflowService.listActiveWorkflows(module);
+            return next({ responseSchema: ApprovalWorkflowListResponseDto, data: workflows, status: 200 });
+        }
+        catch (err) {
+            next(err);
+        }
     };
     listAllWorkflows = async (req, res, next) => {
-        const workflows = await this.workflowService.listAllWorkflows();
-        next({
-            dto: 'ApprovalWorkflowList',
-            data: workflows,
-            status: 200,
-        });
+        try {
+            const workflows = await this.workflowService.listAllWorkflows();
+            return next({ responseSchema: ApprovalWorkflowListResponseDto, data: workflows, status: 200 });
+        }
+        catch (err) {
+            next(err);
+        }
+    };
+    searchWorkflows = async (req, res, next) => {
+        try {
+            const searchReq = req.body;
+            const result = await this.workflowService.searchWorkflows(searchReq);
+            return next({ responseSchema: ApprovalWorkflowsSearchResponseDto, data: result, status: 200 });
+        }
+        catch (err) {
+            next(err);
+        }
+    };
+    searchRequests = async (req, res, next) => {
+        try {
+            const searchReq = req.body;
+            const result = await this.requestService.searchRequests(searchReq);
+            return next({ responseSchema: ApprovalRequestsSearchResponseDto, data: result, status: 200 });
+        }
+        catch (err) {
+            next(err);
+        }
     };
     submitRequest = async (req, res, next) => {
-        const dto = req.body;
-        const result = await this.submitRequestCommand.execute(dto);
-        next({
-            dto: 'SubmitRequestResponse',
-            data: result,
-            status: 201,
-        });
+        try {
+            const dto = req.body;
+            const result = await this.submitRequestCommand.execute(dto);
+            return next({ responseSchema: SubmitRequestResponseDto, data: result, status: 201 });
+        }
+        catch (err) {
+            next(err);
+        }
     };
     processApproval = async (req, res, next) => {
-        const dto = req.body;
-        const result = await this.processApprovalCommand.execute(dto);
-        next({
-            dto: 'ProcessApprovalResponse',
-            data: result,
-            status: 200,
-        });
+        try {
+            const dto = req.body;
+            const result = await this.processApprovalCommand.execute(dto);
+            return next({ responseSchema: ProcessApprovalResponseDto, data: result, status: 200 });
+        }
+        catch (err) {
+            next(err);
+        }
     };
     getPendingApprovals = async (req, res, next) => {
-        const { approverId } = req.params;
-        const executions = await this.requestService.getPendingApprovals(approverId);
-        next({
-            dto: 'PendingApprovalsList',
-            data: executions,
-            status: 200,
-        });
+        try {
+            const { approverId } = req.params;
+            const executions = await this.requestService.getPendingApprovals(approverId);
+            return next({ responseSchema: PendingApprovalsListResponseDto, data: executions, status: 200 });
+        }
+        catch (err) {
+            next(err);
+        }
     };
     getRequestById = async (req, res, next) => {
-        const { requestId } = req.params;
-        const result = await this.requestService.getRequestById(requestId);
-        next({
-            dto: 'ApprovalRequestWithExecutions',
-            data: result,
-            status: 200,
-        });
+        try {
+            const { requestId } = req.params;
+            const result = await this.requestService.getRequestById(requestId);
+            console.log('Fetched request with executions and workflow:', result);
+            return next({ responseSchema: ApprovalRequestWithExecutionsResponseDto, data: result, status: 200 });
+        }
+        catch (err) {
+            next(err);
+        }
     };
     getRequestByEntity = async (req, res, next) => {
-        const { entityType, entityId } = req.params;
-        const result = await this.requestService.getRequestByEntity(entityType, entityId);
-        next({
-            dto: 'ApprovalRequestWithExecutions',
-            data: result,
-            status: 200,
-        });
+        try {
+            const { entityType, entityId } = req.params;
+            const result = await this.requestService.getRequestByEntity(entityType, entityId);
+            return next({ responseSchema: ApprovalRequestWithExecutionsResponseDto, data: result, status: 200 });
+        }
+        catch (err) {
+            next(err);
+        }
     };
 }
+//# sourceMappingURL=controller.js.map

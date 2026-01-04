@@ -21,7 +21,8 @@ export class PrismaJournalEntryLineRepository {
     }
     async createMany(lines, tx) {
         const db = tx || prisma;
-        const created = await db.$transaction(lines.map((line) => db.journalEntryLine.create({
+        // Use direct db calls for each create (no transaction wrapper here)
+        const created = await Promise.all(lines.map((line) => db.journalEntryLine.create({
             data: {
                 entryId: line.entryId,
                 lineNumber: line.lineNumber,
@@ -107,3 +108,4 @@ export class PrismaJournalEntryLineRepository {
         };
     }
 }
+//# sourceMappingURL=journalEntryLineRepository.js.map

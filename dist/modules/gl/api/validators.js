@@ -4,15 +4,13 @@
 import { z } from 'zod';
 // Chart of Account schemas
 export const createAccountSchema = z.object({
-    body: z.object({
-        accountCode: z.string().min(1).max(20),
-        accountName: z.string().min(1).max(200),
-        accountType: z.enum(['Asset', 'Liability', 'Revenue', 'Expense', 'Equity']),
-        accountCategory: z.string().max(100).optional(),
-        parentAccountId: z.string().uuid().optional(),
-        normalBalance: z.enum(['Debit', 'Credit']),
-        isSystemAccount: z.boolean().optional(),
-    }),
+    accountCode: z.string().min(1).max(20),
+    accountName: z.string().min(1).max(200),
+    accountType: z.enum(['Asset', 'Liability', 'Revenue', 'Expense', 'Equity']),
+    accountCategory: z.string().max(100).optional(),
+    parentAccountId: z.string().uuid().optional(),
+    normalBalance: z.enum(['Debit', 'Credit']),
+    isSystemAccount: z.boolean().optional(),
 });
 export const updateAccountSchema = z.object({
     params: z.object({
@@ -148,3 +146,4 @@ export const balanceSheetSchema = z.object({
             .optional(),
     }),
 });
+//# sourceMappingURL=validators.js.map

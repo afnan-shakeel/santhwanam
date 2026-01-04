@@ -26,3 +26,4 @@ router.get('/users/:id',
 // requirePermission('user.read'),
 ctrl.getUser);
 export default router;
+//# sourceMappingURL=router.js.map

@@ -37,3 +37,4 @@ export class Mapper {
     }
 }
 export default Mapper;
+//# sourceMappingURL=mapper.js.map

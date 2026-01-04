@@ -49,3 +49,4 @@ export class AssignRoleToUserHandler {
     }
 }
 export const assignRoleToUserHandler = new AssignRoleToUserHandler();
+//# sourceMappingURL=assignRoleToUserCommand.js.map

@@ -7,3 +7,4 @@ router.post('/reset-password/request', validateBody(requestPasswordResetSchema),
 router.post('/reset-password', validateBody(resetPasswordSchema), ctrl.resetPasswordController);
 router.post('/login', validateBody(loginSchema), ctrl.loginController);
 export default router;
+//# sourceMappingURL=router.js.map

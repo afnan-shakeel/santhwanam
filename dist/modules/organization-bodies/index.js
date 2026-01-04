@@ -37,3 +37,4 @@ const controller = new OrganizationBodiesController(forumService, areaService, u
 export const organizationBodiesRouter = createOrganizationBodiesRouter(controller);
 // Export services for use in other modules
 export { forumService, areaService, unitService };
+//# sourceMappingURL=index.js.map

@@ -22,3 +22,4 @@ export { inviteUserHandler };
 export { assignRoleToUserHandler, revokeRoleFromUserHandler };
 export { PrismaPermissionRepository, PrismaRoleRepository };
 export { PrismaUserRepository };
+//# sourceMappingURL=index.js.map

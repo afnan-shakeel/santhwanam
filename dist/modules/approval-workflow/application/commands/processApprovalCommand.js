@@ -20,3 +20,4 @@ export class ProcessApprovalCommand {
         });
     }
 }
+//# sourceMappingURL=processApprovalCommand.js.map

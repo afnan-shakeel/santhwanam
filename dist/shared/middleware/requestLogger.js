@@ -26,3 +26,4 @@ export function requestLogger(req, res, next) {
     next();
 }
 export default requestLogger;
+//# sourceMappingURL=requestLogger.js.map

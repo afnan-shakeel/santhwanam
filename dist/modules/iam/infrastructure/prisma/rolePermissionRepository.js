@@ -11,3 +11,4 @@ export class PrismaRolePermissionRepository {
     }
 }
 export default PrismaRolePermissionRepository;
+//# sourceMappingURL=rolePermissionRepository.js.map

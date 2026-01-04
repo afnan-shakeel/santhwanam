@@ -8,3 +8,4 @@ export class MemberDraftSavedEvent extends DomainEvent {
         return this.payload;
     }
 }
+//# sourceMappingURL=member-draft-saved.event.js.map

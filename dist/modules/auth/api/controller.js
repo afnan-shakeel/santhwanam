@@ -68,3 +68,4 @@ export async function loginController(req, res, next) {
     }
 }
 export default { requestPasswordResetController, resetPasswordController, loginController };
+//# sourceMappingURL=controller.js.map

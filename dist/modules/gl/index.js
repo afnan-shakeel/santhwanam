@@ -9,3 +9,4 @@ export * from './application/journalEntryService';
 export * from './application/fiscalPeriodService';
 export * from './application/reportService';
 export { AccountType as ConstantAccountType, NormalBalance as ConstantNormalBalance } from './constants/accountCodes';
+//# sourceMappingURL=index.js.map

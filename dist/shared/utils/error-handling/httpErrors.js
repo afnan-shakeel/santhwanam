@@ -43,3 +43,4 @@ export default {
     UnprocessableEntityError,
     InternalServerError,
 };
+//# sourceMappingURL=httpErrors.js.map

@@ -17,6 +17,7 @@ export class ActivateAgentOnApprovalHandler {
     }
     async handle(event) {
         const payload = event.payload;
+        console.log('ActivateAgentOnApprovalHandler received event:', event.eventType, 'with payload:', payload);
         // Only handle agent registration approvals
         if (payload.workflowCode !== 'agent_registration' || payload.entityType !== 'Agent') {
             return;
@@ -133,3 +134,4 @@ export class ActivateAgentOnApprovalHandler {
         });
     }
 }
+//# sourceMappingURL=activate-agent-on-approval.handler.js.map

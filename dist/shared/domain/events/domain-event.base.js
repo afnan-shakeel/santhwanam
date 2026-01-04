@@ -18,3 +18,4 @@ export class DomainEvent {
         this.occurredAt = new Date();
     }
 }
+//# sourceMappingURL=domain-event.base.js.map

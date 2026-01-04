@@ -4,6 +4,9 @@
  */
 import { BadRequestError, NotFoundError, ForbiddenError } from '@/shared/utils/error-handling/httpErrors';
 import prisma from '@/shared/infrastructure/prisma/prismaClient';
+import { searchService } from '@/shared/infrastructure/search';
+import { eventBus } from '@/shared/domain/events/event-bus';
+import { ApprovalRequestApprovedEvent, ApprovalRequestRejectedEvent, } from '../domain/events';
 export class ApprovalRequestService {
     workflowRepo;
     stageRepo;
@@ -75,6 +78,12 @@ export class ApprovalRequestService {
             return { request, executions };
         });
     }
+    async searchRequests(searchRequest) {
+        return searchService.execute({
+            ...searchRequest,
+            model: 'ApprovalRequest',
+        });
+    }
     /**
      * Resolve approver for a stage based on approver type and hierarchy
      */
@@ -85,14 +94,14 @@ export class ApprovalRequestService {
                 return stage.userId || null;
             case 'Role':
                 // For Role-based approval with hierarchy, find user with role at the hierarchy level
-                if (stage.hierarchyLevel && context) {
-                    return this.resolveHierarchyApprover(stage.hierarchyLevel, context, stage.roleId ?? null, tx);
+                if (stage.organizationBody && context) {
+                    return this.resolveHierarchyApprover(stage.organizationBody, context, stage.roleId ?? null, tx);
                 }
                 return null;
             case 'Hierarchy':
                 // Direct hierarchy resolution
-                if (stage.hierarchyLevel && context) {
-                    return this.resolveHierarchyApprover(stage.hierarchyLevel, context, null, tx);
+                if (stage.organizationBody && context) {
+                    return this.resolveHierarchyApprover(stage.organizationBody, context, null, tx);
                 }
                 return null;
             default:
@@ -103,8 +112,8 @@ export class ApprovalRequestService {
      * Resolve approver based on hierarchy level
      * Integrates with Organization Bodies module to find admin users
      */
-    async resolveHierarchyApprover(hierarchyLevel, context, roleId, tx) {
-        switch (hierarchyLevel) {
+    async resolveHierarchyApprover(organizationBody, context, roleId, tx) {
+        switch (organizationBody) {
             case 'Unit':
                 if (!this.unitRepo || !context.unitId)
                     return null;
@@ -128,6 +137,7 @@ export class ApprovalRequestService {
      * Process approval/rejection for a stage
      */
     async processApproval(data) {
+        console.log('Processing approval for execution:', data.executionId);
         const execution = await this.executionRepo.findById(data.executionId);
         if (!execution) {
             throw new NotFoundError('Approval execution not found');
@@ -146,8 +156,11 @@ export class ApprovalRequestService {
         if (request.status !== 'Pending') {
             throw new BadRequestError(`Request is already ${request.status}`);
         }
+        console.log('Fetched request for execution:', request.requestId);
         // Process in transaction
         return await prisma.$transaction(async (tx) => {
+            // Fetch workflow first (needed for events)
+            const workflow = await this.workflowRepo.findById(request.workflowId, tx);
             // Update execution
             const updatedExecution = await this.executionRepo.updateDecision(data.executionId, {
                 status: (data.decision === 'Approve' ? 'Approved' : 'Rejected'),
@@ -164,10 +177,20 @@ export class ApprovalRequestService {
                     rejectedAt: new Date(),
                     rejectionReason: data.comments || null,
                 }, tx);
+                console.log('Request rejected:', updatedRequest.requestId);
+                // Publish rejection event
+                await eventBus.publish(new ApprovalRequestRejectedEvent({
+                    requestId: request.requestId,
+                    workflowCode: workflow?.workflowCode || '',
+                    entityType: request.entityType,
+                    entityId: request.entityId,
+                    rejectedBy: data.reviewedBy,
+                    rejectedAt: new Date(),
+                    rejectionReason: data.comments || null,
+                }));
                 return { execution: updatedExecution, request: updatedRequest };
             }
             // If approved, check if all stages are complete
-            const workflow = await this.workflowRepo.findById(request.workflowId, tx);
             const allExecutions = await this.executionRepo.findByRequest(request.requestId, tx);
             const allApproved = allExecutions.every(exec => exec.status === 'Approved' || exec.status === 'Skipped');
             const currentStageApproved = allExecutions.find(exec => exec.stageOrder === request.currentStageOrder)?.status === 'Approved';
@@ -178,6 +201,16 @@ export class ApprovalRequestService {
                     approvedBy: data.reviewedBy,
                     approvedAt: new Date(),
                 }, tx);
+                console.log('Request approved:', updatedRequest.requestId);
+                // Publish approval event
+                await eventBus.publish(new ApprovalRequestApprovedEvent({
+                    requestId: request.requestId,
+                    workflowCode: workflow?.workflowCode || '',
+                    entityType: request.entityType,
+                    entityId: request.entityId,
+                    approvedBy: data.reviewedBy,
+                    approvedAt: new Date(),
+                }));
                 return { execution: updatedExecution, request: updatedRequest };
             }
             else {
@@ -217,6 +250,8 @@ export class ApprovalRequestService {
             throw new NotFoundError('Approval request not found');
         }
         const executions = await this.executionRepo.findByRequest(requestId);
-        return { request, executions };
+        const workflow = await this.workflowRepo.findById(request.workflowId);
+        return { request, executions, workflow };
     }
 }
+//# sourceMappingURL=approvalRequestService.js.map

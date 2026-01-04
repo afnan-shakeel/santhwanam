@@ -24,3 +24,4 @@ export function errorHandler(err, req, res, _next) {
     });
 }
 export default errorHandler;
+//# sourceMappingURL=errorHandler.js.map

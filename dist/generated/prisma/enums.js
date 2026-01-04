@@ -15,6 +15,7 @@ export const ScopeType = {
     Agent: 'Agent'
 };
 export const WorkflowModule = {
+    Agents: 'Agents',
     Membership: 'Membership',
     Wallet: 'Wallet',
     Claims: 'Claims',
@@ -24,9 +25,10 @@ export const WorkflowModule = {
 export const ApproverType = {
     Role: 'Role',
     SpecificUser: 'SpecificUser',
-    Hierarchy: 'Hierarchy'
+    Hierarchy: 'Hierarchy',
+    OrganizationAdmin: 'OrganizationAdmin'
 };
-export const HierarchyLevel = {
+export const OrganizationBody = {
     Unit: 'Unit',
     Area: 'Area',
     Forum: 'Forum'
@@ -156,3 +158,82 @@ export const PeriodStatus = {
     Open: 'Open',
     Closed: 'Closed'
 };
+export const WalletTransactionType = {
+    Deposit: 'Deposit',
+    Debit: 'Debit',
+    Refund: 'Refund',
+    Adjustment: 'Adjustment'
+};
+export const WalletTransactionStatus = {
+    Pending: 'Pending',
+    Completed: 'Completed',
+    Failed: 'Failed',
+    Reversed: 'Reversed'
+};
+export const WalletDepositRequestStatus = {
+    Draft: 'Draft',
+    PendingApproval: 'PendingApproval',
+    Approved: 'Approved',
+    Rejected: 'Rejected'
+};
+export const WalletDebitRequestStatus = {
+    PendingAcknowledgment: 'PendingAcknowledgment',
+    Acknowledged: 'Acknowledged',
+    Completed: 'Completed',
+    Invalidated: 'Invalidated',
+    Failed: 'Failed'
+};
+export const DeathClaimStatus = {
+    Reported: 'Reported',
+    UnderVerification: 'UnderVerification',
+    Verified: 'Verified',
+    PendingApproval: 'PendingApproval',
+    Approved: 'Approved',
+    Settled: 'Settled',
+    Rejected: 'Rejected'
+};
+export const DeathClaimVerificationStatus = {
+    Pending: 'Pending',
+    InProgress: 'InProgress',
+    Completed: 'Completed',
+    Rejected: 'Rejected'
+};
+export const DeathClaimSettlementStatus = {
+    Pending: 'Pending',
+    Completed: 'Completed'
+};
+export const PaymentMethod = {
+    Cash: 'Cash',
+    BankTransfer: 'BankTransfer',
+    Cheque: 'Cheque'
+};
+export const ClaimDocumentType = {
+    DeathCertificate: 'DeathCertificate',
+    NewspaperClipping: 'NewspaperClipping',
+    PoliceReport: 'PoliceReport',
+    MedicalReport: 'MedicalReport',
+    PostMortemReport: 'PostMortemReport',
+    Other: 'Other'
+};
+export const ClaimDocumentVerificationStatus = {
+    Pending: 'Pending',
+    Verified: 'Verified',
+    Rejected: 'Rejected'
+};
+export const ContributionCycleStatus = {
+    Active: 'Active',
+    Closed: 'Closed'
+};
+export const MemberContributionStatus = {
+    Pending: 'Pending',
+    WalletDebitRequested: 'WalletDebitRequested',
+    Acknowledged: 'Acknowledged',
+    Collected: 'Collected',
+    Missed: 'Missed',
+    Exempted: 'Exempted'
+};
+export const ContributionPaymentMethod = {
+    Wallet: 'Wallet',
+    DirectCash: 'DirectCash'
+};
+//# sourceMappingURL=enums.js.map

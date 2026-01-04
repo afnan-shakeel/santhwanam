@@ -20,3 +20,4 @@ export const AreasSearchResponseDto = z.object({
     totalPages: z.number(),
 });
 export default AreaDto;
+//# sourceMappingURL=areaDtos.js.map

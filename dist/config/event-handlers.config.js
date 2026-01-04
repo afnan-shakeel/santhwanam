@@ -7,6 +7,10 @@ import { ActivateAgentOnApprovalHandler, RejectAgentOnApprovalHandler } from '@/
 import { memberRepo, registrationPaymentRepo, memberDocumentRepo } from '@/modules/members';
 import { ActivateMemberOnApprovalHandler } from '@/modules/members/application/event-handlers/activate-member-on-approval.handler';
 import { RejectMemberOnApprovalHandler } from '@/modules/members/application/event-handlers/reject-member-on-approval.handler';
+// Wallet module
+import { depositRequestService } from '@/modules/wallet';
+import { ProcessWalletDepositApprovalHandler } from '@/modules/wallet/application/handlers/process-deposit-approval.handler';
+import { ProcessWalletDepositRejectionHandler } from '@/modules/wallet/application/handlers/process-deposit-rejection.handler';
 // Agent repository
 import { PrismaAgentRepository } from '@/modules/agents/infrastructure/prisma/agentRepository';
 // GL services for member activation
@@ -39,12 +43,18 @@ export function registerEventHandlers() {
     const activateAgentHandler = new ActivateAgentOnApprovalHandler(agentRepo, userRepo, roleRepo, userRoleRepo);
     const rejectAgentHandler = new RejectAgentOnApprovalHandler(agentService);
     // Member approval handlers
-    const activateMemberHandler = new ActivateMemberOnApprovalHandler(memberRepo, memberDocumentRepo, registrationPaymentRepo, agentRepo, journalEntryService);
+    const activateMemberHandler = new ActivateMemberOnApprovalHandler(memberRepo, memberDocumentRepo, registrationPaymentRepo, agentRepo, userRepo, roleRepo, userRoleRepo, journalEntryService);
     const rejectMemberHandler = new RejectMemberOnApprovalHandler(memberRepo, registrationPaymentRepo);
     // Subscribe to approval workflow events
     eventBus.subscribe('approval.request.approved', activateAgentHandler);
     eventBus.subscribe('approval.request.rejected', rejectAgentHandler);
     eventBus.subscribe('approval.request.approved', activateMemberHandler);
     eventBus.subscribe('approval.request.rejected', rejectMemberHandler);
+    // Wallet deposit approval handlers
+    const processDepositApprovalHandler = new ProcessWalletDepositApprovalHandler(depositRequestService);
+    const processDepositRejectionHandler = new ProcessWalletDepositRejectionHandler(depositRequestService);
+    eventBus.subscribe('approval.request.approved', processDepositApprovalHandler);
+    eventBus.subscribe('approval.request.rejected', processDepositRejectionHandler);
     logger.info('Event handlers registered successfully');
 }
+//# sourceMappingURL=event-handlers.config.js.map

@@ -118,3 +118,4 @@ export class CloseMemberAccountCommand {
         });
     }
 }
+//# sourceMappingURL=closeMemberAccountCommand.js.map

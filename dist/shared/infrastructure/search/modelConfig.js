@@ -23,6 +23,18 @@ export const modelConfigs = {
         filters: ['isActive', 'createdAt', 'forumName', 'forumCode', 'adminUserId'],
         relations: ['areas'],
     },
+    ApprovalWorkflow: {
+        searchable: ['workflowCode', 'workflowName', 'entityType', 'module'],
+        sortable: ['createdAt', 'workflowCode', 'workflowName'],
+        filters: ['module', 'entityType', 'workflowCode', 'createdAt'],
+        relations: ['stages'],
+    },
+    ApprovalRequest: {
+        searchable: ['entityType', 'entityId', 'requestedBy', 'status'],
+        sortable: ['requestedAt', 'status'],
+        filters: ['status', 'workflowId', 'requestedBy', 'entityType', 'forumId', 'areaId', 'unitId', 'createdAt'],
+        relations: ['executions', 'workflow'],
+    },
     Area: {
         searchable: ['areaName'],
         sortable: ['createdAt', 'areaName'],
@@ -36,9 +48,22 @@ export const modelConfigs = {
         relations: ['agents', 'members'],
     },
     Agent: {
-        searchable: ['agentName', 'agentCode'],
-        sortable: ['createdAt', 'agentName', 'agentCode'],
-        filters: ['isActive', 'createdAt', 'agentName', 'agentCode', 'unitId'],
+        searchable: ['firstName', 'lastName', 'agentCode'],
+        sortable: ['createdAt', 'firstName', 'agentCode'],
+        filters: ['isActive', 'createdAt', 'firstName', 'agentCode', 'unitId'],
         relations: [],
+    },
+    Member: {
+        searchable: ['firstName', 'middleName', 'lastName', 'memberCode'],
+        sortable: ['createdAt', 'memberCode'],
+        filters: ['createdAt', 'firstName', 'middleName', 'lastName', 'memberCode', 'unitId'],
+        relations: [],
+    },
+    DeathClaim: {
+        searchable: [],
+        sortable: ['createdAt', 'reportedDate'],
+        filters: [],
+        relations: []
     }
 };
+//# sourceMappingURL=modelConfig.js.map

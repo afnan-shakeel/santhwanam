@@ -5,6 +5,16 @@
 import type { Request, Response, NextFunction } from 'express';
 import type { DeathClaimService } from '../application/deathClaimService';
 import { asyncLocalStorage } from '@/shared/infrastructure/context/AsyncLocalStorageManager';
+import { searchService } from '@/shared/infrastructure/search';
+import {
+  DeathClaimResponseDto,
+  DeathClaimDetailsResponseDto,
+  ClaimDocumentResponseDto,
+  ClaimDocumentListResponseDto,
+  DashboardStatsResponseDto,
+  MemberBenefitResponseDto,
+  DeathClaimListResponseDto,
+} from './dtos/responseDtos';
 
 export class DeathClaimsController {
   constructor(private readonly deathClaimService: DeathClaimService) {}
@@ -22,10 +32,7 @@ export class DeathClaimsController {
         reportedBy: userId || req.body.reportedBy,
       });
 
-      res.status(201).json({
-        success: true,
-        data: claim,
-      });
+      return next({ responseSchema: DeathClaimResponseDto, data: claim, status: 201 });
     } catch (err) {
       next(err);
     }
@@ -54,10 +61,7 @@ export class DeathClaimsController {
         uploadedBy: userId || req.body.uploadedBy,
       });
 
-      res.status(201).json({
-        success: true,
-        data: document,
-      });
+      return next({ responseSchema: ClaimDocumentResponseDto, data: document, status: 201 });
     } catch (err) {
       next(err);
     }
@@ -78,10 +82,31 @@ export class DeathClaimsController {
         verifiedBy: userId || req.body.verifiedBy,
       });
 
-      res.status(200).json({
-        success: true,
-        data: claim,
-      });
+      return next({ responseSchema: DeathClaimResponseDto, data: claim, status: 200 });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  /**
+   * POST /api/death-claims/:claimId/documents/:documentId/verify
+   * Verify individual document
+   */
+  verifyIndividualDocument = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { claimId, documentId } = req.params;
+      const userId = asyncLocalStorage.getContext()?.userSession?.userId;
+
+      const document = await this.deathClaimService.verifyIndividualDocument(
+        claimId,
+        documentId,
+        userId || req.body.verifiedBy,
+        req.body.verificationStatus,
+        req.body.notes,
+        req.body.rejectionReason
+      );
+
+      return next({ responseSchema: ClaimDocumentResponseDto, data: document, status: 200 });
     } catch (err) {
       next(err);
     }
@@ -98,10 +123,7 @@ export class DeathClaimsController {
 
       const claim = await this.deathClaimService.submitClaimForApproval(claimId, userId);
 
-      res.status(200).json({
-        success: true,
-        data: claim,
-      });
+      return next({ responseSchema: DeathClaimResponseDto, data: claim, status: 200 });
     } catch (err) {
       next(err);
     }
@@ -135,10 +157,7 @@ export class DeathClaimsController {
         paidBy: userId || req.body.paidBy,
       });
 
-      res.status(200).json({
-        success: true,
-        data: claim,
-      });
+      return next({ responseSchema: DeathClaimResponseDto, data: claim, status: 200 });
     } catch (err) {
       next(err);
     }
@@ -152,12 +171,8 @@ export class DeathClaimsController {
     try {
       const { claimId } = req.params;
 
-      const claim = await this.deathClaimService.getClaimById(claimId);
-
-      res.status(200).json({
-        success: true,
-        data: claim,
-      });
+      const claim = await this.deathClaimService.getClaimByIdWithDetails(claimId);
+      return next({ responseSchema: DeathClaimDetailsResponseDto, data: claim, status: 200 });
     } catch (err) {
       next(err);
     }
@@ -173,10 +188,29 @@ export class DeathClaimsController {
 
       const documents = await this.deathClaimService.getClaimDocuments(claimId);
 
-      res.status(200).json({
-        success: true,
-        data: documents,
-      });
+      return next({ responseSchema: ClaimDocumentListResponseDto, data: documents, status: 200 });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  /**
+   * GET /api/death-claims/:claimId/documents/:documentId/download
+   * Download a claim document
+   */
+  downloadDocument = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { claimId, documentId } = req.params;
+
+      const { buffer, document } = await this.deathClaimService.getDocumentFile(claimId, documentId);
+
+      // Set headers for file download
+      res.setHeader('Content-Type', document.mimeType);
+      res.setHeader('Content-Disposition', `attachment; filename="${document.documentName}"`);
+      res.setHeader('Content-Length', buffer.length);
+
+      // Stream the file
+      res.send(buffer);
     } catch (err) {
       next(err);
     }
@@ -202,15 +236,72 @@ export class DeathClaimsController {
         take: Number(limit) || 20,
       });
 
-      res.status(200).json({
-        success: true,
-        data: result.claims,
+      return next({ 
+        responseSchema: DeathClaimListResponseDto, 
+        data: result, 
+        status: 200,
         pagination: {
           page: Number(page) || 1,
           limit: Number(limit) || 20,
           total: result.total,
           totalPages: Math.ceil(result.total / (Number(limit) || 20)),
         },
+      });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  /**
+   * GET /api/death-claims/dashboard/stats
+   * Get dashboard statistics
+   */
+  getDashboardStats = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const stats = await this.deathClaimService.getDashboardStats();
+        console.log(stats);
+      return next({ responseSchema: DashboardStatsResponseDto, data: stats, status: 200 });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  /**
+   * POST /api/death-claims/search
+   * Search death claims using advanced search
+   */
+  searchClaims = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const result = await searchService.execute({
+        ...req.body,
+        model: 'DeathClaim',
+      });
+
+      return next({ responseSchema: DeathClaimListResponseDto, data: result, status: 200 });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  /**
+   * GET /api/death-claims/requiring-action
+   * Get claims requiring immediate action (UnderVerification)
+   */
+  getRequiringAction = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { page, limit } = req.query;
+      const skip = ((Number(page) || 1) - 1) * (Number(limit) || 50);
+
+      const result = await this.deathClaimService.listClaims({
+        claimStatus: 'UnderVerification' as any,
+        skip,
+        take: Number(limit) || 50,
+      });
+
+      return next({ 
+        responseSchema: DeathClaimListResponseDto, 
+        data: result, 
+        status: 200,
       });
     } catch (err) {
       next(err);

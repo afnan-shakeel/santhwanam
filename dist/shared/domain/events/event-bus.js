@@ -50,3 +50,4 @@ class EventBus {
     }
 }
 export const eventBus = new EventBus();
+//# sourceMappingURL=event-bus.js.map

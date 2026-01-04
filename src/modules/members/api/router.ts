@@ -144,6 +144,12 @@ export function createMembersRouter(controller: MembersController): Router {
     controller.downloadDocument
   );
 
+  router.get(
+    "/:memberId/benefit",
+    validateParams(memberIdParamSchema),
+    controller.getMemberBenefit
+  );
+
   router.get("/:memberId", controller.getMemberDetails);
 
   router.get("/", controller.listMembers);

@@ -8,3 +8,4 @@ export class MemberAccountClosedEvent extends DomainEvent {
         return this.payload;
     }
 }
+//# sourceMappingURL=member-account-closed.event.js.map

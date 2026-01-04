@@ -13,7 +13,7 @@ export class PrismaApprovalStageRepository {
                 approverType: data.approverType,
                 roleId: data.roleId,
                 userId: data.userId,
-                hierarchyLevel: data.hierarchyLevel,
+                organizationBody: data.organizationBody,
                 isOptional: data.isOptional ?? false,
                 autoApprove: data.autoApprove ?? false,
             },
@@ -29,7 +29,7 @@ export class PrismaApprovalStageRepository {
                 approverType: stage.approverType,
                 roleId: stage.roleId,
                 userId: stage.userId,
-                hierarchyLevel: stage.hierarchyLevel,
+                organizationBody: stage.organizationBody,
                 isOptional: stage.isOptional ?? false,
                 autoApprove: stage.autoApprove ?? false,
             })),
@@ -48,10 +48,35 @@ export class PrismaApprovalStageRepository {
             where: { stageId },
         });
     }
+    async update(stageId, data, tx) {
+        const client = tx ?? prisma;
+        return client.approvalStage.update({
+            where: { stageId },
+            data: {
+                ...data,
+                updatedAt: new Date(),
+            },
+        });
+    }
     async deleteByWorkflow(workflowId, tx) {
         const client = tx ?? prisma;
         await client.approvalStage.deleteMany({
             where: { workflowId },
         });
     }
+    async deleteByIds(stageIds, tx) {
+        const client = tx ?? prisma;
+        await client.approvalStage.deleteMany({
+            where: {
+                stageId: { in: stageIds },
+            },
+        });
+    }
+    async countExecutionsByStageId(stageId, tx) {
+        const client = tx ?? prisma;
+        return client.approvalStageExecution.count({
+            where: { stageId },
+        });
+    }
 }
+//# sourceMappingURL=approvalStageRepository.js.map

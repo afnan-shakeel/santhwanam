@@ -5161,6 +5161,210 @@
         }
       }
     },
+    "/api/death-claims/dashboard/stats": {
+      "get": {
+        "tags": ["Death Claims"],
+        "summary": "Get dashboard statistics",
+        "description": "Returns global statistics for death claims dashboard",
+        "responses": {
+          "200": {
+            "description": "Statistics retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "pendingVerification": { "type": "integer" },
+                        "underContribution": { "type": "integer" },
+                        "approvedForPayout": { "type": "integer" },
+                        "totalThisYear": { "type": "integer" },
+                        "totalBenefitsPaidYTD": { "type": "number" },
+                        "pendingCollections": { "type": "number" },
+                        "successRate": { "type": "integer", "description": "Percentage of approved claims" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/death-claims/requiring-action": {
+      "get": {
+        "tags": ["Death Claims"],
+        "summary": "Get claims requiring immediate action",
+        "description": "Returns claims with UnderVerification status",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": { "type": "integer", "default": 1 }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 50, "maximum": 100 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Claims retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/DeathClaim" }
+                    },
+                    "pagination": {
+                      "type": "object",
+                      "properties": {
+                        "page": { "type": "integer" },
+                        "limit": { "type": "integer" },
+                        "total": { "type": "integer" },
+                        "totalPages": { "type": "integer" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/death-claims/search": {
+      "post": {
+        "tags": ["Death Claims"],
+        "summary": "Advanced search for death claims",
+        "description": "Search death claims using advanced filters, sorting, and pagination",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SearchRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Search results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": { "$ref": "#/components/schemas/SearchResponse" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/death-claims/{claimId}/documents/{documentId}/verify": {
+      "post": {
+        "tags": ["Death Claims"],
+        "summary": "Verify individual document",
+        "description": "Verify or reject a single document. Updates claim status to Verified when all documents are verified.",
+        "parameters": [
+          {
+            "name": "claimId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "documentId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["verificationStatus"],
+                "properties": {
+                  "verificationStatus": {
+                    "type": "string",
+                    "enum": ["Verified", "Rejected"]
+                  },
+                  "notes": { "type": "string" },
+                  "rejectionReason": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Document verified successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": { "$ref": "#/components/schemas/DeathClaimDocument" }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "description": "Document or claim not found" }
+        }
+      }
+    },
+    "/api/death-claims/{claimId}/documents/{documentId}/download": {
+      "get": {
+        "tags": ["Death Claims"],
+        "summary": "Download claim document",
+        "description": "Streams the document file directly",
+        "parameters": [
+          {
+            "name": "claimId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "documentId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File download",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": { "description": "Document or claim not found" }
+        }
+      }
+    },
     "/api/death-claims": {
       "get": {
         "tags": ["Death Claims"],
@@ -5233,6 +5437,48 @@
               }
             }
           }
+        }
+      }
+    },
+    "/api/members/{memberId}/benefit": {
+      "get": {
+        "tags": ["Members"],
+        "summary": "Get member's death benefit amount",
+        "description": "Returns the death benefit amount from member's tier",
+        "parameters": [
+          {
+            "name": "memberId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Benefit amount retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "memberId": { "type": "string", "format": "uuid" },
+                        "memberCode": { "type": "string" },
+                        "memberName": { "type": "string" },
+                        "tierId": { "type": "string", "format": "uuid" },
+                        "tierName": { "type": "string" },
+                        "deathBenefit": { "type": "number" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "description": "Member not found" }
         }
       }
     },

@@ -8,3 +8,4 @@ export class MemberSuspendedEvent extends DomainEvent {
         return this.payload;
     }
 }
+//# sourceMappingURL=member-suspended.event.js.map

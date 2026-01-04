@@ -17,3 +17,4 @@ export const PermissionsSearchResponseDto = z.object({
     totalPages: z.number(),
 });
 export default PermissionDto;
+//# sourceMappingURL=permissionDtos.js.map

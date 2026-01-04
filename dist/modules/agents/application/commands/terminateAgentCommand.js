@@ -15,3 +15,4 @@ export class TerminateAgentHandler {
         return this.agentService.terminateAgent(cmd.agentId, cmd.terminationReason, actorId);
     }
 }
+//# sourceMappingURL=terminateAgentCommand.js.map

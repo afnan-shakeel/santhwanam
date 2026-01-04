@@ -44,3 +44,4 @@ export class InviteUserHandler {
     }
 }
 export const inviteUserHandler = new InviteUserHandler();
+//# sourceMappingURL=inviteUserCommand.js.map

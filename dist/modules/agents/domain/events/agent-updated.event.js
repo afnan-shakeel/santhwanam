@@ -8,3 +8,4 @@ export class AgentUpdatedEvent extends DomainEvent {
         return this.payload;
     }
 }
+//# sourceMappingURL=agent-updated.event.js.map

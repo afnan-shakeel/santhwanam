@@ -65,3 +65,4 @@ export function requirePermission(permissionCode, contextExtractor) {
     };
 }
 export default requirePermission;
+//# sourceMappingURL=requirePermission.js.map
