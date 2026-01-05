@@ -85,6 +85,66 @@ export class PrismaNomineeRepository implements NomineeRepository {
     });
   }
 
+  async search(filters: {
+    name?: string;
+    contactNumber?: string;
+    page: number;
+    limit: number;
+  }): Promise<{ nominees: Nominee[]; total: number }> {
+    const skip = (filters.page - 1) * filters.limit;
+
+    const where: any = { isActive: true };
+
+    if (filters.name) {
+      where.name = {
+        contains: filters.name,
+        mode: 'insensitive',
+      };
+    }
+
+    if (filters.contactNumber) {
+      where.OR = [
+        {
+          contactNumber: {
+            contains: filters.contactNumber,
+          },
+        },
+        {
+          alternateContactNumber: {
+            contains: filters.contactNumber,
+          },
+        },
+      ];
+    }
+
+    const [nominees, total] = await Promise.all([
+      prisma.nominee.findMany({
+        where,
+        skip,
+        take: filters.limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          member: {
+            select: {
+              memberCode: true,
+              firstName: true,
+              middleName: true,
+              lastName: true,
+              contactNumber: true,
+              memberStatus: true,
+            },
+          },
+        },
+      }),
+      prisma.nominee.count({ where }),
+    ]);
+
+    return {
+      nominees: nominees.map((n: any) => this.toDomain(n)),
+      total,
+    };
+  }
+
   private toDomain(prismaData: any): Nominee {
     return {
       nomineeId: prismaData.nomineeId,

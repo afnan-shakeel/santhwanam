@@ -515,4 +515,35 @@ export class MembersController {
       next(err);
     }
   };
+
+  /**
+   * GET /api/nominees/search
+   * Search nominees by name and contact number
+   */
+  searchNominees = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { name, contactNumber, page, limit } = req.query;
+
+      const result = await this.memberService.searchNominees({
+        name: name as string,
+        contactNumber: contactNumber as string,
+        page: Number(page) || 1,
+        limit: Number(limit) || 20,
+      });
+
+      return next({ 
+        responseSchema: NomineeListResponseDto, 
+        data: result.nominees, 
+        status: 200,
+        pagination: {
+          page: Number(page) || 1,
+          limit: Number(limit) || 20,
+          total: result.total,
+          totalPages: Math.ceil(result.total / (Number(limit) || 20)),
+        },
+      });
+    } catch (err) {
+      next(err);
+    }
+  };
 }

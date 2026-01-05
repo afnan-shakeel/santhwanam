@@ -41,23 +41,25 @@ export class DeathClaimsController {
   /**
    * POST /api/death-claims/:claimId/documents
    * Upload a claim document
-   * NOTE: This is a simplified version. In production, use multipart/form-data
+   * Accepts multipart/form-data with 'file' field
    */
   uploadDocument = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { claimId } = req.params;
       const userId = asyncLocalStorage.getContext()?.userSession?.userId;
 
-      // TODO: Replace with actual file upload from multipart
-      // For now, expecting fileBuffer as base64 in request
-      const fileBuffer = Buffer.from(req.body.fileBuffer || '', 'base64');
+      // Get file from multer
+      const file = req.file;
+      if (!file) {
+        throw new Error('No file uploaded. Please provide a file in the "file" field.');
+      }
 
       const document = await this.deathClaimService.uploadClaimDocument({
         claimId,
         documentType: req.body.documentType,
-        documentName: req.body.documentName,
-        fileBuffer,
-        mimeType: req.body.mimeType,
+        documentName: req.body.documentName || file.originalname,
+        fileBuffer: file.buffer,
+        mimeType: file.mimetype,
         uploadedBy: userId || req.body.uploadedBy,
       });
 
@@ -132,19 +134,20 @@ export class DeathClaimsController {
   /**
    * POST /api/death-claims/:claimId/settle
    * Settle an approved claim (payout to nominee)
+   * Accepts multipart/form-data with optional 'acknowledgmentFile' field
    */
   settleClaim = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { claimId } = req.params;
       const userId = asyncLocalStorage.getContext()?.userSession?.userId;
 
-      // TODO: Handle actual file upload for acknowledgment
+      // Get optional acknowledgment file from multer
       let nomineeAcknowledgmentFile;
-      if (req.body.acknowledgmentFileBuffer) {
+      if (req.file) {
         nomineeAcknowledgmentFile = {
-          fileBuffer: Buffer.from(req.body.acknowledgmentFileBuffer, 'base64'),
-          fileName: req.body.acknowledgmentFileName,
-          mimeType: req.body.acknowledgmentMimeType,
+          fileBuffer: req.file.buffer,
+          fileName: req.file.originalname,
+          mimeType: req.file.mimetype,
         };
       }
 

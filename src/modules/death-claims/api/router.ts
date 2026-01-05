@@ -2,14 +2,18 @@
  * Router for Death Claims API
  */
 
-import { Router } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
+import multer from 'multer';
 import type { DeathClaimsController } from './controller';
 import { validateBody, validateParams, validateQuery } from '@/shared/middleware/validateZod';
+import { asyncLocalStorage } from '@/shared/infrastructure/context/AsyncLocalStorageManager';
+import wrapMulter  from '@/shared/middleware/multerWrapper';
 import {
   reportDeathSchema,
   uploadClaimDocumentSchema,
   verifyClaimDocumentsSchema,
-  verifyIndividualDocumentSchema,
+  verifyIndividualDocumentBodySchema,
+  verifyIndividualDocumentParamsSchema,
   downloadDocumentSchema,
   submitClaimForApprovalSchema,
   settleDeathClaimSchema,
@@ -17,6 +21,14 @@ import {
   listClaimsSchema,
   getClaimDocumentsSchema,
 } from './validators';
+
+// Configure multer for memory storage (files stored in buffer)
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB max file size
+  },
+});
 
 export function createDeathClaimsRouter(controller: DeathClaimsController): Router {
   const router = Router();
@@ -33,8 +45,7 @@ export function createDeathClaimsRouter(controller: DeathClaimsController): Rout
 
   router.post(
     '/:claimId/documents',
-    validateParams(uploadClaimDocumentSchema),
-    validateBody(uploadClaimDocumentSchema),
+    wrapMulter(upload.single('file')),
     controller.uploadDocument
   );
 
@@ -54,8 +65,8 @@ export function createDeathClaimsRouter(controller: DeathClaimsController): Rout
 
   router.post(
     '/:claimId/documents/:documentId/verify',
-    validateParams(verifyIndividualDocumentSchema),
-    validateBody(verifyIndividualDocumentSchema),
+    validateParams(verifyIndividualDocumentParamsSchema),
+    validateBody(verifyIndividualDocumentBodySchema),
     controller.verifyIndividualDocument
   );
 
@@ -78,8 +89,7 @@ export function createDeathClaimsRouter(controller: DeathClaimsController): Rout
 
   router.post(
     '/:claimId/settle',
-    validateParams(settleDeathClaimSchema),
-    validateBody(settleDeathClaimSchema),
+    wrapMulter(upload.single('acknowledgmentFile')),
     controller.settleClaim
   );
 

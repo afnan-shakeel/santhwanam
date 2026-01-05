@@ -28,6 +28,8 @@ export function createMembersRouter(controller: MembersController): Router {
   
   router.post("/search", validateBody(searchValidationSchema), controller.searchMembers);
 
+  router.get("/nominees/search", controller.searchNominees);
+
   // ===== STEP 1: PERSONAL DETAILS =====
 
   router.post(

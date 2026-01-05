@@ -31,9 +31,6 @@ export function responseHandler(err: any, req: Request, res: Response, next: Nex
 
     try {
       const shaped = maybeSchema.parse(data)
-        console.log("XXXXXXXXXXXXXXXXXXX");
-        console.log(JSON.stringify(shaped, null, 2));
-
       return res.status(status).json(shaped)
     } catch (e: any) {
       const appErr = new AppError('Response parsing error', 500, e?.message ?? e)

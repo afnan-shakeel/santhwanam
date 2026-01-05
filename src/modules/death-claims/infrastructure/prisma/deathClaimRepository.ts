@@ -179,9 +179,11 @@ export class PrismaDeathClaimRepository implements DeathClaimRepository {
       })),
       documents: claim.documents.map((doc: any) => ({
         documentId: doc.documentId,
+        claimId: doc.claimId,
         documentType: doc.documentType,
         documentName: doc.documentName,
         fileSize: doc.fileSize,
+        mimeType: doc.mimeType,
         fileUrl: doc.fileUrl,
         uploadedAt: doc.uploadedAt,
         uploadedBy: doc.uploadedBy,

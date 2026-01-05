@@ -65,6 +65,6 @@ export const modelConfigs: ModelConfigs = {
     searchable: [],
     sortable: ['createdAt', 'reportedDate'],
     filters: [],
-    relations: []
+    relations: ['tier', 'agent', 'unit', 'approvalRequest', 'contributionCycles']
   }
 }

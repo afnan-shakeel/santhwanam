@@ -47,6 +47,12 @@ export interface NomineeRepository {
   ): Promise<Nominee>;
   softDelete(nomineeId: string, tx?: any): Promise<void>;
   countActiveByMemberId(memberId: string, tx?: any): Promise<number>;
+  search(filters: {
+    name?: string;
+    contactNumber?: string;
+    page: number;
+    limit: number;
+  }): Promise<{ nominees: Nominee[]; total: number }>;
 }
 
 // Member Document Repository

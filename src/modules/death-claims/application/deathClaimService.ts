@@ -35,6 +35,7 @@ import {
   DeathClaimSettledEvent,
 } from '../domain/events';
 import { generateClaimNumber } from './helpers';
+import { asyncLocalStorage } from "@/shared/infrastructure/context/AsyncLocalStorageManager";
 
 // ===== Report Death =====
 interface ReportDeathInput {
@@ -233,6 +234,7 @@ export class DeathClaimService {
    */
   async uploadClaimDocument(input: UploadClaimDocumentInput): Promise<DeathClaimDocument> {
     return await prisma.$transaction(async (tx: any) => {
+
       // 1. Validate claim exists
       const claim = await this.deathClaimRepo.findById(input.claimId, tx);
       if (!claim) {
@@ -245,6 +247,7 @@ export class DeathClaimService {
       }
 
       // 3. Validate file
+      // get mimetype from file
       this.fileUploadService.validateFileSize(input.fileBuffer.length);
       this.fileUploadService.validateFileType(input.mimeType);
 

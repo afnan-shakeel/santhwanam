@@ -1192,4 +1192,16 @@ export class MemberService {
       deathBenefit: Number(tier.deathBenefitAmount),
     };
   }
+
+  /**
+   * Search nominees by name and contact number
+   */
+  async searchNominees(filters: {
+    name?: string;
+    contactNumber?: string;
+    page: number;
+    limit: number;
+  }): Promise<{ nominees: Nominee[]; total: number }> {
+    return await this.nomineeRepository.search(filters);
+  }
 }

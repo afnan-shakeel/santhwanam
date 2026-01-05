@@ -21,16 +21,11 @@ export const reportDeathSchema = z.object({
 
 // ===== Upload Document =====
 export const uploadClaimDocumentSchema = z.object({
-  params: z.object({
-    claimId: z.string().uuid('Invalid claim ID'),
-  }),
-  body: z.object({
     documentType: z.nativeEnum(ClaimDocumentType),
     documentName: z.string().min(1),
     fileUrl: z.string(), // Will be replaced with actual file upload
     fileSize: z.number().int().positive().max(5 * 1024 * 1024), // 5MB max
     mimeType: z.string(),
-  }),
 });
 
 // ===== Verify Documents =====
@@ -45,9 +40,7 @@ export const verifyClaimDocumentsSchema = z.object({
 
 // ===== Submit For Approval =====
 export const submitClaimForApprovalSchema = z.object({
-  params: z.object({
     claimId: z.string().uuid('Invalid claim ID'),
-  }),
 });
 
 // ===== Settle Claim =====
@@ -70,7 +63,6 @@ export const getClaimByIdSchema = z.object({
 
 // ===== List Claims =====
 export const listClaimsSchema = z.object({
-  query: z.object({
     claimStatus: z.nativeEnum(DeathClaimStatus).optional(),
     forumId: z.string().uuid().optional(),
     areaId: z.string().uuid().optional(),
@@ -78,7 +70,6 @@ export const listClaimsSchema = z.object({
     agentId: z.string().uuid().optional(),
     page: z.coerce.number().int().positive().default(1),
     limit: z.coerce.number().int().positive().max(100).default(20),
-  }),
 });
 
 // ===== Get Claim Documents =====
@@ -87,22 +78,18 @@ export const getClaimDocumentsSchema = z.object({
 });
 
 // ===== Verify Individual Document =====
-export const verifyIndividualDocumentSchema = z.object({
-  params: z.object({
+export const verifyIndividualDocumentParamsSchema = z.object({
     claimId: z.string().uuid('Invalid claim ID'),
     documentId: z.string().uuid('Invalid document ID'),
-  }),
-  body: z.object({
+});
+export const verifyIndividualDocumentBodySchema = z.object({
     verificationStatus: z.nativeEnum(ClaimDocumentVerificationStatus),
     notes: z.string().optional(),
     rejectionReason: z.string().optional(),
-  }),
 });
 
 // ===== Download Document =====
 export const downloadDocumentSchema = z.object({
-  params: z.object({
     claimId: z.string().uuid('Invalid claim ID'),
     documentId: z.string().uuid('Invalid document ID'),
-  }),
 });

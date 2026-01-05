@@ -2274,6 +2274,89 @@
         }
       }
     },
+    "/api/members/nominees/search": {
+      "get": {
+        "tags": ["Members - Nominees"],
+        "summary": "Search nominees by name and contact number",
+        "description": "Search for nominees across all members with filtering by name and contact number",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "query",
+            "description": "Search by nominee name (case-insensitive, partial match)",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "contactNumber",
+            "in": "query",
+            "description": "Search by contact number (searches both primary and alternate contact)",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number",
+            "required": false,
+            "schema": { "type": "integer", "default": 1, "minimum": 1 }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Items per page",
+            "required": false,
+            "schema": { "type": "integer", "default": 20, "minimum": 1, "maximum": 100 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of nominees matching search criteria",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "nomineeId": { "type": "string", "format": "uuid" },
+                      "memberId": { "type": "string", "format": "uuid" },
+                      "name": { "type": "string" },
+                      "relationType": { "type": "string" },
+                      "dateOfBirth": { "type": "string", "format": "date", "nullable": true },
+                      "contactNumber": { "type": "string", "nullable": true },
+                      "alternateContactNumber": { "type": "string", "nullable": true },
+                      "addressLine1": { "type": "string", "nullable": true },
+                      "addressLine2": { "type": "string", "nullable": true },
+                      "city": { "type": "string", "nullable": true },
+                      "state": { "type": "string", "nullable": true },
+                      "postalCode": { "type": "string", "nullable": true },
+                      "country": { "type": "string", "nullable": true },
+                      "idProofType": { "type": "string", "nullable": true },
+                      "idProofNumber": { "type": "string", "nullable": true },
+                      "priority": { "type": "integer" },
+                      "isActive": { "type": "boolean" },
+                      "member": {
+                        "type": "object",
+                        "nullable": true,
+                        "properties": {
+                          "memberCode": { "type": "string" },
+                          "firstName": { "type": "string" },
+                          "middleName": { "type": "string", "nullable": true },
+                          "lastName": { "type": "string" },
+                          "contactNumber": { "type": "string" },
+                          "memberStatus": { "type": "string" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/members/register": {
       "post": {
         "tags": ["Members - Registration"],
