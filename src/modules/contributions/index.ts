@@ -61,11 +61,13 @@ const contributionEventHandlers = new ContributionEventHandlers(
   contributionService
 );
 
-// Subscribe to events
+// Subscribe to DeathClaimApproved event to start contribution cycles
 eventBus.subscribe(
-  'DeathClaimApproved',
-  async (event: DeathClaimApprovedEvent) => {
-    await contributionEventHandlers.handleDeathClaimApproved(event);
+  DeathClaimApprovedEvent.EVENT_TYPE,
+  {
+    handle: async (event: DeathClaimApprovedEvent) => {
+      await contributionEventHandlers.handleDeathClaimApproved(event);
+    }
   }
 );
 

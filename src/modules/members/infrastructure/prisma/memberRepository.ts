@@ -157,6 +157,38 @@ export class PrismaMemberRepository implements MemberRepository {
     return member ? member.memberCode : null;
   }
 
+  async findActiveMembers(
+    filters: { excludeMemberId?: string },
+    tx?: any
+  ): Promise<Array<Member & { tier?: { contributionAmount: number } }>> {
+    const db = tx || prisma;
+
+    const where: any = {
+      memberStatus: "Active",
+      registrationStatus: "Approved",
+    };
+
+    if (filters.excludeMemberId) {
+      where.memberId = { not: filters.excludeMemberId };
+    }
+
+    const members = await db.member.findMany({
+      where,
+      include: {
+        tier: {
+          select: {
+            contributionAmount: true,
+          },
+        },
+      },
+    });
+
+    return members.map((m: any) => ({
+      ...this.toDomain(m),
+      tier: m.tier ? { contributionAmount: Number(m.tier.contributionAmount) } : undefined,
+    }));
+  }
+
   private toDomain(prismaData: any): Member {
     return {
       memberId: prismaData.memberId,

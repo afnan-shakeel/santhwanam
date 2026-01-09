@@ -116,8 +116,10 @@ export interface DeathClaimApprovedPayload {
   claimId: string;
   claimNumber: string;
   memberId: string;
+  memberCode: string;
   memberName: string;
   benefitAmount: number;
+  forumId: string;
   approvedBy: string;
   approvedAt: Date;
 }

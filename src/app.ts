@@ -14,6 +14,7 @@ import { membershipRouter } from '@/modules/membership'
 import { walletRouter } from '@/modules/wallet'
 import { deathClaimsRouter } from '@/modules/death-claims'
 import { contributionsRouter } from '@/modules/contributions'
+import { devRouter } from '@/modules/dev'
 import { contextMiddleware } from '@/shared/infrastructure/context'
 import { authenticate } from '@/shared/infrastructure/auth/middleware/authenticate'
 import { registerEventHandlers } from '@/config/event-handlers.config'
@@ -81,6 +82,12 @@ app.use('/api/death-claims', deathClaimsRouter)
 
 // Contributions API
 app.use('/api/contributions', contributionsRouter)
+
+// Dev API (only available in non-production environments)
+if (process.env.NODE_ENV !== 'production') {
+  app.use('/api/dev', devRouter)
+  logger.info('Dev endpoints enabled (non-production mode)')
+}
 
 // Global response handler: support controllers calling `next({ SomeDto, payload, status })`
 app.use(responseHandler)

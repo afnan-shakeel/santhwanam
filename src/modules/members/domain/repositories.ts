@@ -31,6 +31,10 @@ export interface MemberRepository {
     page: number;
     limit: number;
   }): Promise<{ members: Member[]; total: number }>;
+  findActiveMembers(
+    filters: { excludeMemberId?: string },
+    tx?: any
+  ): Promise<Array<Member & { tier?: { contributionAmount: number } }>>;
   getLastMemberCodeByYear(year: number, tx?: any): Promise<string | null>;
 }
 

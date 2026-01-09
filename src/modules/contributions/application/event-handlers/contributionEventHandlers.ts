@@ -14,22 +14,23 @@ export class ContributionEventHandlers {
    */
   async handleDeathClaimApproved(event: DeathClaimApprovedEvent): Promise<void> {
     try {
-      logger.info(`Starting contribution cycle for death claim ${event.payload.claimId}`);
+      const data = event.data;
+      logger.info(`Starting contribution cycle for death claim ${data.claimId}`);
 
       await this.contributionService.startContributionCycle({
-        deathClaimId: event.payload.claimId,
-        claimNumber: event.payload.claimNumber,
-        deceasedMemberId: event.payload.memberId,
-        deceasedMemberName: event.payload.memberCode, // Assuming memberCode is name
-        benefitAmount: event.payload.benefitAmount,
-        forumId: event.payload.forumId,
+        deathClaimId: data.claimId,
+        claimNumber: data.claimNumber,
+        deceasedMemberId: data.memberId,
+        deceasedMemberName: data.memberName,
+        benefitAmount: data.benefitAmount,
+        forumId: data.forumId,
       });
 
-      logger.info(`Contribution cycle started successfully for claim ${event.payload.claimNumber}`);
+      logger.info(`Contribution cycle started successfully for claim ${data.claimNumber}`);
     } catch (error) {
       logger.error('Failed to start contribution cycle', {
         error,
-        claimId: event.payload.claimId,
+        claimId: event.data.claimId,
       });
       // Don't throw - event handler failures should be logged but not block
     }
