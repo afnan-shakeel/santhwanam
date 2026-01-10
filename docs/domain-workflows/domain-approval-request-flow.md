@@ -369,16 +369,14 @@ Registration              (Approval Workflow)           (Entity Module)
 ### How Approval Works:
 
 1. **Entity Module** (Agent/Member) submits approval request
-   - Calls `approvalRequestService.submitRequest()`
    - Creates `ApprovalRequest` with status "Pending"
    - Creates `ApprovalStageExecution` records for all stages
 
 2. **Approver** processes the request
-   - Calls `approvalRequestService.processApproval()`
    - Updates execution status (Approved/Rejected)
    - If all stages done → updates request status
 
-3. **⚠️ MISSING:** Approval service should publish event
+3. **Event Publish:** Approval service should publish event
    - `approval.request.approved` OR
    - `approval.request.rejected`
 
@@ -388,9 +386,3 @@ Registration              (Approval Workflow)           (Entity Module)
    - Creates user account (if needed)
    - Assigns roles (if needed)
 
-### Current Gap:
-
-**The approval workflow service processes approvals but doesn't notify other modules.**  
-Event handlers are ready and waiting, but no events are being published!
-
-**Fix:** Add event publishing in `processApproval()` method after updating request status.

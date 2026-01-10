@@ -14,6 +14,11 @@ src/
     searchConstants.ts
   modules/
     members/
+      api/
+        dtos/
+        controller.ts
+        router.ts
+        validations.ts
       application/
         commands/
           create-member/
@@ -24,7 +29,11 @@ src/
             GetMemberByIdQuery.ts
             GetMemberByIdHandler.ts
         services/
-          (required only if complex orchestration needed, eg: member wallter module will have WalletService here)
+          MemberService.ts
+        event-handler/
+          index.ts
+        
+
 
       domain/
         repositories/
@@ -45,25 +54,24 @@ src/
           createMemberSchema.ts
 
     shared/
+        domain/
+          events/
+            event-bus
         infrastructure/
-        database/
-            prisma/
-            PrismaClientProvider.ts
-        search/
-            SearchService.ts
-            builders/
-            FilterBuilder.ts
-            SortBuilder.ts
-            PaginationBuilder.ts
-            EagerLoadBuilder.ts
-            SearchBuilder.ts
+          search/
+          context/
+          file-upload/
+          database/
+        middleware/
+          requestLooger/
+          responseHandler/
 
         utils/
-        logger/
-            Logger.ts
-        error-handling/
-            ApiError.ts
-            errorMiddleware.ts
+          logger/
+              Logger.ts
+          error-handling/
+              ApiError.ts
+              errorMiddleware.ts
 ```
 
 ## Short explanations (who owns what)
