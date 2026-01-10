@@ -9,6 +9,7 @@ export function createMembersRouter(controller) {
     const router = Router();
     // ===== SEARCH =====
     router.post("/search", validateBody(searchValidationSchema), controller.searchMembers);
+    router.get("/nominees/search", controller.searchNominees);
     // ===== STEP 1: PERSONAL DETAILS =====
     router.post("/register", validateBody(startMemberRegistrationSchema), controller.startRegistration);
     router.patch("/:memberId/draft/personal-details", validateBody(savePersonalDetailsAsDraftSchema), controller.savePersonalDetailsAsDraft);

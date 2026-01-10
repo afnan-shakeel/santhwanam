@@ -197,17 +197,15 @@ export class PrismaDeathClaimRepository implements DeathClaimRepository {
         cycleNumber: claim.contributionCycles[0].cycleNumber,
         cycleStatus: claim.contributionCycles[0].cycleStatus,
         benefitAmount: Number(claim.contributionCycles[0].benefitAmount),
-        expectedAmount: claim.contributionCycles[0].totalMembers > 0
-          ? Number(claim.contributionCycles[0].benefitAmount) / claim.contributionCycles[0].totalMembers
-          : 0,
+        totalExpectedAmount: claim.contributionCycles[0].totalExpectedAmount,
         totalMembers: claim.contributionCycles[0].totalMembers,
-        collectedAmount: Number(claim.contributionCycles[0].totalCollectedAmount),
+        totalCollectedAmount: Number(claim.contributionCycles[0].totalCollectedAmount),
         collectionPercentage: claim.contributionCycles[0].totalMembers > 0
           ? Math.round((claim.contributionCycles[0].membersCollected / claim.contributionCycles[0].totalMembers) * 100)
           : 0,
-        paidMembers: claim.contributionCycles[0].membersCollected,
-        pendingMembers: claim.contributionCycles[0].membersPending,
-        failedMembers: claim.contributionCycles[0].membersMissed,
+        membersCollected: claim.contributionCycles[0].membersCollected,
+        membersPending: claim.contributionCycles[0].membersPending,
+        membersMissed: claim.contributionCycles[0].membersMissed,
         startDate: claim.contributionCycles[0].startDate,
         collectionDeadline: claim.contributionCycles[0].collectionDeadline,
         daysRemaining: this.calculateDaysRemaining(claim.contributionCycles[0].collectionDeadline),

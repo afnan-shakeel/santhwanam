@@ -12,6 +12,7 @@ import {
   MemberContribution,
   MemberContributionStatus,
   ContributionPaymentMethod,
+  MemberContributionWithRelations,
 } from '../domain/entities';
 import { MemberRepository } from '@/modules/members/domain/repositories';
 import { DebitRequestService } from '@/modules/wallet/application/debitRequestService';
@@ -681,17 +682,278 @@ export class ContributionService {
   }
 
   /**
-   * Get contributions by cycle
+   * Get contributions by cycle with filters
    */
   async getContributionsByCycle(
     cycleId: string,
     filters: {
       status?: MemberContributionStatus;
       agentId?: string;
+      searchTerm?: string;
       page: number;
       limit: number;
     }
-  ): Promise<{ contributions: MemberContribution[]; total: number }> {
+  ): Promise<{ contributions: MemberContributionWithRelations[]; total: number }> {
     return await this.memberContributionRepo.findByCycleId(cycleId, filters);
+  }
+
+  /**
+   * Get contribution by ID with relations
+   */
+  async getContributionByIdWithRelations(contributionId: string): Promise<MemberContributionWithRelations> {
+    const contribution = await this.memberContributionRepo.findByIdWithRelations(contributionId);
+    if (!contribution) {
+      throw new AppError('Contribution not found', 404);
+    }
+    return contribution;
+  }
+
+  /**
+   * Get member's contribution summary
+   */
+  async getMemberContributionSummary(memberId: string): Promise<{
+    memberId: string;
+    memberCode: string;
+    totalContributed: number;
+    thisYear: number;
+    pendingCount: number;
+    averagePerMonth: number;
+    walletBalance: number;
+  }> {
+    // Get member info
+    const member = await this.memberRepo.findById(memberId);
+    if (!member) {
+      throw new AppError('Member not found', 404);
+    }
+
+    // Get all contributions for this member with Collected status
+    const allContributions = await prisma.memberContribution.findMany({
+      where: {
+        memberId,
+        contributionStatus: MemberContributionStatus.Collected,
+      },
+      select: {
+        expectedAmount: true,
+        collectionDate: true,
+      },
+    });
+
+    // Get this year's contributions
+    const currentYear = new Date().getFullYear();
+    const startOfYear = new Date(currentYear, 0, 1);
+    const thisYearContributions = allContributions.filter(
+      (c) => c.collectionDate && c.collectionDate >= startOfYear
+    );
+
+    // Get pending count
+    const pendingCount = await prisma.memberContribution.count({
+      where: {
+        memberId,
+        contributionStatus: {
+          in: [
+            MemberContributionStatus.Pending,
+            MemberContributionStatus.WalletDebitRequested,
+          ],
+        },
+      },
+    });
+
+    // Get wallet balance
+    const wallet = await this.walletRepo.findByMemberId(memberId);
+    const walletBalance = wallet?.currentBalance || 0;
+
+    // Calculate totals
+    const totalContributed = allContributions.reduce(
+      (sum, c) => sum + parseFloat(c.expectedAmount.toString()),
+      0
+    );
+    const thisYear = thisYearContributions.reduce(
+      (sum, c) => sum + parseFloat(c.expectedAmount.toString()),
+      0
+    );
+
+    // Calculate average per month (based on months with contributions)
+    const monthsWithContributions = new Set(
+      allContributions
+        .filter((c) => c.collectionDate)
+        .map((c) => `${c.collectionDate!.getFullYear()}-${c.collectionDate!.getMonth()}`)
+    ).size;
+    const averagePerMonth = monthsWithContributions > 0
+      ? totalContributed / monthsWithContributions
+      : 0;
+
+    return {
+      memberId,
+      memberCode: member.memberCode,
+      totalContributed,
+      thisYear,
+      pendingCount,
+      averagePerMonth: Math.round(averagePerMonth * 100) / 100,
+      walletBalance,
+    };
+  }
+
+  /**
+   * Get active contribution cycles summary for admin dashboard
+   */
+  async getActiveCyclesSummary(): Promise<{
+    activeCyclesCount: number;
+    totalCollecting: number;
+    totalExpected: number;
+    avgCompletionPercentage: number;
+  }> {
+    const activeCycles = await prisma.contributionCycle.findMany({
+      where: {
+        cycleStatus: 'Active',
+      },
+      select: {
+        totalExpectedAmount: true,
+        totalCollectedAmount: true,
+        membersCollected: true,
+        totalMembers: true,
+      },
+    });
+
+    const activeCyclesCount = activeCycles.length;
+
+    if (activeCyclesCount === 0) {
+      return {
+        activeCyclesCount: 0,
+        totalCollecting: 0,
+        totalExpected: 0,
+        avgCompletionPercentage: 0,
+      };
+    }
+
+    const totalExpected = activeCycles.reduce(
+      (sum, c) => sum + parseFloat(c.totalExpectedAmount.toString()),
+      0
+    );
+
+    const totalCollecting = activeCycles.reduce(
+      (sum, c) => sum + parseFloat(c.totalCollectedAmount.toString()),
+      0
+    );
+
+    // Calculate average completion percentage
+    const completionPercentages = activeCycles.map((c) =>
+      c.totalMembers > 0 ? (c.membersCollected / c.totalMembers) * 100 : 0
+    );
+    const avgCompletionPercentage =
+      completionPercentages.reduce((sum, p) => sum + p, 0) / activeCyclesCount;
+
+    return {
+      activeCyclesCount,
+      totalCollecting,
+      totalExpected,
+      avgCompletionPercentage: Math.round(avgCompletionPercentage * 100) / 100,
+    };
+  }
+
+  /**
+   * Get member's pending contributions with cycle details and agent info
+   */
+  async getMemberPendingContributions(memberId: string): Promise<{
+    pendingContributions: Array<{
+      contributionId: string;
+      cycleCode: string;
+      claimId: string;
+      deceasedMember: {
+        memberId: string;
+        memberCode: string;
+        fullName: string;
+      };
+      tierName: string;
+      contributionAmount: number;
+      dueDate: Date;
+      daysLeft: number;
+      contributionStatus: string;
+      agent: {
+        agentId: string;
+        agentCode: string;
+        fullName: string;
+        contactNumber: string;
+      } | null;
+      cycle: any;
+    }>;
+  }> {
+    const contributions = await prisma.memberContribution.findMany({
+      where: {
+        memberId,
+        contributionStatus: {
+          in: [
+            MemberContributionStatus.Pending,
+            MemberContributionStatus.WalletDebitRequested,
+          ],
+        },
+      },
+      include: {
+        cycle: {
+          include: {
+            deathClaim: {
+              include: {
+                member: {
+                  select: {
+                    memberCode: true,
+                  },
+                },
+                tier: {
+                  select: {
+                    tierName: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+        agent: true,
+        tier: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const now = new Date();
+    const pendingContributions = contributions.map((c) => {
+      const dueDate = c.cycle.collectionDeadline;
+      const daysLeft = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+      // Get deceased member code from the death claim's member
+      const deceasedMemberCode = c.cycle.deathClaim?.member?.memberCode || 'N/A';
+      const tierName = c.cycle.deathClaim?.tier?.tierName || c.tier?.tierName || 'N/A';
+
+      return {
+        contributionId: c.contributionId,
+        cycleCode: c.cycle.cycleNumber,
+        claimId: c.cycle.deathClaimId,
+        deceasedMember: {
+          memberId: c.cycle.deceasedMemberId,
+          memberCode: deceasedMemberCode,
+          fullName: c.cycle.deceasedMemberName,
+        },
+        tierName,
+        contributionAmount: parseFloat(c.expectedAmount.toString()),
+        dueDate,
+        daysLeft,
+        contributionStatus: c.contributionStatus,
+        agent: c.agent ? {
+          agentId: c.agent.agentId,
+          agentCode: c.agent.agentCode,
+          fullName: `${c.agent.firstName} ${c.agent.lastName}`,
+          contactNumber: c.agent.contactNumber,
+        } : null,
+        cycle: {
+          cycleId: c.cycle.cycleId,
+          cycleNumber: c.cycle.cycleNumber,
+          claimNumber: c.cycle.claimNumber,
+          deceasedMemberName: c.cycle.deceasedMemberName,
+          benefitAmount: parseFloat(c.cycle.benefitAmount.toString()),
+          startDate: c.cycle.startDate,
+          collectionDeadline: c.cycle.collectionDeadline,
+          cycleStatus: c.cycle.cycleStatus,
+        },
+      };
+    });
+
+    return { pendingContributions };
   }
 }

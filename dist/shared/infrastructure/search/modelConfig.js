@@ -63,7 +63,13 @@ export const modelConfigs = {
         searchable: [],
         sortable: ['createdAt', 'reportedDate'],
         filters: [],
-        relations: []
+        relations: ['tier', 'agent', 'unit', 'approvalRequest', 'contributionCycles']
+    },
+    MemberContribution: {
+        searchable: ['memberName', 'memberCode'],
+        sortable: ['createdAt', 'collectionDate'],
+        filters: ['contributionStatus', 'paymentMethod', 'cycleId'],
+        relations: ['cycle', 'member', 'agent']
     }
 };
 //# sourceMappingURL=modelConfig.js.map

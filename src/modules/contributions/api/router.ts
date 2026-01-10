@@ -16,7 +16,12 @@ import {
   searchContributionsBodySchema,
   getMemberHistoryParamsSchema,
   getMemberHistoryQuerySchema,
+  myContributionsHistoryQuerySchema,
+  getCycleContributionsParamsSchema,
+  getCycleContributionsQuerySchema,
 } from './validators';
+import { searchValidationSchema } from "@/shared/validators/searchValidator";
+
 
 export function createContributionRouter(controller: ContributionController): Router {
   const router = Router();
@@ -42,6 +47,29 @@ export function createContributionRouter(controller: ContributionController): Ro
     '/cycles/:cycleId/close',
     validateParams(closeCycleParamsSchema),
     controller.closeCycle
+  );
+
+  // GET /api/contributions/cycles/:cycleId/contributions - Get contributions in a cycle with filters
+  router.get(
+    '/cycles/:cycleId/contributions',
+    validateParams(getCycleContributionsParamsSchema),
+    validateQuery(getCycleContributionsQuerySchema),
+    controller.getCycleContributions
+  );
+
+  // ==================== My Contributions Routes (Authenticated Member) ====================
+
+  // GET /api/contributions/my-contributions/summary
+  router.get('/my-contributions/summary', controller.myContributionsSummary);
+
+  // GET /api/contributions/my-contributions/pending
+  router.get('/my-contributions/pending', controller.myPendingContributions);
+
+  // GET /api/contributions/my-contributions/history
+  router.get(
+    '/my-contributions/history',
+    validateQuery(myContributionsHistoryQuerySchema),
+    controller.myContributionHistory
   );
 
   // ==================== Member Contribution Routes ====================
@@ -78,7 +106,7 @@ export function createContributionRouter(controller: ContributionController): Ro
   // POST /api/contributions/search
   router.post(
     '/search',
-    validateBody(searchContributionsBodySchema),
+    validateBody(searchValidationSchema),
     controller.searchContributions
   );
 

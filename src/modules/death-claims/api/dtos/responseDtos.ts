@@ -91,13 +91,14 @@ const NomineeDto = z.object({
 const ContributionCycleDto = z.object({
   cycleId: z.string(),
   benefitAmount: z.any(),
+  totalExpectedAmount: z.any(),
   totalCollectedAmount: z.any(),
   membersCollected: z.number(),
   membersPending: z.number(),
   membersMissed: z.number(),
   collectionDeadline: z.coerce.date(),
   cycleStatus: z.string(),
-  startedAt: z.coerce.date(),
+  startDate: z.coerce.date(),
   completedAt: z.coerce.date().nullable().optional(),
 }).passthrough();
 

@@ -26,8 +26,6 @@ export function responseHandler(err, req, res, next) {
         }
         try {
             const shaped = maybeSchema.parse(data);
-            console.log("XXXXXXXXXXXXXXXXXXX");
-            console.log(JSON.stringify(shaped, null, 2));
             return res.status(status).json(shaped);
         }
         catch (e) {

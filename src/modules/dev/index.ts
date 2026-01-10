@@ -5,6 +5,10 @@ import { DevService } from "./application/devService";
 import { DevController } from "./api/controller";
 import { createDevRouter } from "./api/router";
 
+import { PrismaRoleRepository } from '@/modules/iam/infrastructure/prisma/roleRepository'
+import { PrismaUserRepository } from '@/modules/iam/infrastructure/prisma/userRepository'
+import { PrismaUserRoleRepository } from '@/modules/iam/infrastructure/prisma/userRoleRepository';
+
 // Member repositories
 import { PrismaMemberRepository } from "@/modules/members/infrastructure/prisma/memberRepository";
 import { PrismaNomineeRepository } from "@/modules/members/infrastructure/prisma/nomineeRepository";
@@ -26,9 +30,15 @@ const membershipTierRepo = new PrismaMembershipTierRepository();
 const agentRepo = new PrismaAgentRepository();
 const walletRepo = new PrismaWalletRepository();
 const walletTransactionRepo = new PrismaWalletTransactionRepository();
+const userRepo = new PrismaUserRepository();
+const roleRepo = new PrismaRoleRepository();
+const userRoleRepo = new PrismaUserRoleRepository();
 
 // Initialize service
 const devService = new DevService(
+  userRepo,
+  roleRepo,
+  userRoleRepo,
   memberRepo,
   nomineeRepo,
   registrationPaymentRepo,

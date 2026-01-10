@@ -64,10 +64,11 @@ export interface MemberContributionRepository {
     filters?: {
       status?: MemberContributionStatus;
       agentId?: string;
+      searchTerm?: string;
       page: number;
       limit: number;
     }
-  ): Promise<{ contributions: MemberContribution[]; total: number }>;
+  ): Promise<{ contributions: MemberContributionWithRelations[]; total: number }>;
   
   findByMemberId(
     memberId: string,

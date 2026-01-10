@@ -65,6 +65,12 @@ export class PrismaMemberRepository implements MemberRepository {
     return member ? this.toDomain(member) : null;
   }
 
+  async findByUserId(userId: string, tx?: any): Promise<Member | null> {
+    const db = tx || prisma;
+    const member = await db.member.findFirst({ where: { userId } });
+    return member ? this.toDomain(member) : null;
+  }
+
   async update(
     memberId: string,
     data: Partial<Omit<Member, "memberId" | "memberCode" | "createdAt">>,

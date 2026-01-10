@@ -9,6 +9,7 @@ export const MemberContributionResponseDto = z.object({
   contributionId: z.string(),
   cycleId: z.string(),
   memberId: z.string(),
+  agentId: z.string(),
   expectedAmount: z.any(),
   actualAmount: z.any().nullable().optional(),
   contributionStatus: z.string(),
@@ -19,6 +20,25 @@ export const MemberContributionResponseDto = z.object({
   recordedBy: z.string().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date().nullable().optional(),
+  member: z.object({
+    firstName: z.string(),
+    middleName: z.string().nullable().optional(),
+    lastName: z.string(),
+    dateOfBirth: z.date(),
+    gender: z.string(),
+    contactNumber: z.string(),
+    alternateContactNumber: z.string().nullable().optional(),
+    email: z.string().nullable().optional(),
+  }).passthrough().nullable().optional(),
+  agent: z.object({
+    firstName: z.string().nullable().optional(),
+    middleName: z.string().nullable().optional(),
+    lastName: z.string().nullable().optional(),
+    dateOfBirth: z.date().nullable().optional(),
+    gender: z.string().nullable().optional(),
+    contactNumber: z.string().nullable().optional(),
+    email: z.string().nullable().optional(),
+  }).passthrough().nullable().optional(),
 });
 
 // Contribution Cycle Response
@@ -69,7 +89,6 @@ export const MemberContributionHistoryResponseDto = z.object({
         cycleId: z.string(),
         benefitAmount: z.any(),
         cycleStatus: z.string(),
-        startedAt: z.date(),
         collectionDeadline: z.date(),
         claim: z.object({
           claimNumber: z.string(),
@@ -77,17 +96,12 @@ export const MemberContributionHistoryResponseDto = z.object({
             memberCode: z.string(),
             firstName: z.string(),
             lastName: z.string(),
-          }),
-        }).nullable().optional(),
+          }).passthrough(),
+        }).passthrough().nullable().optional(),
       }).nullable().optional(),
     })
   ),
-  pagination: z.object({
-    page: z.number(),
-    limit: z.number(),
-    total: z.number(),
-    totalPages: z.number(),
-  }),
+  total: z.number(),
 });
 
 // Search Results Response (for both cycles and contributions)
@@ -97,6 +111,126 @@ export const ContributionCycleListResponseDto = z.object({
 });
 
 export const MemberContributionListResponseDto = z.object({
-  contributions: z.array(MemberContributionResponseDto),
+  items: z.array(MemberContributionResponseDto),
   total: z.number(),
-});
+}).passthrough();
+
+// Member Contribution with Relations Response
+export const MemberContributionWithRelationsResponseDto = z.object({
+  contributionId: z.string(),
+  cycleId: z.string(),
+  memberId: z.string(),
+  memberCode: z.string(),
+  memberName: z.string(),
+  tierId: z.string(),
+  agentId: z.string(),
+  expectedAmount: z.number(),
+  contributionStatus: z.string(),
+  paymentMethod: z.string().nullable().optional(),
+  collectionDate: z.date().nullable().optional(),
+  collectedBy: z.string().nullable().optional(),
+  walletDebitRequestId: z.string().nullable().optional(),
+  debitAcknowledgedAt: z.date().nullable().optional(),
+  cashReceiptReference: z.string().nullable().optional(),
+  journalEntryId: z.string().nullable().optional(),
+  isConsecutiveMiss: z.boolean(),
+  createdAt: z.date(),
+  updatedAt: z.date().nullable().optional(),
+  cycle: z.object({
+    cycleId: z.string(),
+    cycleNumber: z.string(),
+    deathClaimId: z.string(),
+    claimNumber: z.string(),
+    deceasedMemberId: z.string(),
+    deceasedMemberName: z.string(),
+    benefitAmount: z.number(),
+    forumId: z.string(),
+    startDate: z.date(),
+    collectionDeadline: z.date(),
+    cycleStatus: z.string(),
+    totalMembers: z.number(),
+    totalExpectedAmount: z.number(),
+    totalCollectedAmount: z.number(),
+    totalPendingAmount: z.number(),
+    membersCollected: z.number(),
+    membersPending: z.number(),
+    membersMissed: z.number(),
+    closedDate: z.date().nullable().optional(),
+    closedBy: z.string().nullable().optional(),
+    createdAt: z.date(),
+    updatedAt: z.date().nullable().optional(),
+  }).passthrough().optional(),
+  member: z.object({
+    memberId: z.string(),
+    memberCode: z.string(),
+    firstName: z.string(),
+    lastName: z.string(),
+    agentId: z.string(),
+  }).passthrough().optional(),
+  agent: z.object({
+    agentId: z.string(),
+    agentCode: z.string(),
+    firstName: z.string(),
+    lastName: z.string(),
+  }).passthrough().optional(),
+}).passthrough();
+
+// Cycle Contributions List Response
+export const CycleContributionsListResponseDto = z.object({
+  contributions: z.array(MemberContributionWithRelationsResponseDto),
+  total: z.number(),
+}).passthrough();
+
+// My Contributions Summary Response
+export const MyContributionsSummaryResponseDto = z.object({
+  memberId: z.string(),
+  memberCode: z.string(),
+  totalContributed: z.number(),
+  thisYear: z.number(),
+  pendingCount: z.number(),
+  averagePerMonth: z.number(),
+  walletBalance: z.number(),
+}).passthrough();
+
+// Active Cycles Summary Response (Admin Dashboard)
+export const ActiveCyclesSummaryResponseDto = z.object({
+  activeCyclesCount: z.number(),
+  totalCollecting: z.number(),
+  totalExpected: z.number(),
+  avgCompletionPercentage: z.number(),
+}).passthrough();
+
+// My Pending Contributions Response
+export const MyPendingContributionsResponseDto = z.object({
+  pendingContributions: z.array(z.object({
+    contributionId: z.string(),
+    cycleCode: z.string(),
+    claimId: z.string(),
+    deceasedMember: z.object({
+      memberId: z.string(),
+      memberCode: z.string(),
+      fullName: z.string(),
+    }).passthrough(),
+    tierName: z.string(),
+    contributionAmount: z.number(),
+    dueDate: z.date(),
+    daysLeft: z.number(),
+    contributionStatus: z.string(),
+    agent: z.object({
+      agentId: z.string(),
+      agentCode: z.string(),
+      fullName: z.string(),
+      contactNumber: z.string(),
+    }).passthrough().nullable(),
+    cycle: z.object({
+      cycleId: z.string(),
+      cycleNumber: z.string(),
+      claimNumber: z.string(),
+      deceasedMemberName: z.string(),
+      benefitAmount: z.number(),
+      startDate: z.date(),
+      collectionDeadline: z.date(),
+      cycleStatus: z.string(),
+    }).passthrough(),
+  }).passthrough()),
+}).passthrough();

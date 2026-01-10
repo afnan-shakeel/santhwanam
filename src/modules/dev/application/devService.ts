@@ -8,12 +8,16 @@ import {
   QuickMemberRegistrationInput,
   QuickMemberRegistrationResult,
 } from "../domain/types";
+import { supabaseAdmin } from "@/shared/infrastructure/auth/client/supaBaseClient";
 import {
   RegistrationStatus,
   RegistrationStep,
   MemberStatus,
   PaymentApprovalStatus,
 } from "@/modules/members/domain/entities";
+import { UserRepository } from "@/modules/iam/domain/repositories";
+import { RoleRepository } from "@/modules/iam/domain/repositories";
+import { UserRoleRepository } from "@/modules/iam/domain/repositories";
 import {
   MemberRepository,
   NomineeRepository,
@@ -31,9 +35,13 @@ import {
 } from "@/modules/wallet/domain/entities";
 import { BadRequestError, NotFoundError } from "@/shared/utils/error-handling/httpErrors";
 import { generateMemberCode, calculateAge } from "@/modules/members/application/helpers";
+import { logger } from '@/shared/utils/logger'
 
 export class DevService {
   constructor(
+    private readonly userRepo: UserRepository,
+    private readonly roleRepo: RoleRepository,
+    private readonly userRoleRepo: UserRoleRepository,
     private readonly memberRepo: MemberRepository,
     private readonly nomineeRepo: NomineeRepository,
     private readonly registrationPaymentRepo: RegistrationPaymentRepository,
@@ -266,6 +274,68 @@ export class DevService {
             relationType: nominee.relationType,
           });
         }
+      }
+
+      // create local and supabase user
+      if(autoApprove){
+        logger.info("Creating Supabase user for member", { email: input.email });
+        const { data: supabaseUser, error: supabaseError } = 
+          await supabaseAdmin.auth.admin.createUser({
+            email: input.email,
+            email_confirm: true,
+            user_metadata: {
+              firstName: member.firstName,
+              lastName: member.lastName,
+              memberId: member.memberId,
+            }
+          });
+
+        if (supabaseError || !supabaseUser.user) {
+          logger.error("Supabase user creation failed", { 
+            error: supabaseError?.message,
+            email: input.email 
+          });
+          throw new Error("Failed to create authentication user! Supabase failed!");
+        } else {
+          // 5. Create local user
+          logger.info("Creating local user", { externalAuthId: supabaseUser.user.id });
+          const localUser = await this.userRepo.create({
+            externalAuthId: supabaseUser.user.id,
+            email: input.email,
+            firstName: member.firstName,
+            lastName: member.lastName,
+            isActive: true,
+            userMetadata: null,
+            lastSyncedAt: new Date(),
+          }, tx);
+
+          // Get Member role
+          const memberRole = await this.roleRepo.findByCode("member", tx);
+          if (memberRole) {
+            // Assign Member role
+            logger.info("Assigning Member role", { 
+              userId: localUser.userId, 
+              roleId: memberRole.roleId,
+              memberId: member.memberId, 
+            });
+            await this.userRoleRepo.create({
+              userId: localUser.userId,
+              roleId: memberRole.roleId,
+              scopeEntityType: "Agent",
+              scopeEntityId: member.agentId,
+              assignedBy: userId,
+            }, tx);
+          } else {
+            logger.warn("Member role not found in system - skipping role assignment");
+            throw new Error("Member role not found in system");
+          }
+          
+          // update member with user id
+          await this.memberRepo.update(member.memberId, {
+            userId: localUser.userId,
+          }, tx);
+        }
+
       }
 
       // 13. Return result

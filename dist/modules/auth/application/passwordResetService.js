@@ -17,7 +17,7 @@ export async function requestPasswordReset(email) {
     // Find local user
     const user = await prisma.user.findUnique({ where: { email } });
     // Don't reveal existence
-    console.log('Password reset requested for email:', email);
+    console.log('Password reset requested for email:', email, user?.email);
     if (!user)
         return;
     // Generate token and store hash

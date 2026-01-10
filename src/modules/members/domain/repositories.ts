@@ -16,6 +16,7 @@ export interface MemberRepository {
   create(member: Omit<Member, "createdAt" | "updatedAt">, tx?: any): Promise<Member>;
   findById(memberId: string, tx?: any): Promise<Member | null>;
   findByMemberCode(memberCode: string, tx?: any): Promise<Member | null>;
+  findByUserId(userId: string, tx?: any): Promise<Member | null>;
   update(
     memberId: string,
     data: Partial<Omit<Member, "memberId" | "memberCode" | "createdAt">>,

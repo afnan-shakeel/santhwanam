@@ -68,6 +68,55 @@ export class PrismaNomineeRepository {
             where: { memberId, isActive: true },
         });
     }
+    async search(filters) {
+        const skip = (filters.page - 1) * filters.limit;
+        const where = { isActive: true };
+        if (filters.name) {
+            where.name = {
+                contains: filters.name,
+                mode: 'insensitive',
+            };
+        }
+        if (filters.contactNumber) {
+            where.OR = [
+                {
+                    contactNumber: {
+                        contains: filters.contactNumber,
+                    },
+                },
+                {
+                    alternateContactNumber: {
+                        contains: filters.contactNumber,
+                    },
+                },
+            ];
+        }
+        const [nominees, total] = await Promise.all([
+            prisma.nominee.findMany({
+                where,
+                skip,
+                take: filters.limit,
+                orderBy: { createdAt: 'desc' },
+                include: {
+                    member: {
+                        select: {
+                            memberCode: true,
+                            firstName: true,
+                            middleName: true,
+                            lastName: true,
+                            contactNumber: true,
+                            memberStatus: true,
+                        },
+                    },
+                },
+            }),
+            prisma.nominee.count({ where }),
+        ]);
+        return {
+            nominees: nominees.map((n) => this.toDomain(n)),
+            total,
+        };
+    }
     toDomain(prismaData) {
         return {
             nomineeId: prismaData.nomineeId,

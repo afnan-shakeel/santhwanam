@@ -5565,6 +5565,213 @@
         }
       }
     },
+    "/api/contributions/cycles/summary": {
+      "get": {
+        "tags": ["Contributions"],
+        "summary": "Get active cycles summary for admin dashboard",
+        "description": "Returns aggregated statistics for all active contribution cycles",
+        "responses": {
+          "200": {
+            "description": "Summary retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": { "$ref": "#/components/schemas/ActiveCyclesSummary" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/contributions/my-contributions/summary": {
+      "get": {
+        "tags": ["Contributions"],
+        "summary": "Get authenticated member's contribution summary",
+        "description": "Returns contribution summary for the currently logged-in member. If user is not a member, returns empty summary.",
+        "responses": {
+          "200": {
+            "description": "Summary retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": { "$ref": "#/components/schemas/MyContributionsSummary" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/contributions/my-contributions/pending": {
+      "get": {
+        "tags": ["Contributions"],
+        "summary": "Get authenticated member's pending contributions",
+        "description": "Returns list of pending contributions for the currently logged-in member with cycle, deceased member, and agent details.",
+        "responses": {
+          "200": {
+            "description": "Pending contributions retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "pendingContributions": {
+                          "type": "array",
+                          "items": { "$ref": "#/components/schemas/MyPendingContribution" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/contributions/my-contributions/history": {
+      "get": {
+        "tags": ["Contributions"],
+        "summary": "Get authenticated member's contribution history",
+        "description": "Returns paginated contribution history for the currently logged-in member.",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["Pending", "WalletDebitRequested", "Acknowledged", "Collected", "Missed", "Exempted"]
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": { "type": "integer", "default": 1 }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 20 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contribution history retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "contributions": {
+                          "type": "array",
+                          "items": { "$ref": "#/components/schemas/MemberContributionWithRelations" }
+                        },
+                        "pagination": {
+                          "type": "object",
+                          "properties": {
+                            "page": { "type": "integer" },
+                            "limit": { "type": "integer" },
+                            "total": { "type": "integer" },
+                            "totalPages": { "type": "integer" }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/contributions/cycles/{cycleId}/contributions": {
+      "get": {
+        "tags": ["Contributions"],
+        "summary": "Get contributions in a cycle with filters",
+        "description": "Returns paginated list of member contributions for a specific cycle with optional filters.",
+        "parameters": [
+          {
+            "name": "cycleId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["Pending", "WalletDebitRequested", "Acknowledged", "Collected", "Missed", "Exempted"]
+            }
+          },
+          {
+            "name": "agentId",
+            "in": "query",
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "searchTerm",
+            "in": "query",
+            "description": "Search by member name or member code",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": { "type": "integer", "default": 1 }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 20 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contributions retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "contributions": {
+                          "type": "array",
+                          "items": { "$ref": "#/components/schemas/MemberContributionWithRelations" }
+                        },
+                        "total": { "type": "integer" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "description": "Cycle not found" }
+        }
+      }
+    },
     "/api/contributions/cycles/{cycleId}": {
       "get": {
         "tags": ["Contributions"],
@@ -5654,7 +5861,8 @@
     "/api/contributions/{contributionId}": {
       "get": {
         "tags": ["Contributions"],
-        "summary": "Get contribution by ID",
+        "summary": "Get contribution by ID with full relations",
+        "description": "Returns contribution details with nested cycle, member, and agent information",
         "parameters": [
           {
             "name": "contributionId",
@@ -5672,7 +5880,7 @@
                   "type": "object",
                   "properties": {
                     "success": { "type": "boolean" },
-                    "data": { "$ref": "#/components/schemas/MemberContribution" }
+                    "data": { "$ref": "#/components/schemas/MemberContributionWithRelations" }
                   }
                 }
               }
@@ -5817,7 +6025,8 @@
     "/api/contributions/member/{memberId}/history": {
       "get": {
         "tags": ["Contributions"],
-        "summary": "Get member's contribution history",
+        "summary": "Get member's contribution history with relations",
+        "description": "Returns paginated contribution history for a specific member with nested cycle, member, and agent details",
         "parameters": [
           {
             "name": "memberId",
@@ -5858,7 +6067,7 @@
                       "properties": {
                         "contributions": {
                           "type": "array",
-                          "items": { "$ref": "#/components/schemas/MemberContribution" }
+                          "items": { "$ref": "#/components/schemas/MemberContributionWithRelations" }
                         },
                         "total": { "type": "integer" }
                       }
@@ -6399,6 +6608,141 @@
           "exemptionReason": { "type": "string", "nullable": true },
           "createdAt": { "type": "string", "format": "date-time" },
           "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ActiveCyclesSummary": {
+        "type": "object",
+        "description": "Summary statistics for active contribution cycles (admin dashboard)",
+        "properties": {
+          "activeCyclesCount": { "type": "integer", "description": "Number of currently active cycles" },
+          "totalCollecting": { "type": "number", "description": "Total amount already collected across all active cycles" },
+          "totalExpected": { "type": "number", "description": "Total expected amount across all active cycles" },
+          "avgCompletionPercentage": { "type": "number", "description": "Average completion percentage across all active cycles" }
+        }
+      },
+      "MyContributionsSummary": {
+        "type": "object",
+        "description": "Contribution summary for authenticated member",
+        "properties": {
+          "memberId": { "type": "string", "format": "uuid" },
+          "memberCode": { "type": "string", "description": "Member's code (e.g., MEM-2025-00456)" },
+          "totalContributed": { "type": "number", "description": "Total amount contributed historically" },
+          "thisYear": { "type": "number", "description": "Amount contributed this year" },
+          "pendingCount": { "type": "integer", "description": "Number of pending contributions" },
+          "averagePerMonth": { "type": "number", "description": "Average contribution per month" },
+          "walletBalance": { "type": "number", "description": "Current wallet balance" }
+        }
+      },
+      "MyPendingContribution": {
+        "type": "object",
+        "description": "Pending contribution with full details for member view",
+        "properties": {
+          "contributionId": { "type": "string", "format": "uuid" },
+          "cycleCode": { "type": "string", "description": "Contribution cycle code (e.g., CC-2025-00015)" },
+          "claimId": { "type": "string", "format": "uuid" },
+          "deceasedMember": {
+            "type": "object",
+            "properties": {
+              "memberId": { "type": "string", "format": "uuid" },
+              "memberCode": { "type": "string" },
+              "fullName": { "type": "string" }
+            }
+          },
+          "tierName": { "type": "string", "description": "Tier name of deceased member (e.g., Tier A)" },
+          "contributionAmount": { "type": "number" },
+          "dueDate": { "type": "string", "format": "date-time" },
+          "daysLeft": { "type": "integer", "description": "Days remaining until deadline (negative if overdue)" },
+          "contributionStatus": { "type": "string" },
+          "agent": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "agentId": { "type": "string", "format": "uuid" },
+              "agentCode": { "type": "string" },
+              "fullName": { "type": "string" },
+              "contactNumber": { "type": "string" }
+            }
+          },
+          "cycle": {
+            "type": "object",
+            "properties": {
+              "cycleId": { "type": "string", "format": "uuid" },
+              "cycleNumber": { "type": "string" },
+              "claimNumber": { "type": "string" },
+              "deceasedMemberName": { "type": "string" },
+              "benefitAmount": { "type": "number" },
+              "startDate": { "type": "string", "format": "date-time" },
+              "collectionDeadline": { "type": "string", "format": "date-time" },
+              "cycleStatus": { "type": "string" }
+            }
+          }
+        }
+      },
+      "MemberContributionWithRelations": {
+        "type": "object",
+        "description": "Member contribution with cycle, member, and agent relations",
+        "properties": {
+          "contributionId": { "type": "string", "format": "uuid" },
+          "cycleId": { "type": "string", "format": "uuid" },
+          "memberId": { "type": "string", "format": "uuid" },
+          "memberCode": { "type": "string" },
+          "memberName": { "type": "string" },
+          "tierId": { "type": "string", "format": "uuid" },
+          "agentId": { "type": "string", "format": "uuid" },
+          "expectedAmount": { "type": "number" },
+          "contributionStatus": { "type": "string" },
+          "paymentMethod": { "type": "string", "nullable": true },
+          "collectionDate": { "type": "string", "format": "date-time", "nullable": true },
+          "collectedBy": { "type": "string", "format": "uuid", "nullable": true },
+          "walletDebitRequestId": { "type": "string", "format": "uuid", "nullable": true },
+          "debitAcknowledgedAt": { "type": "string", "format": "date-time", "nullable": true },
+          "cashReceiptReference": { "type": "string", "nullable": true },
+          "journalEntryId": { "type": "string", "format": "uuid", "nullable": true },
+          "isConsecutiveMiss": { "type": "boolean" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time", "nullable": true },
+          "cycle": {
+            "type": "object",
+            "properties": {
+              "cycleId": { "type": "string", "format": "uuid" },
+              "cycleNumber": { "type": "string" },
+              "deathClaimId": { "type": "string", "format": "uuid" },
+              "claimNumber": { "type": "string" },
+              "deceasedMemberId": { "type": "string", "format": "uuid" },
+              "deceasedMemberName": { "type": "string" },
+              "benefitAmount": { "type": "number" },
+              "forumId": { "type": "string", "format": "uuid" },
+              "startDate": { "type": "string", "format": "date-time" },
+              "collectionDeadline": { "type": "string", "format": "date-time" },
+              "cycleStatus": { "type": "string" },
+              "totalMembers": { "type": "integer" },
+              "totalExpectedAmount": { "type": "number" },
+              "totalCollectedAmount": { "type": "number" },
+              "totalPendingAmount": { "type": "number" },
+              "membersCollected": { "type": "integer" },
+              "membersPending": { "type": "integer" },
+              "membersMissed": { "type": "integer" }
+            }
+          },
+          "member": {
+            "type": "object",
+            "properties": {
+              "memberId": { "type": "string", "format": "uuid" },
+              "memberCode": { "type": "string" },
+              "firstName": { "type": "string" },
+              "lastName": { "type": "string" },
+              "agentId": { "type": "string", "format": "uuid" }
+            }
+          },
+          "agent": {
+            "type": "object",
+            "properties": {
+              "agentId": { "type": "string", "format": "uuid" },
+              "agentCode": { "type": "string" },
+              "firstName": { "type": "string" },
+              "lastName": { "type": "string" }
+            }
+          }
         }
       }
     },

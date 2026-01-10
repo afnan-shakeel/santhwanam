@@ -50,6 +50,11 @@ export class PrismaMemberRepository {
         const member = await db.member.findUnique({ where: { memberCode } });
         return member ? this.toDomain(member) : null;
     }
+    async findByUserId(userId, tx) {
+        const db = tx || prisma;
+        const member = await db.member.findFirst({ where: { userId } });
+        return member ? this.toDomain(member) : null;
+    }
     async update(memberId, data, tx) {
         const db = tx || prisma;
         const member = await db.member.update({
@@ -119,6 +124,30 @@ export class PrismaMemberRepository {
             },
         });
         return member ? member.memberCode : null;
+    }
+    async findActiveMembers(filters, tx) {
+        const db = tx || prisma;
+        const where = {
+            memberStatus: "Active",
+            registrationStatus: "Approved",
+        };
+        if (filters.excludeMemberId) {
+            where.memberId = { not: filters.excludeMemberId };
+        }
+        const members = await db.member.findMany({
+            where,
+            include: {
+                tier: {
+                    select: {
+                        contributionAmount: true,
+                    },
+                },
+            },
+        });
+        return members.map((m) => ({
+            ...this.toDomain(m),
+            tier: m.tier ? { contributionAmount: Number(m.tier.contributionAmount) } : undefined,
+        }));
     }
     toDomain(prismaData) {
         return {

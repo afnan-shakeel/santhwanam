@@ -59,3 +59,25 @@ export const getMemberHistoryQuerySchema = z.object({
   page: z.string().transform(Number).default('1'),
   limit: z.string().transform(Number).default('20'),
 });
+
+// ==================== Cycle Contributions Validators ====================
+
+export const getCycleContributionsParamsSchema = z.object({
+  cycleId: z.string().uuid('Invalid cycle ID format'),
+});
+
+export const getCycleContributionsQuerySchema = z.object({
+  status: z.nativeEnum(MemberContributionStatus).optional(),
+  agentId: z.string().uuid().optional(),
+  searchTerm: z.string().optional(),
+  page: z.string().transform(Number).default('1'),
+  limit: z.string().transform(Number).default('20'),
+});
+
+// ==================== My Contributions Validators ====================
+
+export const myContributionsHistoryQuerySchema = z.object({
+  status: z.nativeEnum(MemberContributionStatus).optional(),
+  page: z.string().transform(Number).default('1'),
+  limit: z.string().transform(Number).default('20'),
+});

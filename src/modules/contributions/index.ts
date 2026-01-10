@@ -72,7 +72,10 @@ eventBus.subscribe(
 );
 
 // Initialize controller
-const contributionController = new ContributionController(contributionService);
+const contributionController = new ContributionController(
+  contributionService,
+  memberRepo
+);
 
 // Create router
 const contributionsRouter = createContributionRouter(contributionController);

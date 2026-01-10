@@ -782,5 +782,11 @@ export class MemberService {
             deathBenefit: Number(tier.deathBenefitAmount),
         };
     }
+    /**
+     * Search nominees by name and contact number
+     */
+    async searchNominees(filters) {
+        return await this.nomineeRepository.search(filters);
+    }
 }
 //# sourceMappingURL=memberService.js.map

@@ -206,10 +206,11 @@ export class PrismaMemberContributionRepository implements MemberContributionRep
     filters?: {
       status?: MemberContributionStatus;
       agentId?: string;
+      searchTerm?: string;
       page: number;
       limit: number;
     }
-  ): Promise<{ contributions: MemberContribution[]; total: number }> {
+  ): Promise<{ contributions: MemberContributionWithRelations[]; total: number }> {
     const where: Prisma.MemberContributionWhereInput = { cycleId };
 
     if (filters?.status) {
@@ -218,6 +219,13 @@ export class PrismaMemberContributionRepository implements MemberContributionRep
 
     if (filters?.agentId) {
       where.agentId = filters.agentId;
+    }
+
+    if (filters?.searchTerm) {
+      where.OR = [
+        { memberName: { contains: filters.searchTerm, mode: 'insensitive' } },
+        { memberCode: { contains: filters.searchTerm, mode: 'insensitive' } },
+      ];
     }
 
     const page = filters?.page || 1;
@@ -229,12 +237,32 @@ export class PrismaMemberContributionRepository implements MemberContributionRep
         skip: (page - 1) * limit,
         take: limit,
         orderBy: { memberCode: 'asc' },
+        include: {
+          cycle: true,
+          member: {
+            select: {
+              memberId: true,
+              memberCode: true,
+              firstName: true,
+              lastName: true,
+              agentId: true,
+            },
+          },
+          agent: {
+            select: {
+              agentId: true,
+              agentCode: true,
+              firstName: true,
+              lastName: true,
+            },
+          },
+        },
       }),
       prisma.memberContribution.count({ where }),
     ]);
 
     return {
-      contributions: contributions.map(this.mapToEntity),
+      contributions: contributions.map((c) => this.mapToEntityWithRelations(c)),
       total,
     };
   }
@@ -261,23 +289,8 @@ export class PrismaMemberContributionRepository implements MemberContributionRep
         orderBy: { createdAt: 'desc' },
         include: {
           cycle: true,
-          member: {
-            select: {
-              memberId: true,
-              memberCode: true,
-              firstName: true,
-              lastName: true,
-              agentId: true,
-            },
-          },
-          agent: {
-            select: {
-              agentId: true,
-              agentCode: true,
-              firstName: true,
-              lastName: true,
-            },
-          },
+          member: true,
+          agent: true
         },
       }),
       prisma.memberContribution.count({ where }),
@@ -489,6 +502,38 @@ export class PrismaMemberContributionRepository implements MemberContributionRep
       isConsecutiveMiss: contribution.isConsecutiveMiss,
       createdAt: contribution.createdAt,
       updatedAt: contribution.updatedAt,
+    };
+  }
+
+  private mapToEntityWithRelations(contribution: any): MemberContributionWithRelations {
+    return {
+      ...this.mapToEntity(contribution),
+      cycle: contribution.cycle ? {
+        cycleId: contribution.cycle.cycleId,
+        cycleNumber: contribution.cycle.cycleNumber,
+        deathClaimId: contribution.cycle.deathClaimId,
+        claimNumber: contribution.cycle.claimNumber,
+        deceasedMemberId: contribution.cycle.deceasedMemberId,
+        deceasedMemberName: contribution.cycle.deceasedMemberName,
+        benefitAmount: parseFloat(contribution.cycle.benefitAmount.toString()),
+        forumId: contribution.cycle.forumId,
+        startDate: contribution.cycle.startDate,
+        collectionDeadline: contribution.cycle.collectionDeadline,
+        cycleStatus: contribution.cycle.cycleStatus,
+        totalMembers: contribution.cycle.totalMembers,
+        totalExpectedAmount: parseFloat(contribution.cycle.totalExpectedAmount.toString()),
+        totalCollectedAmount: parseFloat(contribution.cycle.totalCollectedAmount.toString()),
+        totalPendingAmount: parseFloat(contribution.cycle.totalPendingAmount.toString()),
+        membersCollected: contribution.cycle.membersCollected,
+        membersPending: contribution.cycle.membersPending,
+        membersMissed: contribution.cycle.membersMissed,
+        closedDate: contribution.cycle.closedDate,
+        closedBy: contribution.cycle.closedBy,
+        createdAt: contribution.cycle.createdAt,
+        updatedAt: contribution.cycle.updatedAt,
+      } : undefined,
+      member: contribution.member,
+      agent: contribution.agent,
     };
   }
 }

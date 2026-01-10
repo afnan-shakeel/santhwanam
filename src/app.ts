@@ -32,7 +32,7 @@ app.options('*', cors());
 
 // Register event handlers BEFORE routes
 registerEventHandlers();
-logger.info('Event system initialized');
+logger.info('Event system initialized. Environment:', process.env.NODE_ENV);
 
 // Authentication middleware should run before contextMiddleware so
 // the request user (if any) is captured into the ALS context.
