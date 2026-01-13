@@ -23,6 +23,42 @@ export class UserService {
     if (!u) throw new NotFoundError('User not found')
     return u
   }
+
+  async getUserWithRoles(userId: string) {
+    const u = await this.userRepo.findByIdWithRoles(userId)
+    if (!u) throw new NotFoundError('User not found')
+    
+    // Transform userRoles to match the expected response format
+    const rolesWithDetails = u.userRoles?.map((ur: any) => ({
+      userRoleId: ur.userRoleId,
+      roleId: ur.roleId,
+      roleCode: ur.role?.roleCode,
+      roleName: ur.role?.roleName,
+      scopeType: ur.role?.scopeType,
+      scopeEntityType: ur.scopeEntityType,
+      scopeEntityId: ur.scopeEntityId,
+      scopeEntityName: null, // Will be populated if needed with additional queries
+      isSystemRole: ur.role?.isSystemRole,
+      isActive: ur.isActive,
+      assignedAt: ur.assignedAt,
+      assignedBy: ur.assignedByUser ? {
+        userId: ur.assignedByUser.userId,
+        name: [ur.assignedByUser.firstName, ur.assignedByUser.lastName].filter(Boolean).join(' ') || ur.assignedByUser.email
+      } : null
+    })) || []
+
+    return {
+      userId: u.userId,
+      externalAuthId: u.externalAuthId,
+      email: u.email,
+      firstName: u.firstName,
+      lastName: u.lastName,
+      isActive: u.isActive,
+      createdAt: u.createdAt,
+      lastSyncedAt: u.lastSyncedAt,
+      roles: rolesWithDetails
+    }
+  }
 }
 
 export default UserService

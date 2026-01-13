@@ -245,6 +245,150 @@
         }
       }
     },
+    "/api/iam/users/{userId}/roles": {
+      "post": {
+        "tags": ["IAM - User Roles"],
+        "summary": "Assign role to user",
+        "description": "Assigns a role to a user with optional scope (Forum, Area, Unit, Agent). The role's scopeType must match the provided scopeEntityType.",
+        "parameters": [
+          { "name": "userId", "in": "path", "required": true, "schema": { "type": "string" }, "description": "User ID to assign role to" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["roleId"],
+                "properties": {
+                  "roleId": { 
+                    "type": "string",
+                    "description": "Role ID to assign"
+                  },
+                  "scopeEntityType": { 
+                    "type": "string", 
+                    "enum": ["None", "Forum", "Area", "Unit", "Agent"],
+                    "description": "Type of entity this role is scoped to (must match role's scopeType)"
+                  },
+                  "scopeEntityId": { 
+                    "type": ["string", "null"],
+                    "description": "ID of the forum/area/unit/agent entity (required if scopeEntityType is not 'None')"
+                  }
+                }
+              },
+              "examples": {
+                "unitAdmin": {
+                  "summary": "Assign Unit Admin role",
+                  "value": {
+                    "roleId": "role-unit-admin",
+                    "scopeEntityType": "Unit",
+                    "scopeEntityId": "unit-001"
+                  }
+                },
+                "superAdmin": {
+                  "summary": "Assign Super Admin role (no scope)",
+                  "value": {
+                    "roleId": "role-super-admin"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Role assigned successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserRoleResponse"
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid request (role not found, scope mismatch, etc.)" },
+          "401": { "description": "Unauthenticated" },
+          "404": { "description": "User not found" },
+          "409": { "description": "User already has this role in the given scope" }
+        }
+      },
+      "get": {
+        "tags": ["IAM - User Roles"],
+        "summary": "Get user with all assigned roles",
+        "description": "Retrieves user details with all active role assignments including scope information and who assigned them.",
+        "parameters": [
+          { "name": "userId", "in": "path", "required": true, "schema": { "type": "string" }, "description": "User ID" }
+        ],
+        "responses": {
+          "200": {
+            "description": "User with roles retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserWithRolesResponse"
+                },
+                "example": {
+                  "userId": "user-123",
+                  "externalAuthId": "auth0|abc123",
+                  "email": "john.doe@email.com",
+                  "firstName": "John",
+                  "lastName": "Doe",
+                  "isActive": true,
+                  "createdAt": "2025-01-15T00:00:00Z",
+                  "lastSyncedAt": "2025-01-20T10:30:00Z",
+                  "roles": [
+                    {
+                      "userRoleId": "ur-001",
+                      "roleId": "role-forum-admin",
+                      "roleCode": "forum_admin",
+                      "roleName": "Forum Admin",
+                      "scopeType": "Forum",
+                      "scopeEntityType": "Forum",
+                      "scopeEntityId": "forum-001",
+                      "scopeEntityName": "Oman Community Forum",
+                      "isSystemRole": true,
+                      "isActive": true,
+                      "assignedAt": "2025-01-20T00:00:00Z",
+                      "assignedBy": {
+                        "userId": "admin-001",
+                        "name": "Sarah Ahmed"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": { "description": "User not found" }
+        }
+      }
+    },
+    "/api/iam/users/{userId}/roles/{userRoleId}": {
+      "delete": {
+        "tags": ["IAM - User Roles"],
+        "summary": "Revoke role from user",
+        "description": "Revokes a previously assigned role from a user. Sets isActive to false and records who revoked it and when.",
+        "parameters": [
+          { "name": "userId", "in": "path", "required": true, "schema": { "type": "string" }, "description": "User ID" },
+          { "name": "userRoleId", "in": "path", "required": true, "schema": { "type": "string" }, "description": "UserRole assignment ID to revoke" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Role revoked successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserRoleResponse"
+                }
+              }
+            }
+          },
+          "400": { "description": "UserRole already revoked" },
+          "401": { "description": "Unauthenticated" },
+          "404": { "description": "UserRole not found" }
+        }
+      }
+    },
     "/api/iam/permissions/search": {
       "post": {
         "tags": ["IAM - Permissions"],
@@ -6083,6 +6227,83 @@
   },
   "components": {
     "schemas": {
+      "UserRoleResponse": {
+        "type": "object",
+        "description": "User role assignment response",
+        "properties": {
+          "userRoleId": { "type": "string", "format": "uuid", "description": "Unique ID of the user role assignment" },
+          "userId": { "type": "string", "format": "uuid", "description": "User ID" },
+          "roleId": { "type": "string", "format": "uuid", "description": "Role ID" },
+          "scopeEntityType": { 
+            "type": ["string", "null"], 
+            "enum": ["None", "Forum", "Area", "Unit", "Agent", null],
+            "description": "Type of entity this role is scoped to" 
+          },
+          "scopeEntityId": { 
+            "type": ["string", "null"], 
+            "format": "uuid",
+            "description": "ID of the forum/area/unit/agent entity" 
+          },
+          "isActive": { "type": "boolean", "description": "Whether the role assignment is active" },
+          "assignedAt": { "type": "string", "format": "date-time", "description": "When the role was assigned" },
+          "assignedBy": { "type": ["string", "null"], "format": "uuid", "description": "User ID who assigned the role" },
+          "revokedAt": { "type": ["string", "null"], "format": "date-time", "description": "When the role was revoked (null if still active)" },
+          "revokedBy": { "type": ["string", "null"], "format": "uuid", "description": "User ID who revoked the role (null if still active)" },
+          "role": {
+            "type": "object",
+            "nullable": true,
+            "description": "Role details (optional, included when eager loaded)",
+            "properties": {
+              "roleId": { "type": "string", "format": "uuid" },
+              "roleCode": { "type": "string" },
+              "roleName": { "type": "string" },
+              "scopeType": { "type": "string", "enum": ["None", "Forum", "Area", "Unit", "Agent"] }
+            }
+          }
+        }
+      },
+      "UserWithRolesResponse": {
+        "type": "object",
+        "description": "User details with all assigned roles",
+        "properties": {
+          "userId": { "type": "string", "format": "uuid" },
+          "externalAuthId": { "type": "string", "description": "External authentication provider user ID" },
+          "email": { "type": "string", "format": "email" },
+          "firstName": { "type": ["string", "null"] },
+          "lastName": { "type": ["string", "null"] },
+          "isActive": { "type": "boolean" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "lastSyncedAt": { "type": ["string", "null"], "format": "date-time" },
+          "roles": {
+            "type": "array",
+            "description": "List of all active role assignments for this user",
+            "items": {
+              "type": "object",
+              "properties": {
+                "userRoleId": { "type": "string", "format": "uuid" },
+                "roleId": { "type": "string", "format": "uuid" },
+                "roleCode": { "type": "string", "description": "Role code (e.g., forum_admin, unit_admin)" },
+                "roleName": { "type": "string", "description": "Display name of the role" },
+                "scopeType": { "type": "string", "enum": ["None", "Forum", "Area", "Unit", "Agent"], "description": "Type of scope this role has" },
+                "scopeEntityType": { "type": ["string", "null"], "enum": ["None", "Forum", "Area", "Unit", "Agent", null], "description": "Specific entity type this assignment is scoped to" },
+                "scopeEntityId": { "type": ["string", "null"], "format": "uuid", "description": "ID of the scoped entity" },
+                "scopeEntityName": { "type": ["string", "null"], "description": "Name of the scoped entity (e.g., forum name, unit name)" },
+                "isSystemRole": { "type": "boolean", "description": "Whether this is a built-in system role" },
+                "isActive": { "type": "boolean" },
+                "assignedAt": { "type": "string", "format": "date-time" },
+                "assignedBy": {
+                  "type": ["object", "null"],
+                  "description": "User who assigned this role",
+                  "properties": {
+                    "userId": { "type": "string", "format": "uuid" },
+                    "name": { "type": "string", "description": "Full name or email of the user who assigned the role" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
       "SearchRequest": {
         "type": "object",
         "description": "Advanced search request with filters, sorting, and pagination. Supports multiple filter operators and eager loading of relations.",

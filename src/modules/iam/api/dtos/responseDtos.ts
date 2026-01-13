@@ -88,6 +88,37 @@ export const UserRoleResponseDto = z.object({
   role: RoleResponseDto.optional(),
 });
 
+// User with roles detailed response
+export const UserRoleDetailDto = z.object({
+  userRoleId: z.string(),
+  roleId: z.string(),
+  roleCode: z.string(),
+  roleName: z.string(),
+  scopeType: z.enum(['None', 'Forum', 'Area', 'Unit', 'Agent']),
+  scopeEntityType: z.enum(['None', 'Forum', 'Area', 'Unit', 'Agent']).nullable().optional(),
+  scopeEntityId: z.string().nullable().optional(),
+  scopeEntityName: z.string().nullable().optional(),
+  isSystemRole: z.boolean(),
+  isActive: z.boolean(),
+  assignedAt: z.date(),
+  assignedBy: z.object({
+    userId: z.string(),
+    name: z.string()
+  }).nullable().optional(),
+});
+
+export const UserWithRolesResponseDto = z.object({
+  userId: z.string(),
+  externalAuthId: z.string(),
+  email: z.string().email(),
+  firstName: z.string().nullable().optional(),
+  lastName: z.string().nullable().optional(),
+  isActive: z.boolean(),
+  createdAt: z.date(),
+  lastSyncedAt: z.date().nullable().optional(),
+  roles: z.array(UserRoleDetailDto),
+});
+
 // Type exports
 export type PermissionResponse = z.infer<typeof PermissionResponseDto>;
 export type PermissionsSearchResponse = z.infer<typeof PermissionsSearchResponseDto>;
@@ -96,3 +127,5 @@ export type RolesSearchResponse = z.infer<typeof RolesSearchResponseDto>;
 export type UserResponse = z.infer<typeof UserResponseDto>;
 export type UsersSearchResponse = z.infer<typeof UsersSearchResponseDto>;
 export type UserRoleResponse = z.infer<typeof UserRoleResponseDto>;
+export type UserRoleDetail = z.infer<typeof UserRoleDetailDto>;
+export type UserWithRolesResponse = z.infer<typeof UserWithRolesResponseDto>;

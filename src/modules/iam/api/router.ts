@@ -95,4 +95,11 @@ router.delete(
 	ctrl.revokeRoleFromUser,
 )
 
+// Get User with Roles
+router.get(
+	'/users/:userId/roles',
+	// requirePermission('user.read'),
+	ctrl.getUserWithRoles,
+)
+
 export default router

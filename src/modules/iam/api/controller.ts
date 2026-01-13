@@ -8,6 +8,7 @@ import {
   UserResponseDto,
   UsersSearchResponseDto,
   UserRoleResponseDto,
+  UserWithRolesResponseDto,
 } from './dtos/responseDtos'
 import { InviteUserCommand } from '@/modules/iam/application/commands/inviteUserCommand'
 import { AssignRoleCommand } from '@/modules/iam/application/commands/assignRoleToUserCommand'
@@ -142,6 +143,16 @@ export async function revokeRoleFromUser(req: Request, res: Response, next: Next
     const payload: RevokeRoleCommand = { userRoleId }
     const userRole = await revokeRoleFromUserHandler.execute(payload)
     return next({ responseSchema: UserRoleResponseDto, data: userRole, status: 200 })
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function getUserWithRoles(req: Request, res: Response, next: NextFunction) {
+  try {
+    const userId = req.params.userId
+    const userWithRoles = await (await import('../index')).userService.getUserWithRoles(userId)
+    return next({ responseSchema: UserWithRolesResponseDto, data: userWithRoles, status: 200 })
   } catch (err) {
     next(err)
   }

@@ -14,6 +14,39 @@ export class PrismaUserRepository implements UserRepository {
     return u ?? null
   }
 
+  async findByIdWithRoles(id: string, tx?: any): Promise<any | null> {
+    const client = tx ?? prisma
+    const u = await client.user.findUnique({
+      where: { userId: id },
+      include: {
+        userRoles: {
+          where: { isActive: true },
+          include: {
+            role: {
+              include: {
+                rolePermissions: {
+                  include: {
+                    permission: true
+                  }
+                }
+              }
+            },
+            // assignedByUser: {
+            //   select: {
+            //     userId: true,
+            //     firstName: true,
+            //     lastName: true,
+            //     email: true
+            //   }
+            // }
+          },
+          orderBy: { assignedAt: 'desc' }
+        }
+      }
+    })
+    return u ?? null
+  }
+
   async updateById(id: string, updates: Partial<any>, tx?: any): Promise<any> {
     const client = tx ?? prisma
     const u = await client.user.update({ where: { userId: id }, data: updates })

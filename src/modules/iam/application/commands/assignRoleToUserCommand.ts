@@ -8,7 +8,7 @@ import { asyncLocalStorage } from '@/shared/infrastructure/context/AsyncLocalSto
 export interface AssignRoleCommand {
   userId: string
   roleId: string
-  scopeEntityType?: 'None' | 'Forum' | 'Area' | 'Unit' | 'Agent'
+  scopeEntityType?: 'None' | 'Forum' | 'Area' | 'Unit' | 'Agent' | 'Member'
   scopeEntityId?: string | null
 }
 

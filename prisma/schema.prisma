@@ -38,6 +38,7 @@ enum ScopeType {
   Area
   Unit
   Agent
+  Member
 }
 
 model Role {
