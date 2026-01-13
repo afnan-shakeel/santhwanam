@@ -156,8 +156,8 @@ export class ActivateMemberOnApprovalHandler implements IEventHandler<DomainEven
             await this.userRoleRepository.create({
               userId: localUser.userId,
               roleId: memberRole.roleId,
-              scopeEntityType: "Agent",
-              scopeEntityId: member.agentId,
+              scopeEntityType: "Member",
+              scopeEntityId: member.memberId,
               assignedBy: approvedBy,
             }, tx);
           } else {

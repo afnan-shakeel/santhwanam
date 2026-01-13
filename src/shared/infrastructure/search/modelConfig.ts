@@ -58,7 +58,7 @@ export const modelConfigs: ModelConfigs = {
   Member: {
     searchable: ['firstName', 'middleName','lastName','memberCode'],
     sortable: ['createdAt', 'memberCode'],
-    filters: ['createdAt', 'firstName', 'middleName', 'lastName', 'memberCode', 'unitId'],
+    filters: ['createdAt', 'firstName', 'middleName', 'lastName', 'memberCode', 'unitId', 'registrationStatus'],
     relations: [],
   },
   DeathClaim: {

@@ -5,7 +5,7 @@ export const RoleDto = z.object({
   roleCode: z.string(),
   roleName: z.string(),
   description: z.string().nullable().optional(),
-  scopeType: z.enum(['None', 'Forum', 'Area', 'Unit', 'Agent']),
+  scopeType: z.enum(['None', 'Forum', 'Area', 'Unit', 'Agent', 'Member']),
   isActive: z.boolean(),
   isSystemRole: z.boolean(),
   permissionIds: z.array(z.string()).optional(),
