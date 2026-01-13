@@ -55,3 +55,9 @@ export const updateUserSchema = z.object({
   isActive: z.boolean().optional(),
   userMetadata: z.any().optional(),
 })
+
+export const assignRoleToUserSchema = z.object({
+  roleId: z.string().min(1, 'Role ID is required'),
+  scopeEntityType: z.enum(['None', 'Forum', 'Area', 'Unit', 'Agent']).optional(),
+  scopeEntityId: z.string().optional().nullable(),
+})

@@ -4,7 +4,7 @@ import { validateBody } from '@/shared/middleware/validateZod'
 import requirePermission from '@/shared/middleware/requirePermission'
 import { PermissionsSearchResponseDto, PermissionDto } from './dtos/permissionDtos'
 import { RolesSearchResponseDto, RoleDto } from './dtos/roleDtos'
-import { createPermissionSchema, createRoleSchema, updatePermissionSchema, updateRoleSchema, inviteUserSchema, updateUserSchema } from './validators'
+import { createPermissionSchema, createRoleSchema, updatePermissionSchema, updateRoleSchema, inviteUserSchema, updateUserSchema, assignRoleToUserSchema } from './validators'
 import { searchValidationSchema } from '@/shared/validators/searchValidator'
 
 const router = Router()
@@ -78,6 +78,21 @@ router.get(
 	'/users/:id',
 	// requirePermission('user.read'),
 	ctrl.getUser,
+)
+
+// User Role Assignment
+router.post(
+	'/users/:userId/roles',
+	validateBody(assignRoleToUserSchema),
+	// requirePermission('role.assign'),
+	ctrl.assignRoleToUser,
+)
+
+// User Role Revocation
+router.delete(
+	'/users/:userId/roles/:userRoleId',
+	// requirePermission('role.revoke'),
+	ctrl.revokeRoleFromUser,
 )
 
 export default router

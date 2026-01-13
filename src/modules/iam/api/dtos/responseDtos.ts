@@ -73,6 +73,21 @@ export const UsersSearchResponseDto = z.object({
   totalPages: z.number(),
 });
 
+// UserRole response
+export const UserRoleResponseDto = z.object({
+  userRoleId: z.string(),
+  userId: z.string(),
+  roleId: z.string(),
+  scopeEntityType: z.enum(['None', 'Forum', 'Area', 'Unit', 'Agent']).nullable().optional(),
+  scopeEntityId: z.string().nullable().optional(),
+  isActive: z.boolean(),
+  assignedAt: z.date(),
+  assignedBy: z.string().nullable().optional(),
+  revokedAt: z.date().nullable().optional(),
+  revokedBy: z.string().nullable().optional(),
+  role: RoleResponseDto.optional(),
+});
+
 // Type exports
 export type PermissionResponse = z.infer<typeof PermissionResponseDto>;
 export type PermissionsSearchResponse = z.infer<typeof PermissionsSearchResponseDto>;
@@ -80,3 +95,4 @@ export type RoleResponse = z.infer<typeof RoleResponseDto>;
 export type RolesSearchResponse = z.infer<typeof RolesSearchResponseDto>;
 export type UserResponse = z.infer<typeof UserResponseDto>;
 export type UsersSearchResponse = z.infer<typeof UsersSearchResponseDto>;
+export type UserRoleResponse = z.infer<typeof UserRoleResponseDto>;

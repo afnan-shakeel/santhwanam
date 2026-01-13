@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express'
-import { permissionService, roleService, inviteUserHandler } from '../index'
+import { permissionService, roleService, inviteUserHandler, assignRoleToUserHandler, revokeRoleFromUserHandler } from '../index'
 import {
   PermissionResponseDto,
   PermissionsSearchResponseDto,
@@ -7,8 +7,11 @@ import {
   RolesSearchResponseDto,
   UserResponseDto,
   UsersSearchResponseDto,
+  UserRoleResponseDto,
 } from './dtos/responseDtos'
 import { InviteUserCommand } from '@/modules/iam/application/commands/inviteUserCommand'
+import { AssignRoleCommand } from '@/modules/iam/application/commands/assignRoleToUserCommand'
+import { RevokeRoleCommand } from '@/modules/iam/application/commands/revokeRoleFromUserCommand'
 
 export async function searchPermissions(req: Request, res: Response, next: NextFunction) {
   try {
@@ -114,6 +117,31 @@ export async function updateRole(req: Request, res: Response, next: NextFunction
     const id = req.params.id
     const r = await roleService.updateRole(id, req.body)
     return next({ responseSchema: RoleResponseDto, data: r, status: 200 })
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function assignRoleToUser(req: Request, res: Response, next: NextFunction) {
+  try {
+    const userId = req.params.userId
+    const payload: AssignRoleCommand = {
+      userId,
+      ...req.body,
+    }
+    const userRole = await assignRoleToUserHandler.execute(payload)
+    return next({ responseSchema: UserRoleResponseDto, data: userRole, status: 201 })
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function revokeRoleFromUser(req: Request, res: Response, next: NextFunction) {
+  try {
+    const userRoleId = req.params.userRoleId
+    const payload: RevokeRoleCommand = { userRoleId }
+    const userRole = await revokeRoleFromUserHandler.execute(payload)
+    return next({ responseSchema: UserRoleResponseDto, data: userRole, status: 200 })
   } catch (err) {
     next(err)
   }

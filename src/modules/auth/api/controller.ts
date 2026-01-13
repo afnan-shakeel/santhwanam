@@ -69,6 +69,7 @@ export async function loginController(req: Request, res: Response, next: NextFun
       refreshToken: session?.refresh_token ?? null,
       expiresAt: session?.expires_at ?? null,
       user: localUser ?? null,
+      roles: roles
     })
   } catch (err) {
     next(err)
