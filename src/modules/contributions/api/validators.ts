@@ -56,8 +56,8 @@ export const getMemberHistoryParamsSchema = z.object({
 
 export const getMemberHistoryQuerySchema = z.object({
   status: z.nativeEnum(MemberContributionStatus).optional(),
-  page: z.string().transform(Number).default('1'),
-  limit: z.string().transform(Number).default('20'),
+  page: z.string().optional().default('1').transform(Number),
+  limit: z.string().optional().default('20').transform(Number),
 });
 
 // ==================== Cycle Contributions Validators ====================
@@ -70,14 +70,14 @@ export const getCycleContributionsQuerySchema = z.object({
   status: z.nativeEnum(MemberContributionStatus).optional(),
   agentId: z.string().uuid().optional(),
   searchTerm: z.string().optional(),
-  page: z.string().transform(Number).default('1'),
-  limit: z.string().transform(Number).default('20'),
+  page: z.string().optional().default('1').transform(Number),
+  limit: z.string().optional().default('20').transform(Number),
 });
 
 // ==================== My Contributions Validators ====================
 
 export const myContributionsHistoryQuerySchema = z.object({
   status: z.nativeEnum(MemberContributionStatus).optional(),
-  page: z.string().transform(Number).default('1'),
-  limit: z.string().transform(Number).default('20'),
+  page: z.string().optional().default('1').transform(Number),
+  limit: z.string().optional().default('20').transform(Number),
 });

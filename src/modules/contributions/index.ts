@@ -26,6 +26,9 @@ import { PrismaJournalEntryRepository } from '@/modules/gl/infrastructure/prisma
 import { PrismaJournalEntryLineRepository } from '@/modules/gl/infrastructure/prisma/journalEntryLineRepository';
 import { PrismaChartOfAccountRepository } from '@/modules/gl/infrastructure/prisma/chartOfAccountRepository';
 
+// Config service
+import { configService } from '@/modules/config';
+
 // Event bus
 import { eventBus } from '@/shared/domain/events/event-bus';
 import { DeathClaimApprovedEvent } from '@/modules/death-claims/domain/events';
@@ -53,7 +56,8 @@ const contributionService = new ContributionService(
   walletRepo,
   walletTransactionRepo,
   debitRequestService,
-  journalEntryService
+  journalEntryService,
+  configService
 );
 
 // Initialize event handlers

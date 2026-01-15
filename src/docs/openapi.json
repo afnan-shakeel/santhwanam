@@ -4707,6 +4707,8 @@
       "post": {
         "tags": ["Wallet - Debits"],
         "summary": "Acknowledge a debit request",
+        "deprecated": true,
+        "description": "DEPRECATED: This endpoint is deprecated when wallet.autoDebitEnabled is true (default). With auto-debit enabled, wallet debits are processed automatically without agent acknowledgment. This endpoint only works when auto-debit is disabled via system configuration.",
         "parameters": [
           {
             "name": "debitRequestId",
@@ -6038,6 +6040,8 @@
       "post": {
         "tags": ["Contributions"],
         "summary": "Acknowledge wallet debit for contribution",
+        "deprecated": true,
+        "description": "DEPRECATED: This endpoint is deprecated when wallet.autoDebitEnabled is true (default). With auto-debit enabled, contributions are collected automatically from wallets without agent acknowledgment. This endpoint only works when auto-debit is disabled via system configuration.",
         "parameters": [
           {
             "name": "contributionId",
@@ -6490,7 +6494,7 @@
       },
       "WalletDebitRequest": {
         "type": "object",
-        "description": "Debit request for a wallet",
+        "description": "Debit request for a wallet. When isAutoDebit is true, the debit was processed automatically without agent acknowledgment.",
         "properties": {
           "debitRequestId": { "type": "string", "format": "uuid" },
           "memberId": { "type": "string", "format": "uuid" },
@@ -6499,9 +6503,10 @@
           "purpose": { "type": "string" },
           "contributionCycleId": { "type": "string", "format": "uuid", "nullable": true },
           "contributionId": { "type": "string", "format": "uuid", "nullable": true },
-          "status": { "type": "string", "enum": ["PendingAcknowledgment", "Acknowledged", "Completed", "Invalidated", "Failed"] },
+          "status": { "type": "string", "enum": ["PendingAcknowledgment", "Acknowledged", "Completed", "Invalidated", "Failed"], "description": "Note: PendingAcknowledgment and Acknowledged are deprecated when auto-debit is enabled" },
+          "isAutoDebit": { "type": "boolean", "default": false, "description": "Indicates if this debit was processed automatically without agent acknowledgment" },
           "createdAt": { "type": "string", "format": "date-time" },
-          "acknowledgedAt": { "type": "string", "format": "date-time", "nullable": true },
+          "acknowledgedAt": { "type": "string", "format": "date-time", "nullable": true, "description": "Deprecated: Not set when isAutoDebit=true" },
           "completedAt": { "type": "string", "format": "date-time", "nullable": true }
         }
       },

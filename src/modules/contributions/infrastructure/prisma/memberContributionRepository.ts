@@ -7,7 +7,7 @@ import {
   MemberContributionStatus,
   MemberContributionWithRelations,
 } from '../../domain/entities';
-import { Prisma } from '@/generated/prisma';
+import { Prisma } from "../../../../generated/prisma/client";
 
 export class PrismaMemberContributionRepository implements MemberContributionRepository {
   async create(
@@ -47,7 +47,7 @@ export class PrismaMemberContributionRepository implements MemberContributionRep
   ): Promise<void> {
     const db = tx || prisma;
 
-    await db.memberContribution.createMany({
+    return await db.memberContribution.createMany({
       data: data.map((item) => ({
         contributionId: item.contributionId,
         cycleId: item.cycleId,
@@ -209,8 +209,10 @@ export class PrismaMemberContributionRepository implements MemberContributionRep
       searchTerm?: string;
       page: number;
       limit: number;
-    }
+    },
+    tx?: any
   ): Promise<{ contributions: MemberContributionWithRelations[]; total: number }> {
+    const db = tx || prisma
     const where: Prisma.MemberContributionWhereInput = { cycleId };
 
     if (filters?.status) {
@@ -231,38 +233,35 @@ export class PrismaMemberContributionRepository implements MemberContributionRep
     const page = filters?.page || 1;
     const limit = filters?.limit || 50;
 
-    const [contributions, total] = await Promise.all([
-      prisma.memberContribution.findMany({
-        where,
-        skip: (page - 1) * limit,
-        take: limit,
-        orderBy: { memberCode: 'asc' },
-        include: {
-          cycle: true,
-          member: {
-            select: {
-              memberId: true,
-              memberCode: true,
-              firstName: true,
-              lastName: true,
-              agentId: true,
-            },
-          },
-          agent: {
-            select: {
-              agentId: true,
-              agentCode: true,
-              firstName: true,
-              lastName: true,
-            },
+    const contributions = await db.memberContribution.findMany({
+      where,
+      skip: (page - 1) * limit,
+      take: limit,
+      orderBy: { memberCode: 'asc' },
+      include: {
+        cycle: true,
+        member: {
+          select: {
+            memberId: true,
+            memberCode: true,
+            firstName: true,
+            lastName: true,
+            agentId: true,
           },
         },
-      }),
-      prisma.memberContribution.count({ where }),
-    ]);
-
+        agent: {
+          select: {
+            agentId: true,
+            agentCode: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+      },
+    })
+    const total = await db.memberContribution.count({ where })
     return {
-      contributions: contributions.map((c) => this.mapToEntityWithRelations(c)),
+      contributions: contributions.map((c: any) => this.mapToEntityWithRelations(c)),
       total,
     };
   }
@@ -348,7 +347,6 @@ export class PrismaMemberContributionRepository implements MemberContributionRep
     if (filters.status) {
       where.contributionStatus = filters.status;
     }
-
     const [contributions, total] = await Promise.all([
       prisma.memberContribution.findMany({
         where,
@@ -378,14 +376,13 @@ export class PrismaMemberContributionRepository implements MemberContributionRep
       }),
       prisma.memberContribution.count({ where }),
     ]);
-
     return {
       contributions: contributions.map((c: any) => ({
-        ...this.mapToEntity(c),
-        cycle: c.cycle,
-        member: c.member,
-        agent: c.agent,
-      })),
+      ...this.mapToEntity(c),
+      cycle: c.cycle,
+      member: c.member,
+      agent: c.agent,
+    })),
       total,
     };
   }

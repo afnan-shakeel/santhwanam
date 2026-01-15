@@ -67,7 +67,8 @@ export interface MemberContributionRepository {
       searchTerm?: string;
       page: number;
       limit: number;
-    }
+    },
+    tx?: any
   ): Promise<{ contributions: MemberContributionWithRelations[]; total: number }>;
   
   findByMemberId(

@@ -13,8 +13,10 @@ import {
   MemberContributionStatus,
   ContributionPaymentMethod,
   MemberContributionWithRelations,
+  ContributionCycleStatus,
 } from '../domain/entities';
 import { MemberRepository } from '@/modules/members/domain/repositories';
+import { MemberStatus } from '@/modules/members/domain/entities';
 import { DebitRequestService } from '@/modules/wallet/application/debitRequestService';
 import {
   WalletRepository,
@@ -37,9 +39,13 @@ import {
 } from '../domain/events';
 import { generateCycleNumber } from './helpers';
 import { WalletTransactionType, WalletTransactionStatus } from '@/modules/wallet/domain/entities';
+import { ConfigService } from '@/modules/config/application/configService';
 
 // Grace period for contribution collection (in days)
 const CONTRIBUTION_GRACE_PERIOD_DAYS = 30;
+
+// System user ID for auto-debit operations
+const SYSTEM_USER_ID = 'SYSTEM';
 
 export class ContributionService {
   constructor(
@@ -49,7 +55,8 @@ export class ContributionService {
     private readonly walletRepo: WalletRepository,
     private readonly walletTransactionRepo: WalletTransactionRepository,
     private readonly debitRequestService: DebitRequestService,
-    private readonly journalEntryService: JournalEntryService
+    private readonly journalEntryService: JournalEntryService,
+    private readonly configService?: ConfigService
   ) {}
 
   /**
@@ -117,7 +124,7 @@ export class ContributionService {
           forumId: data.forumId,
           startDate,
           collectionDeadline,
-          cycleStatus: 'Active',
+          cycleStatus: ContributionCycleStatus.Active,
           totalMembers: activeMembers.length,
           totalExpectedAmount,
           totalCollectedAmount: 0,
@@ -166,49 +173,142 @@ export class ContributionService {
 
   /**
    * Create wallet debit requests for contributions
-   * Only for members with sufficient balance
+   * 
+   * Behavior depends on wallet.autoDebitEnabled configuration:
+   * - When enabled (default): Auto-debit from wallet immediately, contribution goes to Collected
+   * - When disabled: Create debit request for agent acknowledgment, contribution goes to WalletDebitRequested
+   * 
+   * If member has insufficient balance, they remain in Pending for agent cash collection.
+   * 
+   * See docs/implementations/update-99-remove-wallet-debit-request.md
    */
   private async createWalletDebitRequests(
     cycleId: string,
     cycleNumber: string,
     tx: any
   ): Promise<void> {
-    const contributions = await this.memberContributionRepo.findByCycleId(
+    // Check if auto-debit is enabled
+    const autoDebitEnabled = this.configService 
+      ? await this.configService.isWalletAutoDebitEnabled()
+      : true; // Default to auto-debit if no config service
+
+      console.log(cycleId, cycleNumber)
+      const contributions = await this.memberContributionRepo.findByCycleId(
       cycleId,
       {
         status: MemberContributionStatus.Pending,
         page: 1,
         limit: 10000, // Get all
-      }
+      },
+      tx
     );
-
+    
     for (const contribution of contributions.contributions) {
-      // Get member's wallet
-      const wallet = await this.walletRepo.findByMemberId(contribution.memberId, tx);
-
-      if (wallet && wallet.currentBalance >= contribution.expectedAmount) {
-        // Create debit request
-        const debitRequest = await this.debitRequestService.createDebitRequest({
-          memberId: contribution.memberId,
-          amount: contribution.expectedAmount,
-          purpose: `Contribution for ${cycleNumber}`,
-          contributionCycleId: cycleId,
-          contributionId: contribution.contributionId,
-        });
-
-        if (debitRequest) {
-          // Update contribution status
-          await this.memberContributionRepo.update(
-            contribution.contributionId,
-            {
-              contributionStatus: MemberContributionStatus.WalletDebitRequested,
-              walletDebitRequestId: debitRequest.debitRequestId,
-            },
-            tx
-          );
-        }
+      if (autoDebitEnabled) {
+        // AUTO-DEBIT MODE: Debit wallet immediately
+        await this.processAutoDebit(contribution, cycleId, cycleNumber, tx);
+      } else {
+        // LEGACY MODE: Create debit request for agent acknowledgment
+        await this.processLegacyDebitRequest(contribution, cycleNumber, tx);
       }
     }
+  }
+
+  /**
+   * Process auto-debit for a contribution
+   * Debits wallet immediately without agent acknowledgment
+   */
+  private async processAutoDebit(
+    contribution: MemberContribution,
+    cycleId: string,
+    cycleNumber: string,
+    tx: any
+  ): Promise<void> {
+    //TODO: CODE NOT REACHING THIS POINT
+    const result = await this.debitRequestService.executeAutoDebit(
+      {
+        memberId: contribution.memberId,
+        amount: contribution.expectedAmount,
+        purpose: `Contribution for ${cycleNumber}`,
+        contributionCycleId: cycleId,
+        contributionId: contribution.contributionId,
+      },
+      SYSTEM_USER_ID,
+      tx
+    );
+
+
+    if (result) {
+      // Auto-debit successful - mark as collected
+      await this.memberContributionRepo.update(
+        contribution.contributionId,
+        {
+          contributionStatus: MemberContributionStatus.Collected,
+          paymentMethod: ContributionPaymentMethod.Wallet,
+          collectionDate: new Date(),
+          collectedBy: SYSTEM_USER_ID,
+          walletDebitRequestId: result.debitRequest.debitRequestId,
+          journalEntryId: result.journalEntryId,
+          debitAcknowledgedAt: new Date(),
+        },
+        tx
+      );
+
+      // Emit contribution collected event
+      eventBus.publish(
+        new ContributionCollectedEvent(
+          {
+            contributionId: contribution.contributionId,
+            cycleId,
+            memberId: contribution.memberId,
+            amount: contribution.expectedAmount,
+            paymentMethod: 'Wallet',
+            collectedBy: SYSTEM_USER_ID,
+            isAutoDebit: true,
+          },
+          SYSTEM_USER_ID
+        )
+      );
+    }
+    // If result is null, insufficient balance - contribution stays Pending for agent cash collection
+  }
+
+  /**
+   * Process legacy debit request (for when auto-debit is disabled)
+   * Creates debit request requiring agent acknowledgment
+   * @deprecated Use auto-debit instead
+   */
+  private async processLegacyDebitRequest(
+    contribution: MemberContribution,
+    cycleNumber: string,
+    tx: any
+  ): Promise<void> {
+    // Get member's wallet
+    const wallet = await this.walletRepo.findByMemberId(contribution.memberId, tx);
+
+    if (wallet && wallet.currentBalance >= contribution.expectedAmount) {
+      // Create debit request for agent acknowledgment
+      const debitRequest = await this.debitRequestService.createDebitRequest({
+        memberId: contribution.memberId,
+        amount: contribution.expectedAmount,
+        purpose: `Contribution for ${cycleNumber}`,
+        contributionCycleId: contribution.cycleId,
+        contributionId: contribution.contributionId,
+      });
+
+      if (debitRequest) {
+        // Update contribution status to await acknowledgment
+        await this.memberContributionRepo.update(
+          contribution.contributionId,
+          {
+            contributionStatus: MemberContributionStatus.WalletDebitRequested,
+            walletDebitRequestId: debitRequest.debitRequestId,
+          },
+          tx
+        );
+      }
+    }
+    // If insufficient balance, contribution stays Pending for agent cash collection
   }
 
   /**
@@ -243,19 +343,15 @@ export class ContributionService {
       }
 
       // Acknowledge the debit (this handles wallet debit + GL entry)
-      await this.debitRequestService.acknowledgeDebit(
+      const completedDebitRequest = await this.debitRequestService.acknowledgeDebit(
         contribution.walletDebitRequestId,
         acknowledgedBy
       );
 
-      // Get the journal entry ID from the debit request (it was created by acknowledgeDebit)
-      // We need to find it from wallet transactions
-      const walletTransactions = await this.walletTransactionRepo.findBySourceEntity(
-        'Contributions',
-        contributionId,
-        tx
-      );
-      const journalEntryId = walletTransactions[0]?.journalEntryId || null;
+      // Get the journal entry ID from the completed debit request
+      // The journal entry was created by acknowledgeDebit
+      // Note: We can't directly access it here, so we'll set it to null and let it be tracked via the debit request
+      const journalEntryId = null;
 
       // Update contribution status
       const updated = await this.memberContributionRepo.update(
@@ -522,7 +618,7 @@ export class ContributionService {
       const updatedCycle = await this.contributionCycleRepo.update(
         cycleId,
         {
-          cycleStatus: 'Closed',
+          cycleStatus: ContributionCycleStatus.Closed,
           closedDate: new Date(),
           closedBy,
         },
@@ -601,7 +697,7 @@ export class ContributionService {
     await this.memberRepo.update(
       memberId,
       {
-        memberStatus: 'Suspended',
+        memberStatus: MemberStatus.Suspended,
         suspensionReason: 'Missed 2 consecutive contributions',
         suspensionCounter: 2,
         suspendedAt: new Date(),

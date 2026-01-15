@@ -17,12 +17,14 @@ import {
 import type { WalletService } from "../application/walletService";
 import type { DepositRequestService } from "../application/depositRequestService";
 import type { DebitRequestService } from "../application/debitRequestService";
+import { asyncLocalStorage } from "@/shared/infrastructure/context";
+import { memberService } from "@/modules/members";
 
 export class WalletController {
   constructor(
     private readonly walletService: WalletService,
     private readonly depositRequestService: DepositRequestService,
-    private readonly debitRequestService: DebitRequestService
+    private readonly debitRequestService: DebitRequestService,
   ) {}
 
   // ===== MEMBER WALLET APIs =====
@@ -54,10 +56,14 @@ export class WalletController {
    * Get wallet summary for logged-in member
    */
   getMyWallet = async (req: Request, res: Response, next: NextFunction) => {
-    const userId = (req as any).user?.userId;
+    const userId = asyncLocalStorage.getUserId();
     try {
       // TODO: Need to get memberId from userId
-      const summary = await this.walletService.getWalletSummary(userId);
+      const member = await memberService.getMemberByUserId(userId);
+      if(!member) {
+        throw new Error('Member not found for the logged-in user.');
+      }
+      const summary = await this.walletService.getWalletSummary(member.memberId);
       return next({
         responseSchema: WalletSummaryResponseDto,
         data: summary,

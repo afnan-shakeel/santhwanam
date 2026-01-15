@@ -108,6 +108,14 @@ export interface WalletDebitRequest {
   // Status
   status: WalletDebitRequestStatus;
 
+  /**
+   * Indicates if this debit was processed automatically without agent acknowledgment.
+   * When true, the debit was collected immediately during cycle start.
+   * When false, the debit went through the manual acknowledgment flow.
+   * See docs/implementations/update-99-remove-wallet-debit-request.md
+   */
+  isAutoDebit: boolean;
+
   // Timestamps
   createdAt: Date;
   acknowledgedAt: Date | null;

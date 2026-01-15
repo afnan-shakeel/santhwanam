@@ -392,7 +392,7 @@ export class PrismaDeathClaimRepository implements DeathClaimRepository {
 
     // Calculate total benefits paid YTD
     const totalBenefitsPaidYTD = settledClaims.reduce(
-      (sum, claim) => sum + (claim.benefitAmount ? Number(claim.benefitAmount) : 0),
+      (sum: any, claim: any) => sum + (claim.benefitAmount ? Number(claim.benefitAmount) : 0),
       0
     );
 
@@ -409,7 +409,7 @@ export class PrismaDeathClaimRepository implements DeathClaimRepository {
     });
 
     const pendingCollections = contributionCycles.reduce(
-      (sum, cycle) => {
+      (sum: any, cycle: any) => {
         const pendingMembers = cycle.totalMembers - cycle.collectedCount;
         return sum + pendingMembers * Number(cycle.benefitAmount);
       },

@@ -1204,4 +1204,12 @@ export class MemberService {
   }): Promise<{ nominees: Nominee[]; total: number }> {
     return await this.nomineeRepository.search(filters);
   }
+
+
+  /**
+   * Get member by user id
+   */
+  async getMemberByUserId(userId: string): Promise<Member | null> {
+    return this.memberRepository.findByUserId(userId);
+  }
 }

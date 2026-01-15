@@ -123,10 +123,10 @@ export interface WalletDepositRequestRepository {
 // Wallet Debit Request Repository
 export interface WalletDebitRequestRepository {
   create(
-    request: Omit<
-      WalletDebitRequest,
-      "createdAt" | "acknowledgedAt" | "completedAt"
-    >,
+    request: Omit<WalletDebitRequest, "createdAt" | "acknowledgedAt" | "completedAt"> & {
+      acknowledgedAt?: Date | null;
+      completedAt?: Date | null;
+    },
     tx?: any
   ): Promise<WalletDebitRequest>;
 

@@ -13,6 +13,23 @@ datasource db {
   provider = "postgresql"
 }
 
+// ===== SYSTEM CONFIGURATION =====
+// Key-value store for application settings
+// See docs/implementations/update-99-remove-wallet-debit-request.md
+
+model SystemConfiguration {
+  configId    String   @id @default(uuid())
+  key         String   @unique
+  value       String
+  description String?
+  dataType    String   @default("string") // string, boolean, number, json
+  updatedBy   String?
+  updatedAt   DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  @@index([key])
+}
+
 // Domain: IAM - User
 // See `docs/domain/1.iam.md` for the canonical shape.
 model User {
@@ -931,9 +948,16 @@ enum WalletDepositRequestStatus {
   Rejected
 }
 
+// Wallet Debit Request Status
+// NOTE: With auto-debit enabled, requests are created directly with Completed status.
+// DEPRECATED statuses (kept for backward compatibility):
+// - PendingAcknowledgment: No longer used when auto-debit is enabled
+// - Acknowledged: No longer used when auto-debit is enabled
+// Active statuses: Completed, Failed, Invalidated
+// See docs/implementations/update-99-remove-wallet-debit-request.md
 enum WalletDebitRequestStatus {
-  PendingAcknowledgment
-  Acknowledged
+  PendingAcknowledgment // DEPRECATED: Use only when autoDebit is disabled
+  Acknowledged          // DEPRECATED: Use only when autoDebit is disabled
   Completed
   Invalidated
   Failed
@@ -1029,6 +1053,10 @@ model WalletDepositRequest {
 }
 
 // Wallet Debit Request
+// NOTE: With auto-debit enabled (wallet.autoDebitEnabled=true), debit requests are created
+// with status=Completed and isAutoDebit=true immediately when contribution cycle starts.
+// The manual acknowledgment flow (PendingAcknowledgment → Acknowledged) is DEPRECATED.
+// See docs/implementations/update-99-remove-wallet-debit-request.md
 model WalletDebitRequest {
   debitRequestId String @id @default(uuid())
   member         Member @relation(fields: [memberId], references: [memberId])
@@ -1044,12 +1072,23 @@ model WalletDebitRequest {
   contributionId      String?
 
   // Status
+  // DEPRECATED statuses (kept for backward compatibility):
+  // - PendingAcknowledgment: No longer used when auto-debit is enabled
+  // - Acknowledged: No longer used when auto-debit is enabled
+  // Active statuses: Completed, Failed, Invalidated
   status WalletDebitRequestStatus @default(PendingAcknowledgment)
+
+  // Auto-debit flag: true when processed automatically without agent acknowledgment
+  isAutoDebit Boolean @default(false)
+
+  // Failure tracking (for Failed status)
+  failureReason String?
 
   // Timestamps
   createdAt      DateTime  @default(now())
-  acknowledgedAt DateTime?
+  acknowledgedAt DateTime? // DEPRECATED: Not set when isAutoDebit=true
   completedAt    DateTime?
+  processedAt    DateTime? // Set when auto-debit processes the request
 
   // Relations
   contributions MemberContribution[]
@@ -1058,6 +1097,7 @@ model WalletDebitRequest {
   @@index([walletId])
   @@index([status])
   @@index([contributionId])
+  @@index([isAutoDebit])
 }
 
 // ===== DEATH CLAIMS CONTEXT =====
@@ -1227,10 +1267,16 @@ enum ContributionCycleStatus {
   Closed
 }
 
+// Member Contribution Status
+// NOTE: With auto-debit enabled, contributions go directly from Pending → Collected
+// DEPRECATED statuses (kept for backward compatibility):
+// - WalletDebitRequested: No longer used when auto-debit is enabled
+// - Acknowledged: No longer used when auto-debit is enabled
+// See docs/implementations/update-99-remove-wallet-debit-request.md
 enum MemberContributionStatus {
   Pending
-  WalletDebitRequested
-  Acknowledged
+  WalletDebitRequested // DEPRECATED: Use only when autoDebit is disabled
+  Acknowledged         // DEPRECATED: Use only when autoDebit is disabled
   Collected
   Missed
   Exempted

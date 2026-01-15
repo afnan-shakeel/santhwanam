@@ -1,7 +1,7 @@
 // Application: Contribution Event Handlers
 // Handles events that trigger contribution workflows
 
-import { ContributionService } from './contributionService';
+import { ContributionService } from './../contributionService';
 import { DeathClaimApprovedEvent } from '@/modules/death-claims/domain/events';
 import { logger } from '@/shared/utils/logger';
 
@@ -15,8 +15,6 @@ export class ContributionEventHandlers {
   async handleDeathClaimApproved(event: DeathClaimApprovedEvent): Promise<void> {
     try {
       const data = event.data;
-      logger.info(`Starting contribution cycle for death claim ${data.claimId}`);
-
       await this.contributionService.startContributionCycle({
         deathClaimId: data.claimId,
         claimNumber: data.claimNumber,

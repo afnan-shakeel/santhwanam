@@ -7,7 +7,7 @@ import {
   ContributionCycleStatus,
   ContributionCycleWithStats,
 } from '../../domain/entities';
-import { Prisma } from '@/generated/prisma';
+import { Prisma } from "../../../../generated/prisma/client";
 
 export class PrismaContributionCycleRepository implements ContributionCycleRepository {
   async create(

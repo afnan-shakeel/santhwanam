@@ -82,9 +82,20 @@ export function createContributionRouter(controller: ContributionController): Ro
   );
 
   // POST /api/contributions/:contributionId/acknowledge
+  // @deprecated - This endpoint is deprecated when wallet.autoDebitEnabled is true (default).
+  // With auto-debit enabled, contributions are collected immediately from wallets without agent acknowledgment.
+  // This endpoint only works when auto-debit is disabled via system configuration.
+  // See docs/implementations/update-99-remove-wallet-debit-request.md
   router.post(
     '/:contributionId/acknowledge',
     validateParams(acknowledgeDebitParamsSchema),
+    (req, res, next) => {
+      // Add deprecation warning header
+      res.setHeader('Deprecation', 'true');
+      res.setHeader('Sunset', 'Fri, 01 Jun 2025 00:00:00 GMT');
+      res.setHeader('X-Deprecation-Notice', 'This endpoint is deprecated. With auto-debit enabled, contributions are collected automatically.');
+      next();
+    },
     controller.acknowledgeDebit
   );
 

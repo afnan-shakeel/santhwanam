@@ -167,6 +167,11 @@ export interface WalletDebitCompletedPayload {
   amount: number;
   newBalance: number;
   acknowledgedBy: string;
+  /**
+   * Indicates if this was an auto-debit (system triggered, no agent acknowledgment)
+   * See docs/implementations/update-99-remove-wallet-debit-request.md
+   */
+  isAutoDebit?: boolean;
 }
 
 export class WalletDebitCompletedEvent extends DomainEvent {

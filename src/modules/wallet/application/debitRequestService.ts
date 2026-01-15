@@ -28,6 +28,7 @@ import {
   WalletDebitCompletedEvent,
   WalletDebitRequestInvalidatedEvent,
 } from "../domain/events";
+import { logger } from "@/shared/utils/logger";
 
 export class DebitRequestService {
   constructor(
@@ -78,6 +79,7 @@ export class DebitRequestService {
           contributionCycleId: data.contributionCycleId || null,
           contributionId: data.contributionId || null,
           status: WalletDebitRequestStatus.PendingAcknowledgment,
+          isAutoDebit: false,
         },
         tx
       );
@@ -299,5 +301,148 @@ export class DebitRequestService {
     debitRequestId: string
   ): Promise<WalletDebitRequest | null> {
     return await this.debitRequestRepo.findById(debitRequestId);
+  }
+
+  /**
+   * Execute auto-debit for contribution
+   * This performs immediate wallet debit without agent acknowledgment.
+   * Used when wallet.autoDebitEnabled is true.
+   * 
+   * Creates a WalletDebitRequest with status=Completed and isAutoDebit=true,
+   * and performs the wallet debit + GL entry in one transaction.
+   * 
+   * Returns null if insufficient balance (member will need to pay via agent).
+   * 
+   * See docs/implementations/update-99-remove-wallet-debit-request.md
+   */
+  async executeAutoDebit(
+    data: {
+      memberId: string;
+      amount: number;
+      purpose: string;
+      contributionCycleId: string;
+      contributionId: string;
+    },
+    systemUserId: string,
+    tx?: any
+  ): Promise<{ debitRequest: WalletDebitRequest; journalEntryId: string } | null> {
+    const execute = async (client: any) => {
+      logger.info(`Executing auto-debit for member ${data.memberId}, amount ${data.amount}`);
+      // Validate amount
+      if (data.amount <= 0) {
+        throw new AppError("Amount must be positive", 400);
+      }
+
+      // Get wallet
+      const wallet = await this.walletRepo.findByMemberId(data.memberId, client);
+      if (!wallet) {
+        return null; // No wallet, agent will collect cash
+      }
+      logger.info(`Member wallet found with balance ${wallet.currentBalance}`);
+
+      // Check if sufficient balance
+      if (wallet.currentBalance < data.amount) {
+        return null; // Insufficient balance, agent will collect cash
+      }
+
+      // Debit wallet immediately
+      const updatedWallet = await this.walletRepo.decrementBalance(
+        wallet.walletId,
+        data.amount,
+        client
+      );
+
+      // Create GL entry (Dr Member Wallet Liability, Cr Contribution Income)
+      const debitRequestId = uuidv4();
+      const journalEntry = await this.journalEntryService.createJournalEntry({
+        entryDate: new Date(),
+        description: data.purpose,
+        reference: `AUTODEBIT-${debitRequestId.substring(0, 8)}`,
+        sourceModule: TRANSACTION_SOURCE.CONTRIBUTION,
+        sourceEntityId: data.contributionId,
+        sourceTransactionType: TRANSACTION_TYPE.CONTRIBUTION_FROM_WALLET,
+        lines: [
+          {
+            accountCode: ACCOUNT_CODES.MEMBER_WALLET_LIABILITY,
+            debitAmount: data.amount,
+            creditAmount: 0,
+            description: "Auto-debit: Contribution deducted from wallet",
+          },
+          {
+            accountCode: ACCOUNT_CODES.CONTRIBUTION_INCOME,
+            debitAmount: 0,
+            creditAmount: data.amount,
+            description: data.purpose,
+          },
+        ],
+        createdBy: systemUserId,
+        autoPost: true,
+      });
+
+      logger.info(`Journal entry created with ID ${journalEntry.entry.entryId}`);
+      // Create wallet transaction
+      await this.walletTransactionRepo.create(
+        {
+          transactionId: uuidv4(),
+          walletId: wallet.walletId,
+          transactionType: WalletTransactionType.Debit,
+          amount: data.amount,
+          balanceAfter: updatedWallet.currentBalance,
+          sourceModule: TRANSACTION_SOURCE.CONTRIBUTION,
+          sourceEntityId: data.contributionId,
+          description: data.purpose,
+          journalEntryId: journalEntry.entry.entryId,
+          status: WalletTransactionStatus.Completed,
+          createdBy: systemUserId,
+        },
+        client
+      );
+
+      // Create debit request record with Completed status and isAutoDebit=true
+      const now = new Date();
+      const debitRequest = await this.debitRequestRepo.create(
+        {
+          debitRequestId,
+          memberId: data.memberId,
+          walletId: wallet.walletId,
+          amount: data.amount,
+          purpose: data.purpose,
+          contributionCycleId: data.contributionCycleId,
+          contributionId: data.contributionId,
+          status: WalletDebitRequestStatus.Completed,
+          isAutoDebit: true,
+          acknowledgedAt: now,
+          completedAt: now,
+        },
+        client
+      );
+
+      // Emit completion event
+      eventBus.publish(
+        new WalletDebitCompletedEvent(
+          {
+            debitRequestId,
+            memberId: data.memberId,
+            walletId: wallet.walletId,
+            amount: data.amount,
+            newBalance: updatedWallet.currentBalance,
+            acknowledgedBy: systemUserId,
+            isAutoDebit: true,
+          },
+          systemUserId
+        )
+      );
+
+      return {
+        debitRequest,
+        journalEntryId: journalEntry.entry.entryId,
+      };
+    };
+
+    // Use provided transaction or create new one
+    if (tx) {
+      return await execute(tx);
+    }
+    return await prisma.$transaction(execute);
   }
 }

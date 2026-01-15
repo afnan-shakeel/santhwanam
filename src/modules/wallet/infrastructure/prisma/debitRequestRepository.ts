@@ -11,10 +11,10 @@ export class PrismaWalletDebitRequestRepository
   implements WalletDebitRequestRepository
 {
   async create(
-    request: Omit<
-      WalletDebitRequest,
-      "createdAt" | "acknowledgedAt" | "completedAt"
-    >,
+    request: Omit<WalletDebitRequest, "createdAt" | "acknowledgedAt" | "completedAt"> & {
+      acknowledgedAt?: Date | null;
+      completedAt?: Date | null;
+    },
     tx?: any
   ): Promise<WalletDebitRequest> {
     const db = tx || prisma;
@@ -28,9 +28,10 @@ export class PrismaWalletDebitRequestRepository
         contributionCycleId: request.contributionCycleId,
         contributionId: request.contributionId,
         status: request.status,
+        isAutoDebit: request.isAutoDebit ?? false,
         createdAt: new Date(),
-        acknowledgedAt: null,
-        completedAt: null,
+        acknowledgedAt: request.acknowledgedAt ?? null,
+        completedAt: request.completedAt ?? null,
       },
     });
     return this.mapToEntity(created);
@@ -172,6 +173,7 @@ export class PrismaWalletDebitRequestRepository
       contributionCycleId: dbRequest.contributionCycleId,
       contributionId: dbRequest.contributionId,
       status: dbRequest.status,
+      isAutoDebit: dbRequest.isAutoDebit ?? false,
       createdAt: dbRequest.createdAt,
       acknowledgedAt: dbRequest.acknowledgedAt,
       completedAt: dbRequest.completedAt,
