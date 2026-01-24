@@ -76,7 +76,7 @@ export const MemberResponseDto = z.object({
         nomineeId: z.string(),
         memberId: z.string(),
         name: z.string(),
-        relation: z.string().nullable().optional(),
+        relationType: z.string().nullable().optional(),
         dateOfBirth: z.date().nullable().optional(),
         contactNumber: z.string().nullable().optional(),
         alternateContactNumber: z.string().nullable().optional(),
@@ -97,6 +97,8 @@ export const MemberResponseDto = z.object({
       documentType: z.string().optional().nullable(),
       documentCategory: z.string().optional().nullable(),
       documentName: z.string().min(1).max(255),
+      verificationStatus: z.string(),
+      rejectionReason: z.string().nullable().optional(),
       memberId: z.string(),
       fileName: z.string().optional().nullable(),
       fileType: z.string().optional(),
@@ -178,7 +180,7 @@ export const RegistrationPaymentResponseDto = z.object({
   collectionDate: z.date().optional(),
   collectionMode: z.string().optional(),
   referenceNumber: z.string().optional().nullable(),
-});
+}).nullable();
 
 // Submission response
 export const MemberSubmissionResponseDto = z.object({

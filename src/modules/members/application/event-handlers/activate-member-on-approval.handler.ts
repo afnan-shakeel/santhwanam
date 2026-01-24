@@ -246,7 +246,7 @@ export class ActivateMemberOnApprovalHandler implements IEventHandler<DomainEven
         sourceTransactionType: TRANSACTION_TYPE.REGISTRATION_APPROVAL,
         lines: [
           {
-            accountCode: ACCOUNT_CODES.CASH,
+            accountCode: ACCOUNT_CODES.CASH_AGENT_CUSTODY,
             debitAmount: payment.totalAmount,
             creditAmount: 0,
             description: "Registration fee and advance deposit collected",

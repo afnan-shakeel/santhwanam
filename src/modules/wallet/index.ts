@@ -31,6 +31,7 @@ import { JournalEntryService } from "@/modules/gl/application/journalEntryServic
 import { PrismaJournalEntryRepository } from "@/modules/gl/infrastructure/prisma/journalEntryRepository";
 import { PrismaJournalEntryLineRepository } from "@/modules/gl/infrastructure/prisma/journalEntryLineRepository";
 import { PrismaChartOfAccountRepository } from "@/modules/gl/infrastructure/prisma/chartOfAccountRepository";
+import { PrismaAgentRepository } from "../agents/infrastructure/prisma/agentRepository";
 
 // Initialize repositories
 const walletRepo = new PrismaWalletRepository();
@@ -38,6 +39,7 @@ const walletTransactionRepo = new PrismaWalletTransactionRepository();
 const depositRequestRepo = new PrismaWalletDepositRequestRepository();
 const debitRequestRepo = new PrismaWalletDebitRequestRepository();
 const memberRepo = new PrismaMemberRepository();
+const agentRepo = new PrismaAgentRepository();
 
 // Initialize GL repositories and service
 const journalEntryRepo = new PrismaJournalEntryRepository();
@@ -80,6 +82,7 @@ const depositRequestService = new DepositRequestService(
   depositRequestRepo,
   walletTransactionRepo,
   memberRepo,
+  agentRepo,
   approvalRequestService,
   journalEntryService
 );

@@ -439,6 +439,15 @@ export class AgentProfileService {
               tierName: true,
             },
           },
+          _count: {
+            select:{
+              contributions: {
+                where: {
+                  contributionStatus: "Pending"
+                }
+              }
+            }
+          }
         },
       }),
       prisma.member.count({ where }),
@@ -457,6 +466,9 @@ export class AgentProfileService {
         tier: m.tier,
         createdAt: m.createdAt,
         registeredAt: m.registeredAt,
+        contributions: {
+          count: { pending: m._count.contributions }
+        }
       })),
       total,
       page,

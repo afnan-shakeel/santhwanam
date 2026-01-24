@@ -40,6 +40,7 @@ import {
 import { generateCycleNumber } from './helpers';
 import { WalletTransactionType, WalletTransactionStatus } from '@/modules/wallet/domain/entities';
 import { ConfigService } from '@/modules/config/application/configService';
+import { AgentRepository } from '@/modules/agents/domain/repositories';
 
 // Grace period for contribution collection (in days)
 const CONTRIBUTION_GRACE_PERIOD_DAYS = 30;
@@ -52,6 +53,7 @@ export class ContributionService {
     private readonly contributionCycleRepo: ContributionCycleRepository,
     private readonly memberContributionRepo: MemberContributionRepository,
     private readonly memberRepo: MemberRepository,
+    private readonly agentRepo: AgentRepository,
     private readonly walletRepo: WalletRepository,
     private readonly walletTransactionRepo: WalletTransactionRepository,
     private readonly debitRequestService: DebitRequestService,
@@ -111,6 +113,7 @@ export class ContributionService {
       );
 
       // Create contribution cycle
+
       const cycleId = uuidv4();
       const cycle = await this.contributionCycleRepo.create(
         {
@@ -135,7 +138,6 @@ export class ContributionService {
         },
         tx
       );
-
       // Create member contributions
       const contributionsData = activeMembers.map((member) => ({
         contributionId: uuidv4(),
@@ -420,8 +422,10 @@ export class ContributionService {
         throw new AppError('Cannot record cash for contribution in this status', 400);
       }
 
-      // Verify agent
-      if (contribution.agentId !== collectedBy) {
+      // Get agent user id from contribution agent id
+      const agent = await this.agentRepo.findById(contribution.agentId);
+
+      if (agent?.userId !== collectedBy) {
         throw new AppError('Only assigned agent can record cash contribution', 403);
       }
 
@@ -443,7 +447,7 @@ export class ContributionService {
         sourceTransactionType: TRANSACTION_TYPE.CONTRIBUTION_DIRECT_CASH,
         lines: [
           {
-            accountCode: ACCOUNT_CODES.CASH,
+            accountCode: ACCOUNT_CODES.CASH_AGENT_CUSTODY,
             debitAmount: contribution.expectedAmount,
             creditAmount: 0,
             description: `Cash contribution from ${contribution.memberName}`,

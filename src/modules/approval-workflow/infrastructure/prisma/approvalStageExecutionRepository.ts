@@ -50,6 +50,9 @@ export class PrismaApprovalStageExecutionRepository implements ApprovalStageExec
     return client.approvalStageExecution.findMany({
       where: { requestId },
       orderBy: { stageOrder: 'asc' },
+      include: {
+        reviewedByUser: true
+      }
     });
   }
 

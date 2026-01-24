@@ -3,6 +3,8 @@
  * See docs/domain/2.approval_workflow.md
  */
 
+import { User } from "@/modules/iam/domain/entities";
+
 export enum WorkflowModule {
   Agents = 'Agents',
   Membership = 'Membership',
@@ -83,6 +85,7 @@ export interface ApprovalRequest {
   areaId?: string | null;
   unitId?: string | null;
   requestedBy: string;
+  requestedByUser: User;
   requestedAt: Date;
   status: ApprovalRequestStatus;
   currentStageOrder?: number | null;
@@ -103,6 +106,7 @@ export interface ApprovalStageExecution {
   status: ApprovalStageStatus;
   assignedApproverId?: string | null;
   reviewedBy?: string | null;
+  reviewedByUser: User;
   reviewedAt?: Date | null;
   decision?: ApprovalDecision | null;
   comments?: string | null;

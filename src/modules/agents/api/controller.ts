@@ -220,6 +220,7 @@ export class AgentsController {
       search: req.query.search as string | undefined,
     };
     const members = await this.agentProfileService.getAgentMembers(agentId, query);
+    console.log(JSON.stringify(members, null, 2));
     next({ responseSchema: AgentMembersResponseDto, data: members, status: 200 });
   };
 

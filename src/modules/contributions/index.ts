@@ -32,11 +32,13 @@ import { configService } from '@/modules/config';
 // Event bus
 import { eventBus } from '@/shared/domain/events/event-bus';
 import { DeathClaimApprovedEvent } from '@/modules/death-claims/domain/events';
+import { PrismaAgentRepository } from '../agents/infrastructure/prisma/agentRepository';
 
 // Initialize repositories
 const contributionCycleRepo = new PrismaContributionCycleRepository();
 const memberContributionRepo = new PrismaMemberContributionRepository();
 const memberRepo = new PrismaMemberRepository();
+const agentRepo = new PrismaAgentRepository();
 
 // Initialize GL service
 const journalEntryRepo = new PrismaJournalEntryRepository();
@@ -53,6 +55,7 @@ const contributionService = new ContributionService(
   contributionCycleRepo,
   memberContributionRepo,
   memberRepo,
+  agentRepo,
   walletRepo,
   walletTransactionRepo,
   debitRequestService,

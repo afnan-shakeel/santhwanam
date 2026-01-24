@@ -44,6 +44,7 @@ import {
 } from "../domain/events";
 import { generateMemberCode, calculateAge } from "./helpers";
 import { asyncLocalStorage } from "@/shared/infrastructure/context";
+import { UnitRepository } from "@/modules/organization-bodies/domain/repositories";
 
 // ===== Step 1: Personal Details =====
 
@@ -139,7 +140,6 @@ interface RecordPaymentInput {
   memberId: string;
   registrationFee: number;
   advanceDeposit: number;
-  collectedBy: string;
   collectionDate: Date;
   collectionMode: CollectionMode;
   referenceNumber?: string;
@@ -151,7 +151,8 @@ export class MemberService {
     private nomineeRepository: NomineeRepository,
     private memberDocumentRepository: MemberDocumentRepository,
     private registrationPaymentRepository: RegistrationPaymentRepository,
-    private membershipTierRepository: MembershipTierRepository
+    private membershipTierRepository: MembershipTierRepository,
+    private unitRepository: UnitRepository
   ) {}
 
   // ===== STEP 1: PERSONAL DETAILS =====
@@ -184,7 +185,13 @@ export class MemberService {
       // For now, we'll need to pass these or fetch from a unit repository
 
       // if not createdBy, add it
-      const userId = asyncLocalStorage.getUserId()
+      const userId = asyncLocalStorage.getUserId();
+
+      // get area id and forum id from unit
+      const unit = await this.unitRepository.findById(input.unitId, tx);
+      if (!unit) {
+        throw new BadRequestError("Invalid unit");
+      }
 
       // Create member record
       const memberId = uuidv4();
@@ -212,8 +219,8 @@ export class MemberService {
           tierId: input.tierId,
           agentId: input.agentId,
           unitId: input.unitId,
-          areaId: "", // TODO: Get from unit
-          forumId: "", // TODO: Get from unit
+          areaId: unit.areaId,
+          forumId: unit.forumId,
           memberStatus: null,
           suspensionCounter: 0,
           suspensionReason: null,
@@ -260,9 +267,10 @@ export class MemberService {
         throw new BadRequestError("Invalid member or status");
       }
 
-      if (member.registrationStep !== RegistrationStep.PersonalDetails) {
-        throw new BadRequestError("Cannot save personal details at this step");
-      }
+      // TODO: (MARK:74837) temporarily commenting until further discussion on this logic. This is preventing draft registration on payment step to edit back the personal details
+      // if (member.registrationStep !== RegistrationStep.PersonalDetails) {
+      //   throw new BadRequestError("Cannot save personal details at this step");
+      // }
 
       // Validate age if dateOfBirth provided
       if (input.dateOfBirth) {
@@ -306,9 +314,10 @@ export class MemberService {
         throw new BadRequestError("Invalid member or status");
       }
 
-      if (member.registrationStep !== RegistrationStep.PersonalDetails) {
-        throw new BadRequestError("Invalid registration step");
-      }
+      // TODO: (MARK:74837) temporarily commenting until further discussion on this logic. This is preventing draft registration on payment step to edit back the personal details
+      // if (member.registrationStep !== RegistrationStep.PersonalDetails) {
+      //   throw new BadRequestError("Invalid registration step");
+      // }
 
       // Validate all required fields
       if (!member.firstName || !member.lastName) {
@@ -736,10 +745,14 @@ export class MemberService {
         throw new BadRequestError("Cannot record payment at this step");
       }
 
+      // TODO: verify the logics for only agents recording payments
       // // Verify agent
       // if (member.agentId !== input.collectedBy) {
       //   throw new BadRequestError("Only assigned agent can record payment");
       // } temp commentingg
+
+      // collectedBy will be the session user
+      const collectedBy = asyncLocalStorage.getAuthContext().user.userId;
 
       // Validate amounts match tier
       const tier = await this.membershipTierRepository.findById(
@@ -785,7 +798,7 @@ export class MemberService {
           registrationFee: input.registrationFee,
           advanceDeposit: input.advanceDeposit,
           totalAmount,
-          collectedBy: input.collectedBy,
+          collectedBy: collectedBy,
           collectionDate: input.collectionDate,
           collectionMode: input.collectionMode,
           referenceNumber: input.referenceNumber || null,
@@ -806,7 +819,7 @@ export class MemberService {
           totalAmount,
           registrationFee: input.registrationFee,
           advanceDeposit: input.advanceDeposit,
-          collectedBy: input.collectedBy,
+          collectedBy: collectedBy,
           collectionMode: input.collectionMode,
         })
       );

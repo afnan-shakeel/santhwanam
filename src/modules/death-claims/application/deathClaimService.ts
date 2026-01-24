@@ -556,7 +556,7 @@ export class DeathClaimService {
         tx
       );
 
-      // 5. Emit event (will trigger contribution cycle in Part 2)
+      // 5. Emit event (will trigger contribution cycle)
       eventBus.publish(
         new DeathClaimApprovedEvent(
           {

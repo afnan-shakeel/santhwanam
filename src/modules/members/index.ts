@@ -78,7 +78,8 @@ const memberService = new MemberService(
   nomineeRepo,
   memberDocumentRepo,
   registrationPaymentRepo,
-  membershipTierRepo
+  membershipTierRepo,
+  unitRepo
 );
 
 // Initialize commands

@@ -164,7 +164,6 @@ export class ApprovalWorkflowController {
     try {
       const { requestId } = req.params;
       const result = await this.requestService.getRequestById(requestId);
-      console.log('Fetched request with executions and workflow:', result);
       return next({ responseSchema: ApprovalRequestWithExecutionsResponseDto, data: result, status: 200 });
     } catch (err) {
       next(err)

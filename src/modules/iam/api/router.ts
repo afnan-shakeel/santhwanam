@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import * as ctrl from './controller'
 import { validateBody } from '@/shared/middleware/validateZod'
-import requirePermission from '@/shared/middleware/requirePermission'
+import { authorize } from '@/shared/middleware/authorize'
 import { PermissionsSearchResponseDto, PermissionDto } from './dtos/permissionDtos'
 import { RolesSearchResponseDto, RoleDto } from './dtos/roleDtos'
 import { createPermissionSchema, createRoleSchema, updatePermissionSchema, updateRoleSchema, inviteUserSchema, updateUserSchema, assignRoleToUserSchema } from './validators'
@@ -13,7 +13,7 @@ const router = Router()
 router.post(
 	'/users/invite',
 	validateBody(inviteUserSchema),
-	// requirePermission('user.invite'),
+	// authorize('user.invite'),
 	ctrl.inviteUser,
 )
 
@@ -57,7 +57,7 @@ router.patch(
 
 router.get(
 	'/roles/:id',
-	// requirePermission('role.read'),
+	// authorize('role.read'),
 	ctrl.getRole,
 )
 
@@ -76,7 +76,7 @@ router.patch(
 
 router.get(
 	'/users/:id',
-	// requirePermission('user.read'),
+	// authorize('user.read'),
 	ctrl.getUser,
 )
 
@@ -84,21 +84,21 @@ router.get(
 router.post(
 	'/users/:userId/roles',
 	validateBody(assignRoleToUserSchema),
-	// requirePermission('role.assign'),
+	// authorize('role.assign'),
 	ctrl.assignRoleToUser,
 )
 
 // User Role Revocation
 router.delete(
 	'/users/:userId/roles/:userRoleId',
-	// requirePermission('role.revoke'),
+	// authorize('role.revoke'),
 	ctrl.revokeRoleFromUser,
 )
 
 // Get User with Roles
 router.get(
 	'/users/:userId/roles',
-	// requirePermission('user.read'),
+	// authorize('user.read'),
 	ctrl.getUserWithRoles,
 )
 

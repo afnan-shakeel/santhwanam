@@ -140,6 +140,11 @@ const AgentMemberDto = z.object({
   }),
   createdAt: z.date(),
   registeredAt: z.date().nullable(),
+  contributions: z.object({
+    count: z.object({
+      pending: z.number().optional()
+    })
+  })
 });
 
 // Agent Members list response

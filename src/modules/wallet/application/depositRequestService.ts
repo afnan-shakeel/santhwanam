@@ -31,6 +31,7 @@ import {
   WalletDepositRejectedEvent,
 } from "../domain/events";
 import { MemberStatus } from "@/modules/members/domain/entities";
+import { AgentRepository } from "@/modules/agents/domain/repositories";
 
 export class DepositRequestService {
   constructor(
@@ -38,8 +39,9 @@ export class DepositRequestService {
     private readonly depositRequestRepo: WalletDepositRequestRepository,
     private readonly walletTransactionRepo: WalletTransactionRepository,
     private readonly memberRepo: MemberRepository,
+    private readonly agentRepo: AgentRepository,
     private readonly approvalRequestService: ApprovalRequestService,
-    private readonly journalEntryService: JournalEntryService
+    private readonly journalEntryService: JournalEntryService,
   ) {}
 
   /**
@@ -68,7 +70,11 @@ export class DepositRequestService {
       }
 
       // Verify agent is the member's agent
-      if (member.agentId !== data.collectedBy) {
+      const agent = await this.agentRepo.findById(member.agentId);
+      if (!agent) {
+        throw new AppError("Agent not found", 404);
+      }
+      if (agent.userId !== data.collectedBy) {
         throw new AppError("Only assigned agent can request deposit", 403);
       }
 
@@ -203,7 +209,7 @@ export class DepositRequestService {
         sourceTransactionType: TRANSACTION_TYPE.WALLET_DEPOSIT,
         lines: [
           {
-            accountCode: ACCOUNT_CODES.CASH,
+            accountCode: ACCOUNT_CODES.CASH_AGENT_CUSTODY,
             debitAmount: depositRequest.amount,
             creditAmount: 0,
             description: "Cash collected for wallet deposit",

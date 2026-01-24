@@ -114,7 +114,8 @@ export class WalletController {
    */
   requestDeposit = async (req: Request, res: Response, next: NextFunction) => {
     const { memberId } = req.params;
-    const userId = (req as any).user?.userId;
+    const ctx = asyncLocalStorage.getAuthContext()
+    const userId = ctx.user.userId
     try {
       const depositRequest = await this.depositRequestService.requestDeposit({
         memberId,
@@ -177,7 +178,7 @@ export class WalletController {
     next: NextFunction
   ) => {
     const { requestId } = req.params;
-    const userId = (req as any).user?.userId;
+    const userId = asyncLocalStorage.getAuthContext().user.userId;
     try {
       const depositRequest = await this.depositRequestService.submitForApproval(
         requestId,
@@ -269,6 +270,7 @@ export class WalletController {
         Number(page) || 1,
         Number(limit) || 20
       );
+      console.log(result.wallets);
       return next({
         responseSchema: WalletListResponseDto,
         data: {
@@ -392,7 +394,7 @@ export class WalletController {
     next: NextFunction
   ) => {
     const { debitRequestId } = req.params;
-    const userId = (req as any).user?.userId;
+    const userId = asyncLocalStorage.getAuthContext().user.userId;
     try {
       const debitRequest = await this.debitRequestService.acknowledgeDebit(
         debitRequestId,
@@ -418,7 +420,7 @@ export class WalletController {
     next: NextFunction
   ) => {
     const { debitRequestId } = req.params;
-    const userId = (req as any).user?.userId;
+    const userId = asyncLocalStorage.getAuthContext().user.userId;
     try {
       const debitRequest = await this.debitRequestService.invalidateDebitRequest(
         debitRequestId,

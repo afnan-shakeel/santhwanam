@@ -15,7 +15,7 @@ export class PrismaContributionCycleRepository implements ContributionCycleRepos
     tx?: any
   ): Promise<ContributionCycle> {
     const db = tx || prisma;
-
+    console.log("CREATING CONTRIBUTION CYCLE", data);
     const cycle = await db.contributionCycle.create({
       data: {
         cycleId: data.cycleId,

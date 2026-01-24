@@ -35,7 +35,7 @@ export const modelConfigs: ModelConfigs = {
     searchable: ['entityType', 'entityId', 'requestedBy', 'status'],
     sortable: ['requestedAt', 'status'],
     filters: ['status', 'workflowId', 'requestedBy', 'entityType', 'forumId', 'areaId', 'unitId', 'createdAt'],
-    relations: ['executions', 'workflow'],
+    relations: ['stageExecutions', 'workflow', 'requestedByUser'],
   },
   Area: {
     searchable: ['areaName'],

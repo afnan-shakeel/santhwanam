@@ -238,9 +238,11 @@ export class WalletService {
       }
 
       // Create GL entry
+      // For credit adjustments (cash in): Dr Cash - Agent Custody, Cr Wallet Liability
+      // For debit adjustments (cash out/refund): Dr Wallet Liability, Cr Cash
       const debitAccount =
         data.adjustmentType === "credit"
-          ? ACCOUNT_CODES.CASH
+          ? ACCOUNT_CODES.CASH_AGENT_CUSTODY
           : ACCOUNT_CODES.MEMBER_WALLET_LIABILITY;
       const creditAccount =
         data.adjustmentType === "credit"

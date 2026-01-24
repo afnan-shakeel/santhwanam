@@ -246,6 +246,7 @@ export class MembersController {
     const { memberId } = req.params;
     try {
       const payment = await this.memberService.getPaymentByMemberId(memberId);
+      console.log(payment, memberId);
       return next({ responseSchema: RegistrationPaymentResponseDto, data: payment, status: 200 });
     } catch (err) {
       next(err)
@@ -423,7 +424,7 @@ export class MembersController {
       
       // Find member by user ID
       const member = await prisma.member.findFirst({
-        where: { createdBy: userId },
+        where: { userId: userId },
       });
 
       if (!member) {

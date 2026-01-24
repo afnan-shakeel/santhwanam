@@ -33,19 +33,21 @@ model SystemConfiguration {
 // Domain: IAM - User
 // See `docs/domain/1.iam.md` for the canonical shape.
 model User {
-  userId              String               @id @default(uuid())
-  externalAuthId      String               @unique
-  email               String               @unique
-  firstName           String?
-  lastName            String?
-  isActive            Boolean              @default(true)
-  userMetadata        Json?
-  createdAt           DateTime             @default(now())
-  lastSyncedAt        DateTime?
-  userRoles           UserRole[]
-  passwordResetTokens PasswordResetToken[]
-  agents              Agent[]
-  members             Member[]
+  userId                  String                   @id @default(uuid())
+  externalAuthId          String                   @unique
+  email                   String                   @unique
+  firstName               String?
+  lastName                String?
+  isActive                Boolean                  @default(true)
+  userMetadata            Json?
+  createdAt               DateTime                 @default(now())
+  lastSyncedAt            DateTime?
+  userRoles               UserRole[]
+  passwordResetTokens     PasswordResetToken[]
+  agents                  Agent[]
+  members                 Member[]
+  approvalRequests        ApprovalRequest[]
+  approvalStageExecutions ApprovalStageExecution[]
 }
 
 // Enums for role scope and user role scope
@@ -206,7 +208,6 @@ model ApprovalWorkflow {
   requests ApprovalRequest[]
 
   @@index([workflowCode])
-  @@index([isActive])
 }
 
 model ApprovalStage {
@@ -242,6 +243,7 @@ model ApprovalRequest {
   areaId            String?
   unitId            String?
   requestedBy       String
+  requestedByUser   User                  @relation(fields: [requestedBy], references: [userId])
   requestedAt       DateTime
   status            ApprovalRequestStatus @default(Pending)
   currentStageOrder Int?
@@ -273,6 +275,7 @@ model ApprovalStageExecution {
   status             ApprovalStageStatus @default(Pending)
   assignedApproverId String?
   reviewedBy         String?
+  reviewedByUser     User?               @relation(fields: [reviewedBy], references: [userId])
   reviewedAt         DateTime?
   decision           ApprovalDecision?
   comments           String?
@@ -957,7 +960,7 @@ enum WalletDepositRequestStatus {
 // See docs/implementations/update-99-remove-wallet-debit-request.md
 enum WalletDebitRequestStatus {
   PendingAcknowledgment // DEPRECATED: Use only when autoDebit is disabled
-  Acknowledged          // DEPRECATED: Use only when autoDebit is disabled
+  Acknowledged // DEPRECATED: Use only when autoDebit is disabled
   Completed
   Invalidated
   Failed
@@ -1276,7 +1279,7 @@ enum ContributionCycleStatus {
 enum MemberContributionStatus {
   Pending
   WalletDebitRequested // DEPRECATED: Use only when autoDebit is disabled
-  Acknowledged         // DEPRECATED: Use only when autoDebit is disabled
+  Acknowledged // DEPRECATED: Use only when autoDebit is disabled
   Collected
   Missed
   Exempted
@@ -1292,12 +1295,12 @@ model ContributionCycle {
   cycleNumber String @unique
 
   // Linked to death claim
-  deathClaim          DeathClaim @relation(fields: [deathClaimId], references: [claimId])
-  deathClaimId        String
-  claimNumber         String
-  deceasedMemberId    String
-  deceasedMemberName  String
-  benefitAmount       Decimal    @db.Decimal(15, 2)
+  deathClaim         DeathClaim @relation(fields: [deathClaimId], references: [claimId])
+  deathClaimId       String
+  claimNumber        String
+  deceasedMemberId   String
+  deceasedMemberName String
+  benefitAmount      Decimal    @db.Decimal(15, 2)
 
   // Hierarchy
   forum   Forum  @relation(fields: [forumId], references: [forumId])
@@ -1311,13 +1314,13 @@ model ContributionCycle {
   cycleStatus ContributionCycleStatus @default(Active)
 
   // Statistics
-  totalMembers          Int
-  totalExpectedAmount   Decimal @db.Decimal(15, 2)
-  totalCollectedAmount  Decimal @default(0) @db.Decimal(15, 2)
-  totalPendingAmount    Decimal @db.Decimal(15, 2)
-  membersCollected      Int     @default(0)
-  membersPending        Int
-  membersMissed         Int     @default(0)
+  totalMembers         Int
+  totalExpectedAmount  Decimal @db.Decimal(15, 2)
+  totalCollectedAmount Decimal @default(0) @db.Decimal(15, 2)
+  totalPendingAmount   Decimal @db.Decimal(15, 2)
+  membersCollected     Int     @default(0)
+  membersPending       Int
+  membersMissed        Int     @default(0)
 
   // Closure
   closedDate DateTime?
@@ -1343,7 +1346,7 @@ model MemberContribution {
   cycleId String
 
   // Member info
-  member     Member @relation(fields: [memberId], references: [memberId])
+  member     Member         @relation(fields: [memberId], references: [memberId])
   memberId   String
   memberCode String
   memberName String
@@ -1359,9 +1362,9 @@ model MemberContribution {
   contributionStatus MemberContributionStatus @default(Pending)
 
   // Payment details
-  paymentMethod   ContributionPaymentMethod?
-  collectionDate  DateTime?
-  collectedBy     String?
+  paymentMethod  ContributionPaymentMethod?
+  collectionDate DateTime?
+  collectedBy    String?
 
   // Wallet tracking
   walletDebitRequest   WalletDebitRequest? @relation(fields: [walletDebitRequestId], references: [debitRequestId])

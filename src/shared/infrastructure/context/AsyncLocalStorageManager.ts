@@ -1,5 +1,6 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { RequestContext, UserSession } from './types';
+import { AuthContext, AuthScope, AuthHierarchy } from '@/shared/types/auth.types';
 
 /**
  * AsyncLocalStorage manager for request context
@@ -119,6 +120,104 @@ class AsyncLocalStorageManager {
    */
   updateRequestContext(updates: Partial<RequestContext>): void {
     this.updateContext(updates);
+  }
+
+  // =====================
+  // AuthContext Methods
+  // =====================
+
+  /**
+   * Get the full authentication context
+   * @throws Error if no auth context is available (user not authenticated)
+   */
+  getAuthContext(): AuthContext {
+    const context = this.getRequestContext();
+    if (!context.authContext) {
+      throw new Error('No auth context available. User is not authenticated.');
+    }
+    return context.authContext;
+  }
+
+  /**
+   * Get the auth context (returns undefined if not authenticated)
+   */
+  tryGetAuthContext(): AuthContext | undefined {
+    const context = this.tryGetRequestContext();
+    return context?.authContext;
+  }
+
+  /**
+   * Get all permissions for the current user
+   * @throws Error if not authenticated
+   */
+  getPermissions(): string[] {
+    return this.getAuthContext().permissions;
+  }
+
+  /**
+   * Check if current user has a specific permission
+   */
+  hasPermission(permission: string): boolean {
+    const authContext = this.tryGetAuthContext();
+    if (!authContext) return false;
+    return authContext.permissions.includes(permission);
+  }
+
+  /**
+   * Check if current user has any of the specified permissions
+   */
+  hasAnyPermission(permissions: string[]): boolean {
+    const authContext = this.tryGetAuthContext();
+    if (!authContext) return false;
+    return permissions.some((p) => authContext.permissions.includes(p));
+  }
+
+  /**
+   * Check if current user has all of the specified permissions
+   */
+  hasAllPermissions(permissions: string[]): boolean {
+    const authContext = this.tryGetAuthContext();
+    if (!authContext) return false;
+    return permissions.every((p) => authContext.permissions.includes(p));
+  }
+
+  /**
+   * Get the user's primary scope
+   * @throws Error if not authenticated
+   */
+  getScope(): AuthScope {
+    return this.getAuthContext().scope;
+  }
+
+  /**
+   * Get the user's scope (returns undefined if not authenticated)
+   */
+  tryGetScope(): AuthScope | undefined {
+    return this.tryGetAuthContext()?.scope;
+  }
+
+  /**
+   * Get the user's hierarchy
+   * @throws Error if not authenticated
+   */
+  getHierarchy(): AuthHierarchy {
+    return this.getAuthContext().hierarchy;
+  }
+
+  /**
+   * Get the user's hierarchy (returns undefined if not authenticated)
+   */
+  tryGetHierarchy(): AuthHierarchy | undefined {
+    return this.tryGetAuthContext()?.hierarchy;
+  }
+
+  /**
+   * Check if current user has a specific role
+   */
+  hasRole(roleCode: string): boolean {
+    const authContext = this.tryGetAuthContext();
+    if (!authContext) return false;
+    return authContext.roles.some((r) => r.roleCode === roleCode);
   }
 }
 

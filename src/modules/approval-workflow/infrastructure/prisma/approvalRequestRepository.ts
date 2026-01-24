@@ -42,6 +42,9 @@ export class PrismaApprovalRequestRepository implements ApprovalRequestRepositor
     const client = tx ?? prisma;
     return client.approvalRequest.findUnique({
       where: { requestId },
+      include: {
+        requestedByUser: true,
+      },
     });
   }
 

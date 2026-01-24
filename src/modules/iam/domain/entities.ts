@@ -20,3 +20,12 @@ export type Permission = {
   isActive: boolean
   createdAt: Date
 }
+
+
+export type User = {
+  userId: string
+  email: string
+  firstName: string
+  lastName: string
+  isActive: string
+}

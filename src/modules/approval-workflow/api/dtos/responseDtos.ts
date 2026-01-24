@@ -61,6 +61,11 @@ export const ApprovalRequestResponseDto = z.object({
   status: z.string(),
   currentStageOrder: z.number().nullable().optional(),
   workflow: ApprovalWorkflowResponseDto.nullable().optional(),
+  requestedByUser: z.object({
+    userId: z.string(),
+    firstName: z.string(),
+    lastName: z.string()
+  }).nullable().optional()
 });
 
 // Approval requests search response
@@ -91,6 +96,11 @@ export const ApprovalExecutionResponseDto = z.object({
   reviewedBy: z.string().nullable().optional(),
   reviewedAt: z.date().nullable().optional(),
   comments: z.string().nullable().optional(),
+  reviewedByUser: z.object({
+    userId: z.string(),
+    firstName: z.string(),
+    lastName: z.string()
+  }).nullable().optional()
 });
 
 // Process approval response

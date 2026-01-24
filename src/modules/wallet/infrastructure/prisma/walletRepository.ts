@@ -127,6 +127,13 @@ export class PrismaWalletRepository implements WalletRepository {
               memberCode: true,
               firstName: true,
               lastName: true,
+              agent: {
+                select: {
+                  agentId: true,
+                  firstName: true,
+                  lastName: true,
+                },
+              },
             },
           },
         },
@@ -162,6 +169,21 @@ export class PrismaWalletRepository implements WalletRepository {
               memberCode: true,
               firstName: true,
               lastName: true,
+              tier: {
+                select:{
+                  tierId: true,
+                  tierName: true,
+                  contributionAmount: true,
+                  advanceDepositAmount: true,
+                }
+              },
+              agent: {
+                select: {
+                  agentId: true,
+                  firstName: true,
+                  lastName: true,
+                },
+              },
             },
           },
         },
@@ -205,6 +227,23 @@ export class PrismaWalletRepository implements WalletRepository {
       currentBalance: Number(dbWallet.currentBalance),
       createdAt: dbWallet.createdAt,
       updatedAt: dbWallet.updatedAt,
+      member: dbWallet.member && {
+        memberId: dbWallet.member.memberId,
+        memberCode: dbWallet.member.memberCode,
+        firstName: dbWallet.member.firstName,
+        lastName: dbWallet.member.lastName,
+        agent: dbWallet.member.agent && {
+          agentId: dbWallet.member.agent.agentId,
+          firstName: dbWallet.member.agent.firstName,
+          lastName: dbWallet.member.agent.lastName,
+        },
+        tier: dbWallet.member.tier && {
+          tierId: dbWallet.member.tier.tierId,
+          tierName: dbWallet.member.tier.tierName,
+          contributionAmount: Number(dbWallet.member.tier.contributionAmount),
+          advanceDepositAmount: Number(dbWallet.member.tier.advanceDepositAmount),
+        },
+      },
     };
   }
 }

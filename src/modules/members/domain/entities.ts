@@ -1,6 +1,8 @@
 // Domain: Members
 // See `docs/domain/5.membership.md` for details
 
+import { Agent } from "@/modules/agents/domain/entities";
+
 // Enums
 export enum RegistrationStatus {
   Draft = "Draft",
@@ -119,10 +121,12 @@ export interface Member {
   country: string;
 
   // Membership details
+  tier?: MembershipTier;
   tierId: string;
 
   // Hierarchy
   agentId: string;
+  agent?: Agent
   unitId: string;
   areaId: string;
   forumId: string;

@@ -1,6 +1,8 @@
 // Domain: Membership Wallet
 // See `docs/domain/7.membership_wallet.md` for details
 
+import { Member } from "@/modules/members/domain/entities";
+
 // Enums
 export enum WalletTransactionType {
   Deposit = "Deposit",
@@ -37,7 +39,7 @@ export interface Wallet {
   memberId: string;
 
   currentBalance: number;
-
+  member?: Member;
   createdAt: Date;
   updatedAt: Date | null;
 }
@@ -71,6 +73,7 @@ export interface WalletTransaction {
 export interface WalletDepositRequest {
   depositRequestId: string;
   memberId: string;
+  member?: Member;
   walletId: string;
 
   amount: number;

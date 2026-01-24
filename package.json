@@ -15,7 +15,9 @@
     "prisma:dbpush": "prisma db push",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "npx prisma studio --config ./prisma.config.ts",
-    "seed": "tsx ./prisma/seed.ts"
+    "seed": "tsx ./prisma/seed.ts",
+    "db:seed": "npm run prisma:generate && npm run seed",
+    "db:reset": "prisma migrate reset --force && npm run seed"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.1.0",

@@ -21,6 +21,19 @@ export const WalletWithMemberDto = WalletDto.extend({
       memberCode: z.string(),
       firstName: z.string(),
       lastName: z.string(),
+      agent: z
+        .object({
+          agentId: z.string(),
+          firstName: z.string(),
+          lastName: z.string(),
+        }).nullable().optional(),
+      tier: z
+        .object({
+          tierId: z.string(),
+          tierName: z.string(),
+          contributionAmount: z.number(),
+          advanceDepositAmount: z.number(),
+        }).nullable().optional(),
     })
     .optional(),
 });
@@ -92,6 +105,20 @@ export const WalletDepositRequestDto = z.object({
   createdAt: z.date(),
   approvedAt: z.date().nullable(),
   rejectedAt: z.date().nullable(),
+  member: z
+    .object({
+      memberId: z.string(),
+      memberCode: z.string(),
+      firstName: z.string(),
+      lastName: z.string(),
+      agent: z
+        .object({
+          agentId: z.string(),
+          firstName: z.string(),
+          lastName: z.string(),
+        }).nullable().optional(),
+    })
+    .nullable().optional(),
 });
 
 export const DepositRequestResponseDto = WalletDepositRequestDto;

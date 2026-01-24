@@ -14,6 +14,7 @@ export const MemberContributionResponseDto = z.object({
   actualAmount: z.any().nullable().optional(),
   contributionStatus: z.string(),
   contributionMethod: z.string().nullable().optional(),
+  collectionDate: z.date().optional().nullable(),
   debitRequestId: z.string().nullable().optional(),
   cashReceiptReference: z.string().nullable().optional(),
   contributedAt: z.date().nullable().optional(),
@@ -87,9 +88,11 @@ export const MemberContributionHistoryResponseDto = z.object({
     MemberContributionResponseDto.extend({
       cycle: z.object({
         cycleId: z.string(),
+        cycleNumber: z.string(),
         benefitAmount: z.any(),
         cycleStatus: z.string(),
         collectionDeadline: z.date(),
+        deceasedMemberName: z.string(),
         claim: z.object({
           claimNumber: z.string(),
           member: z.object({

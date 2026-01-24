@@ -25,6 +25,7 @@
       "post": {
         "tags": ["Authentication"],
         "summary": "User login",
+        "description": "Authenticates user with email and password. Returns JWT access token and full AuthContext with user info, permissions, scope, hierarchy, and roles.",
         "security": [],
         "requestBody": {
           "required": true,
@@ -51,25 +52,18 @@
                   "properties": {
                     "accessToken": {
                       "type": "string",
-                      "description": "JWT access token signed by the server. Token payload contains: sub, userId, authUserId, email, roles"
+                      "description": "JWT access token signed by the server"
                     },
                     "refreshToken": {
                       "type": ["string", "null"],
-                      "description": "Optional refresh token (from Supabase)"
+                      "description": "Optional refresh token from Supabase"
                     },
                     "expiresAt": {
                       "type": ["integer", "null"],
-                      "description": "Optional expiry timestamp (Unix seconds) from Supabase session, if available"
+                      "description": "Optional expiry timestamp (Unix seconds)"
                     },
-                    "user": {
-                      "type": "object",
-                      "nullable": true,
-                      "properties": {
-                        "userId": { "type": "string" },
-                        "email": { "type": "string" },
-                        "firstName": { "type": "string" },
-                        "lastName": { "type": "string" }
-                      }
+                    "authContext": {
+                      "$ref": "#/components/schemas/AuthContext"
                     }
                   }
                 }
@@ -128,6 +122,62 @@
         "responses": {
           "200": { "description": "Password reset successful" },
           "400": { "description": "Invalid or expired token" }
+        }
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "tags": ["Authentication"],
+        "summary": "Get current user context",
+        "description": "Returns the full AuthContext for the authenticated user including user info, permissions, scope, hierarchy, and roles.",
+        "responses": {
+          "200": {
+            "description": "AuthContext retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthContext"
+                }
+              }
+            }
+          },
+          "401": { "description": "Not authenticated" }
+        }
+      }
+    },
+    "/api/auth/check-access": {
+      "get": {
+        "tags": ["Authentication"],
+        "summary": "Check resource access",
+        "description": "Check if the current user has access to a specific resource based on their scope and hierarchy.",
+        "parameters": [
+          {
+            "name": "resource",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "enum": ["member", "agent", "wallet"] },
+            "description": "The type of resource to check access for"
+          },
+          {
+            "name": "resourceId",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "The ID of the specific resource"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Access check result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessCheckResult"
+                }
+              }
+            }
+          },
+          "400": { "description": "Missing required query parameters" }
         }
       }
     },
@@ -6231,6 +6281,110 @@
   },
   "components": {
     "schemas": {
+      "AuthContext": {
+        "type": "object",
+        "description": "Complete authentication context for the current user",
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/AuthUser"
+          },
+          "permissions": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "List of permission codes the user has"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/AuthScope"
+          },
+          "hierarchy": {
+            "$ref": "#/components/schemas/AuthHierarchy"
+          },
+          "roles": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/RoleAssignment" },
+            "description": "List of role assignments with scope details"
+          }
+        },
+        "required": ["user", "permissions", "scope", "hierarchy", "roles"]
+      },
+      "AuthUser": {
+        "type": "object",
+        "description": "Basic user information",
+        "properties": {
+          "userId": { "type": "string", "format": "uuid" },
+          "email": { "type": "string", "format": "email" },
+          "firstName": { "type": "string" },
+          "lastName": { "type": "string" }
+        },
+        "required": ["userId", "email", "firstName", "lastName"]
+      },
+      "AuthScope": {
+        "type": "object",
+        "description": "User's primary access scope",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["None", "Forum", "Area", "Unit", "Agent", "Member"],
+            "description": "Scope level (None = Super Admin with global access)"
+          },
+          "entityId": {
+            "type": ["string", "null"],
+            "format": "uuid",
+            "description": "ID of the scoped entity (null for None scope)"
+          }
+        },
+        "required": ["type", "entityId"]
+      },
+      "AuthHierarchy": {
+        "type": "object",
+        "description": "User's position in the organizational hierarchy",
+        "properties": {
+          "forumId": { "type": ["string", "null"], "format": "uuid" },
+          "areaId": { "type": ["string", "null"], "format": "uuid" },
+          "unitId": { "type": ["string", "null"], "format": "uuid" },
+          "agentId": { "type": ["string", "null"], "format": "uuid" },
+          "memberId": { "type": ["string", "null"], "format": "uuid" }
+        },
+        "required": ["forumId", "areaId", "unitId", "agentId", "memberId"]
+      },
+      "RoleAssignment": {
+        "type": "object",
+        "description": "Role assignment with scope details",
+        "properties": {
+          "roleCode": { "type": "string", "description": "Unique role code (e.g., forum_admin, unit_admin)" },
+          "roleName": { "type": "string", "description": "Display name of the role" },
+          "scopeType": {
+            "type": "string",
+            "enum": ["None", "Forum", "Area", "Unit", "Agent", "Member"],
+            "description": "Type of scope this role has"
+          },
+          "scopeEntityId": {
+            "type": ["string", "null"],
+            "format": "uuid",
+            "description": "ID of the entity this role is scoped to"
+          },
+          "scopeEntityName": {
+            "type": ["string", "null"],
+            "description": "Name of the scoped entity (e.g., forum name, unit name)"
+          }
+        },
+        "required": ["roleCode", "roleName", "scopeType", "scopeEntityId", "scopeEntityName"]
+      },
+      "AccessCheckResult": {
+        "type": "object",
+        "description": "Result of an access check operation",
+        "properties": {
+          "allowed": {
+            "type": "boolean",
+            "description": "Whether access is allowed"
+          },
+          "reason": {
+            "type": "string",
+            "description": "Reason for denial (only present when allowed is false)"
+          }
+        },
+        "required": ["allowed"]
+      },
       "UserRoleResponse": {
         "type": "object",
         "description": "User role assignment response",

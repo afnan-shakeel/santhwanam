@@ -131,6 +131,13 @@ export class PrismaWalletDepositRequestRepository
               memberCode: true,
               firstName: true,
               lastName: true,
+              agent: {
+                select: {
+                  agentId: true,
+                  firstName: true,
+                  lastName: true,
+                },
+              }
             },
           },
         },
@@ -180,6 +187,18 @@ export class PrismaWalletDepositRequestRepository
       createdAt: dbRequest.createdAt,
       approvedAt: dbRequest.approvedAt,
       rejectedAt: dbRequest.rejectedAt,
+      member: dbRequest.member && { 
+        memberId: dbRequest.member.memberId,
+        memberCode: dbRequest.member.memberCode,
+        firstName: dbRequest.member.firstName,
+        lastName: dbRequest.member.lastName,
+        agentId: dbRequest.member.agentId,
+        agent: dbRequest.member.agent && {
+          agentId: dbRequest.member.agent.agentId,
+          firstName: dbRequest.member.agent.firstName,
+          lastName: dbRequest.member.agent.lastName,
+        }
+      }
     };
   }
 }
