@@ -140,6 +140,14 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     'gl.period.read',
     'gl.report.view',
     'gl.report.export',
+    // Cash Management
+    'cash.custody.read',
+    'cash.custody.create',
+    'cash.custody.update',
+    'cash.handover.initiate',
+    'cash.handover.acknowledge',
+    'cash.handover.reject',
+    'cash.handover.read',
     // Reports
     'report.dashboard.view',
     'report.member.view',
@@ -206,6 +214,14 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     'approval.request.read',
     'approval.request.approve',
     'approval.request.reject',
+    // Cash Management
+    'cash.custody.read',
+    'cash.custody.create',
+    'cash.custody.update',
+    'cash.handover.initiate',
+    'cash.handover.acknowledge',
+    'cash.handover.reject',
+    'cash.handover.read',
     // Reports
     'report.dashboard.view',
     'report.member.view',
@@ -258,6 +274,14 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     'approval.request.read',
     'approval.request.approve',
     'approval.request.reject',
+    // Cash Management
+    'cash.custody.read',
+    'cash.custody.create',
+    'cash.custody.update',
+    'cash.handover.initiate',
+    'cash.handover.acknowledge',
+    'cash.handover.reject',
+    'cash.handover.read',
     // Reports
     'report.dashboard.view',
     'report.member.view',
@@ -292,6 +316,10 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     'contribution.read',
     'contribution.collect',
     'contribution.acknowledge',
+    // Cash Management
+    'cash.custody.read',
+    'cash.handover.initiate',
+    'cash.handover.read',
     // Reports
     'report.dashboard.view',
   ],

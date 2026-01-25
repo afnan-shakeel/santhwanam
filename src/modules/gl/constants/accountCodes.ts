@@ -122,6 +122,7 @@ export const TRANSACTION_SOURCE = {
   CLAIM: 'Claim',
   DONATION: 'Donation',
   MANUAL_ADJUSTMENT: 'ManualAdjustment',
+  CASH_MANAGEMENT: 'CashManagement',
 } as const;
 
 /**
@@ -152,6 +153,10 @@ export const TRANSACTION_TYPE = {
   // Operating
   OPERATING_EXPENSE: 'OperatingExpense',
   ADMINISTRATIVE_EXPENSE: 'AdministrativeExpense',
+
+  // Cash Management
+  CASH_HANDOVER: 'CashHandover',
+  CASH_HANDOVER_TO_BANK: 'CashHandoverToBank',
 
   // Manual
   MANUAL_JOURNAL_ENTRY: 'ManualJournalEntry',

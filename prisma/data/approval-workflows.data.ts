@@ -118,4 +118,20 @@ export const DEFAULT_WORKFLOWS = [
       },
     ],
   },
+  {
+    code: 'cash_handover_to_super_admin',
+    name: 'Cash Handover to Super Admin',
+    description: 'Workflow for approving cash handovers to the super admin (final cash custody)',
+    module: 'CashManagement',
+    stages: [
+      {
+        stageName: 'Super Admin Approval',
+        stageOrder: 1,
+        approverType: 'Role',
+        roleCode: 'super_admin',
+        isOptional: false,
+        autoApprove: false,
+      },
+    ],
+  },
 ];

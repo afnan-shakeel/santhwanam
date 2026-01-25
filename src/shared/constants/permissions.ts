@@ -181,6 +181,22 @@ export const PERMISSIONS = {
     },
   },
 
+  // ===== CASH MANAGEMENT MODULE =====
+  CASH: {
+    CUSTODY: {
+      READ: 'cash.custody.read',
+      CREATE: 'cash.custody.create',
+      UPDATE: 'cash.custody.update',
+    },
+    HANDOVER: {
+      INITIATE: 'cash.handover.initiate',
+      ACKNOWLEDGE: 'cash.handover.acknowledge',
+      REJECT: 'cash.handover.reject',
+      READ: 'cash.handover.read',
+      APPROVE: 'cash.handover.approve',
+    },
+  },
+
   // ===== REPORTS MODULE =====
   REPORT: {
     DASHBOARD_VIEW: 'report.dashboard.view',

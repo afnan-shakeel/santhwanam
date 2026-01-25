@@ -48,6 +48,13 @@ model User {
   members                 Member[]
   approvalRequests        ApprovalRequest[]
   approvalStageExecutions ApprovalStageExecution[]
+
+  // Cash Management relations
+  cashCustodies              CashCustody[]
+  cashCustodiesDeactivatedBy CashCustody[]    @relation("CashCustodyDeactivatedBy")
+  handoversFrom              CashHandover[]   @relation("HandoverFromUser")
+  handoversTo                CashHandover[]   @relation("HandoverToUser")
+  handoversCreated           CashHandover[]   @relation("HandoverCreatedBy")
 }
 
 // Enums for role scope and user role scope
@@ -156,6 +163,7 @@ enum WorkflowModule {
   Claims
   Contributions
   Organization
+  CashManagement
 }
 
 enum ApproverType {
@@ -259,6 +267,7 @@ model ApprovalRequest {
   agents                Agent[]
   walletDepositRequests WalletDepositRequest[]
   deathClaims           DeathClaim[]
+  cashHandovers         CashHandover[]
 
   @@index([entityType, entityId])
   @@index([status])
@@ -303,6 +312,10 @@ model Forum {
   areas              Area[]
   contributionCycles ContributionCycle[]
 
+  // Cash Management relations
+  cashCustodies CashCustody[]
+  cashHandovers CashHandover[]
+
   @@index([forumCode])
   @@index([adminUserId])
 }
@@ -321,6 +334,9 @@ model Area {
   updatedBy       String?
 
   units Unit[]
+
+  // Cash Management relations
+  cashCustodies CashCustody[]
 
   @@unique([forumId, areaCode])
   @@index([forumId])
@@ -344,6 +360,9 @@ model Unit {
   agents      Agent[]
   members     Member[]
   deathClaims DeathClaim[]
+
+  // Cash Management relations
+  cashCustodies CashCustody[]
 
   @@unique([areaId, unitCode])
   @@index([areaId])
@@ -865,6 +884,7 @@ model JournalEntry {
   walletDepositRequests WalletDepositRequest[]
   deathClaims           DeathClaim[]
   contributions         MemberContribution[]
+  cashHandovers         CashHandover[]
 
   @@index([entryNumber])
   @@index([entryDate])
@@ -1390,4 +1410,124 @@ model MemberContribution {
   @@index([contributionStatus])
   @@index([agentId])
   @@index([tierId])
+}
+
+// ===================================
+// Domain: Cash Management
+// See `docs/domain/90-domain-cash-management.md`
+// ===================================
+
+enum CashCustodyUserRole {
+  Agent
+  UnitAdmin
+  AreaAdmin
+  ForumAdmin
+}
+
+enum CashCustodyStatus {
+  Active
+  Inactive
+  Suspended
+}
+
+enum CashHandoverStatus {
+  Initiated
+  Acknowledged
+  Rejected
+  Cancelled
+}
+
+enum CashHandoverType {
+  Normal
+  AdminTransition
+}
+
+// Cash Custody - Tracks cash balance held by each user
+model CashCustody {
+  custodyId         String             @id @default(uuid())
+  userId            String
+  userRole          CashCustodyUserRole
+  glAccountCode     String
+  unitId            String?
+  areaId            String?
+  forumId           String?
+  status            CashCustodyStatus  @default(Active)
+  currentBalance    Decimal            @default(0) @db.Decimal(15, 2)
+  totalReceived     Decimal            @default(0) @db.Decimal(15, 2)
+  totalTransferred  Decimal            @default(0) @db.Decimal(15, 2)
+  lastTransactionAt DateTime?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  deactivatedAt     DateTime?
+  deactivatedBy     String?
+  deactivatedReason String?
+
+  // Relations
+  user              User               @relation(fields: [userId], references: [userId])
+  unit              Unit?              @relation(fields: [unitId], references: [unitId])
+  area              Area?              @relation(fields: [areaId], references: [areaId])
+  forum             Forum?             @relation(fields: [forumId], references: [forumId])
+  deactivatedByUser User?              @relation("CashCustodyDeactivatedBy", fields: [deactivatedBy], references: [userId])
+
+  handoversFrom     CashHandover[]     @relation("HandoverFromCustody")
+  handoversTo       CashHandover[]     @relation("HandoverToCustody")
+
+  @@index([userId])
+  @@index([status])
+  @@index([forumId])
+  @@index([glAccountCode])
+  @@map("cash_custodies")
+}
+
+// Cash Handover - Records transfers between personnel
+model CashHandover {
+  handoverId        String             @id @default(uuid())
+  handoverNumber    String             @unique
+  fromUserId        String
+  fromUserRole      CashCustodyUserRole
+  fromCustodyId     String
+  fromGlAccountCode String
+  toUserId          String
+  toUserRole        String             // Can be CashCustodyUserRole or 'SuperAdmin'
+  toCustodyId       String?            // Null for SuperAdmin (goes to bank)
+  toGlAccountCode   String
+  amount            Decimal            @db.Decimal(15, 2)
+  unitId            String?
+  areaId            String?
+  forumId           String
+  status            CashHandoverStatus @default(Initiated)
+  handoverType      CashHandoverType   @default(Normal)
+  sourceHandoverId  String?
+  requiresApproval  Boolean            @default(false)
+  approvalRequestId String?
+  journalEntryId    String?
+  initiatedAt       DateTime
+  acknowledgedAt    DateTime?
+  rejectedAt        DateTime?
+  cancelledAt       DateTime?
+  initiatorNotes    String?
+  receiverNotes     String?
+  rejectionReason   String?
+  createdBy         String
+  updatedAt         DateTime           @updatedAt
+
+  // Relations
+  fromUser          User               @relation("HandoverFromUser", fields: [fromUserId], references: [userId])
+  toUser            User               @relation("HandoverToUser", fields: [toUserId], references: [userId])
+  fromCustody       CashCustody        @relation("HandoverFromCustody", fields: [fromCustodyId], references: [custodyId])
+  toCustody         CashCustody?       @relation("HandoverToCustody", fields: [toCustodyId], references: [custodyId])
+  sourceHandover    CashHandover?      @relation("HandoverChain", fields: [sourceHandoverId], references: [handoverId])
+  childHandovers    CashHandover[]     @relation("HandoverChain")
+  forum             Forum              @relation(fields: [forumId], references: [forumId])
+  approvalRequest   ApprovalRequest?   @relation(fields: [approvalRequestId], references: [requestId])
+  journalEntry      JournalEntry?      @relation(fields: [journalEntryId], references: [entryId])
+  createdByUser     User               @relation("HandoverCreatedBy", fields: [createdBy], references: [userId])
+
+  @@index([fromUserId])
+  @@index([toUserId])
+  @@index([status])
+  @@index([forumId])
+  @@index([initiatedAt])
+  @@index([sourceHandoverId])
+  @@map("cash_handovers")
 }
