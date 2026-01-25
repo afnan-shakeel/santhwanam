@@ -6842,6 +6842,672 @@
           "403": { "description": "Only initiator can cancel" }
         }
       }
+    },
+    "/api/cash-management/custody/me/activity": {
+      "get": {
+        "tags": ["Cash Management - Custody"],
+        "summary": "Get current user's custody activity",
+        "description": "Returns activity log for the current user's cash custody (stub - returns empty array)",
+        "parameters": [
+          {
+            "name": "startDate",
+            "in": "query",
+            "schema": { "type": "string", "format": "date" }
+          },
+          {
+            "name": "endDate",
+            "in": "query",
+            "schema": { "type": "string", "format": "date" }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": { "type": "integer", "default": 1 }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 20 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Custody activity retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "activities": { "type": "array", "items": { "type": "object" } },
+                        "total": { "type": "integer" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/cash-management/handovers/history": {
+      "get": {
+        "tags": ["Cash Management - Handovers"],
+        "summary": "Get handover history for current user",
+        "description": "Returns paginated history of handovers where current user was initiator or receiver",
+        "parameters": [
+          {
+            "name": "role",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["initiator", "receiver", "all"] },
+            "description": "Filter by user's role in handover"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["Initiated", "Acknowledged", "Rejected", "Cancelled"] }
+          },
+          {
+            "name": "startDate",
+            "in": "query",
+            "schema": { "type": "string", "format": "date" }
+          },
+          {
+            "name": "endDate",
+            "in": "query",
+            "schema": { "type": "string", "format": "date" }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": { "type": "integer", "default": 1 }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 20 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Handover history retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "handovers": {
+                          "type": "array",
+                          "items": { "$ref": "#/components/schemas/CashHandoverWithRelations" }
+                        },
+                        "pagination": {
+                          "type": "object",
+                          "properties": {
+                            "page": { "type": "integer" },
+                            "limit": { "type": "integer" },
+                            "total": { "type": "integer" },
+                            "totalPages": { "type": "integer" }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/cash-management/admin/dashboard": {
+      "get": {
+        "tags": ["Cash Management - Admin"],
+        "summary": "Get admin dashboard statistics",
+        "description": "Returns aggregated statistics for cash management dashboard (Admin only)",
+        "parameters": [
+          {
+            "name": "forumId",
+            "in": "query",
+            "schema": { "type": "string", "format": "uuid" },
+            "description": "Filter by forum (Super Admin only)"
+          },
+          {
+            "name": "areaId",
+            "in": "query",
+            "schema": { "type": "string", "format": "uuid" },
+            "description": "Filter by area"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dashboard statistics retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "summary": {
+                          "type": "object",
+                          "properties": {
+                            "totalCash": { "type": "number" },
+                            "bankBalance": { "type": "number" },
+                            "totalInCustody": { "type": "number" },
+                            "pendingHandovers": { "type": "integer" },
+                            "pendingHandoverAmount": { "type": "number" }
+                          }
+                        },
+                        "byLevel": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "object",
+                            "properties": {
+                              "count": { "type": "integer" },
+                              "totalBalance": { "type": "number" },
+                              "glAccountCode": { "type": "string" }
+                            }
+                          }
+                        },
+                        "alerts": {
+                          "type": "object",
+                          "properties": {
+                            "overdueCount": { "type": "integer" },
+                            "overdueAmount": { "type": "number" },
+                            "overdueThresholdDays": { "type": "integer" },
+                            "pendingOverdue": { "type": "integer" },
+                            "pendingOverdueHours": { "type": "integer" }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/cash-management/admin/custody-by-level": {
+      "get": {
+        "tags": ["Cash Management - Admin"],
+        "summary": "Get custody aggregated by hierarchy level",
+        "description": "Returns cash custody totals grouped by role level (Agent, UnitAdmin, etc.)",
+        "parameters": [
+          {
+            "name": "forumId",
+            "in": "query",
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "areaId",
+            "in": "query",
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Custody by level retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "levels": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "level": { "type": "string" },
+                              "glAccountCode": { "type": "string" },
+                              "glAccountName": { "type": "string" },
+                              "userCount": { "type": "integer" },
+                              "totalBalance": { "type": "number" },
+                              "glBalance": { "type": "number" },
+                              "reconciled": { "type": "boolean" }
+                            }
+                          }
+                        },
+                        "totalInCustody": { "type": "number" },
+                        "bankBalance": { "type": "number" },
+                        "totalCash": { "type": "number" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/cash-management/admin/custody-report": {
+      "get": {
+        "tags": ["Cash Management - Admin"],
+        "summary": "Get detailed custody report by user",
+        "description": "Returns paginated list of all users with cash custody and their balances",
+        "parameters": [
+          {
+            "name": "forumId",
+            "in": "query",
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "areaId",
+            "in": "query",
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "unitId",
+            "in": "query",
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "level",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["Agent", "UnitAdmin", "AreaAdmin", "ForumAdmin"] }
+          },
+          {
+            "name": "minBalance",
+            "in": "query",
+            "schema": { "type": "number" }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["Active", "Inactive"] }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": { "type": "integer", "default": 1 }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 50 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Custody report retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "custodies": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "custodyId": { "type": "string", "format": "uuid" },
+                              "userId": { "type": "string", "format": "uuid" },
+                              "userName": { "type": "string" },
+                              "userRole": { "type": "string" },
+                              "unitName": { "type": "string" },
+                              "areaName": { "type": "string" },
+                              "glAccountCode": { "type": "string" },
+                              "status": { "type": "string" },
+                              "currentBalance": { "type": "number" },
+                              "totalReceived": { "type": "number" },
+                              "totalTransferred": { "type": "number" },
+                              "lastTransactionAt": { "type": "string", "format": "date-time" },
+                              "daysSinceLastTransaction": { "type": "integer" },
+                              "isOverdue": { "type": "boolean" }
+                            }
+                          }
+                        },
+                        "summary": {
+                          "type": "object",
+                          "properties": {
+                            "totalUsers": { "type": "integer" },
+                            "totalBalance": { "type": "number" },
+                            "activeUsers": { "type": "integer" },
+                            "inactiveUsers": { "type": "integer" }
+                          }
+                        },
+                        "pagination": {
+                          "type": "object",
+                          "properties": {
+                            "page": { "type": "integer" },
+                            "limit": { "type": "integer" },
+                            "total": { "type": "integer" },
+                            "totalPages": { "type": "integer" }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/cash-management/admin/overdue": {
+      "get": {
+        "tags": ["Cash Management - Admin"],
+        "summary": "Get users holding cash beyond threshold",
+        "description": "Returns list of users who haven't transferred cash within threshold days",
+        "parameters": [
+          {
+            "name": "thresholdDays",
+            "in": "query",
+            "schema": { "type": "integer", "default": 7 },
+            "description": "Number of days to consider overdue"
+          },
+          {
+            "name": "forumId",
+            "in": "query",
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "areaId",
+            "in": "query",
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "level",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["Agent", "UnitAdmin", "AreaAdmin", "ForumAdmin"] }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Overdue users retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "thresholdDays": { "type": "integer" },
+                        "overdueUsers": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "custodyId": { "type": "string", "format": "uuid" },
+                              "userId": { "type": "string", "format": "uuid" },
+                              "userName": { "type": "string" },
+                              "userRole": { "type": "string" },
+                              "unitName": { "type": "string" },
+                              "areaName": { "type": "string" },
+                              "currentBalance": { "type": "number" },
+                              "lastTransactionAt": { "type": "string", "format": "date-time" },
+                              "daysSinceLastTransaction": { "type": "integer" }
+                            }
+                          }
+                        },
+                        "summary": {
+                          "type": "object",
+                          "properties": {
+                            "totalOverdueUsers": { "type": "integer" },
+                            "totalOverdueAmount": { "type": "number" }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/cash-management/admin/reconciliation": {
+      "get": {
+        "tags": ["Cash Management - Admin"],
+        "summary": "Get GL reconciliation report",
+        "description": "Compares custody sub-ledger totals with GL account balances",
+        "parameters": [
+          {
+            "name": "forumId",
+            "in": "query",
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reconciliation report retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "accounts": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "accountCode": { "type": "string" },
+                              "accountName": { "type": "string" },
+                              "glBalance": { "type": "number" },
+                              "custodyTotal": { "type": "number" },
+                              "difference": { "type": "number" },
+                              "isReconciled": { "type": "boolean" },
+                              "userCount": { "type": "integer" }
+                            }
+                          }
+                        },
+                        "summary": {
+                          "type": "object",
+                          "properties": {
+                            "totalGlBalance": { "type": "number" },
+                            "totalCustodyBalance": { "type": "number" },
+                            "totalDifference": { "type": "number" },
+                            "allReconciled": { "type": "boolean" }
+                          }
+                        },
+                        "bankAccount": {
+                          "type": "object",
+                          "properties": {
+                            "accountCode": { "type": "string" },
+                            "accountName": { "type": "string" },
+                            "balance": { "type": "number" }
+                          }
+                        },
+                        "lastCheckedAt": { "type": "string", "format": "date-time" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/cash-management/admin/pending-transfers": {
+      "get": {
+        "tags": ["Cash Management - Admin"],
+        "summary": "Get all pending transfers across the organization",
+        "description": "Returns all handovers in Initiated status across the organization",
+        "parameters": [
+          {
+            "name": "forumId",
+            "in": "query",
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "areaId",
+            "in": "query",
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "fromRole",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["Agent", "UnitAdmin", "AreaAdmin", "ForumAdmin"] }
+          },
+          {
+            "name": "toRole",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["UnitAdmin", "AreaAdmin", "ForumAdmin", "SuperAdmin"] }
+          },
+          {
+            "name": "minAge",
+            "in": "query",
+            "schema": { "type": "integer" },
+            "description": "Minimum age in hours"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": { "type": "integer", "default": 1 }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 20 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Pending transfers retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "transfers": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "handoverId": { "type": "string", "format": "uuid" },
+                              "handoverNumber": { "type": "string" },
+                              "fromUserName": { "type": "string" },
+                              "fromUserRole": { "type": "string" },
+                              "fromUnit": { "type": "string", "nullable": true },
+                              "toUserName": { "type": "string" },
+                              "toUserRole": { "type": "string" },
+                              "amount": { "type": "number" },
+                              "status": { "type": "string" },
+                              "requiresApproval": { "type": "boolean" },
+                              "approvalStatus": { "type": "string", "nullable": true },
+                              "initiatedAt": { "type": "string", "format": "date-time" },
+                              "ageHours": { "type": "number" }
+                            }
+                          }
+                        },
+                        "summary": {
+                          "type": "object",
+                          "properties": {
+                            "total": { "type": "integer" },
+                            "totalAmount": { "type": "number" },
+                            "requiresApproval": { "type": "integer" },
+                            "overdue": { "type": "integer" }
+                          }
+                        },
+                        "pagination": {
+                          "type": "object",
+                          "properties": {
+                            "page": { "type": "integer" },
+                            "limit": { "type": "integer" },
+                            "total": { "type": "integer" },
+                            "totalPages": { "type": "integer" }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/cash-management/admin/handovers/{handoverId}/approve": {
+      "post": {
+        "tags": ["Cash Management - Admin"],
+        "summary": "Approve bank deposit (SuperAdmin only)",
+        "description": "Approves a bank deposit handover that requires approval before acknowledgment",
+        "parameters": [
+          {
+            "name": "handoverId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "approverNotes": { "type": "string", "maxLength": 500 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Bank deposit approved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "handoverId": { "type": "string", "format": "uuid" },
+                        "handoverNumber": { "type": "string" },
+                        "status": { "type": "string" },
+                        "approvalStatus": { "type": "string" },
+                        "approvedAt": { "type": "string", "format": "date-time" },
+                        "approvedBy": { "type": "string", "format": "uuid" }
+                      }
+                    },
+                    "message": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Handover doesn't require approval or already approved" },
+          "403": { "description": "Only SuperAdmin can approve bank deposits" },
+          "404": { "description": "Handover not found" }
+        }
+      }
     }
   },
   "components": {

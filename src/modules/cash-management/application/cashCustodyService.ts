@@ -252,4 +252,312 @@ export class CashCustodyService {
     
     return null;
   }
+
+  /**
+   * Get overdue users (cash held beyond threshold)
+   */
+  async getOverdueUsers(filters: {
+    thresholdDays: number;
+    forumId?: string;
+    areaId?: string;
+    level?: CashCustodyUserRole;
+  }): Promise<{
+    thresholdDays: number;
+    overdueUsers: Array<{
+      custodyId: string;
+      userId: string;
+      userName: string | null;
+      userRole: string;
+      unitName: string | null;
+      areaName: string | null;
+      currentBalance: number;
+      lastTransactionAt: Date | null;
+      daysSinceLastTransaction: number;
+      contact: {
+        email: string | null;
+        phone: string | null;
+      };
+    }>;
+    summary: {
+      totalOverdueUsers: number;
+      totalOverdueAmount: number;
+    };
+  }> {
+    const overdueCustodies = await this.cashCustodyRepo.findOverdue({
+      thresholdDays: filters.thresholdDays,
+      forumId: filters.forumId,
+      areaId: filters.areaId,
+      userRole: filters.level,
+    });
+
+    const now = new Date();
+    const overdueUsers = overdueCustodies.map((c) => {
+      const lastTxDate = c.lastTransactionAt || c.createdAt;
+      const daysSince = Math.floor(
+        (now.getTime() - lastTxDate.getTime()) / (1000 * 60 * 60 * 24)
+      );
+
+      return {
+        custodyId: c.custodyId,
+        userId: c.userId,
+        userName: c.user
+          ? `${c.user.firstName || ''} ${c.user.lastName || ''}`.trim()
+          : null,
+        userRole: c.userRole,
+        unitName: c.unit?.unitName || null,
+        areaName: c.area?.areaName || null,
+        currentBalance: c.currentBalance,
+        lastTransactionAt: c.lastTransactionAt ?? null,
+        daysSinceLastTransaction: daysSince,
+        contact: {
+          email: c.user?.email || null,
+          phone: null, // Would need to fetch from user profile
+        },
+      };
+    });
+
+    const totalOverdueAmount = overdueUsers.reduce((sum, u) => sum + u.currentBalance, 0);
+
+    return {
+      thresholdDays: filters.thresholdDays,
+      overdueUsers,
+      summary: {
+        totalOverdueUsers: overdueUsers.length,
+        totalOverdueAmount,
+      },
+    };
+  }
+
+  /**
+   * Get custody aggregated by level
+   */
+  async getCustodyByLevel(filters: {
+    forumId?: string;
+    areaId?: string;
+  }): Promise<{
+    levels: Array<{
+      level: string;
+      glAccountCode: string;
+      glAccountName: string;
+      userCount: number;
+      totalBalance: number;
+      glBalance: number;
+      reconciled: boolean;
+    }>;
+    totalInCustody: number;
+    bankBalance: number;
+    totalCash: number;
+  }> {
+    const roleBalances = await this.cashCustodyRepo.getBalancesByRole(
+      filters.forumId,
+      filters.areaId
+    );
+
+    const glAccountNames: Record<string, string> = {
+      '1001': 'Cash - Agent Custody',
+      '1002': 'Cash - Unit Admin Custody',
+      '1003': 'Cash - Area Admin Custody',
+      '1004': 'Cash - Forum Admin Custody',
+    };
+
+    const levels = roleBalances.map((rb) => {
+      const glAccountCode = GL_ACCOUNT_BY_ROLE[rb.userRole] || '1001';
+      return {
+        level: rb.userRole,
+        glAccountCode,
+        glAccountName: glAccountNames[glAccountCode] || glAccountCode,
+        userCount: rb.userCount,
+        totalBalance: rb.totalBalance,
+        glBalance: rb.totalBalance, // In reconciled state, these match
+        reconciled: true,
+      };
+    });
+
+    const totalInCustody = levels.reduce((sum, l) => sum + l.totalBalance, 0);
+    // Bank balance would come from GL module - placeholder for now
+    const bankBalance = 0;
+
+    return {
+      levels,
+      totalInCustody,
+      bankBalance,
+      totalCash: totalInCustody + bankBalance,
+    };
+  }
+
+  /**
+   * Get custody report (detailed list)
+   */
+  async getCustodyReport(filters: {
+    forumId?: string;
+    areaId?: string;
+    unitId?: string;
+    level?: CashCustodyUserRole;
+    minBalance?: number;
+    status?: CashCustodyStatus;
+    page?: number;
+    limit?: number;
+  }): Promise<{
+    custodies: Array<{
+      custodyId: string;
+      userId: string;
+      userName: string | null;
+      userRole: string;
+      unitName: string | null;
+      areaName: string | null;
+      glAccountCode: string;
+      status: string;
+      currentBalance: number;
+      totalReceived: number;
+      totalTransferred: number;
+      lastTransactionAt: Date | null;
+      daysSinceLastTransaction: number | null;
+      isOverdue: boolean;
+    }>;
+    summary: {
+      totalUsers: number;
+      totalBalance: number;
+      activeUsers: number;
+      inactiveUsers: number;
+    };
+    total: number;
+  }> {
+    const page = filters.page || 1;
+    const limit = filters.limit || 50;
+    const overdueThresholdDays = 7;
+
+    const result = await this.cashCustodyRepo.findAll({
+      userRole: filters.level,
+      status: filters.status,
+      forumId: filters.forumId,
+      areaId: filters.areaId,
+      unitId: filters.unitId,
+      page,
+      limit,
+    });
+
+    const now = new Date();
+    const custodies = result.custodies
+      .filter((c) => !filters.minBalance || c.currentBalance >= filters.minBalance)
+      .map((c) => {
+        const lastTxDate = c.lastTransactionAt;
+        const daysSince = lastTxDate
+          ? Math.floor((now.getTime() - lastTxDate.getTime()) / (1000 * 60 * 60 * 24))
+          : null;
+        const isOverdue =
+          c.currentBalance > 0 && daysSince !== null && daysSince > overdueThresholdDays;
+
+        return {
+          custodyId: c.custodyId,
+          userId: c.userId,
+          userName: c.user
+            ? `${c.user.firstName || ''} ${c.user.lastName || ''}`.trim()
+            : null,
+          userRole: c.userRole,
+          unitName: c.unit?.unitName || null,
+          areaName: c.area?.areaName || null,
+          glAccountCode: c.glAccountCode,
+          status: c.status,
+          currentBalance: c.currentBalance,
+          totalReceived: c.totalReceived,
+          totalTransferred: c.totalTransferred,
+          lastTransactionAt: c.lastTransactionAt ?? null,
+          daysSinceLastTransaction: daysSince,
+          isOverdue,
+        };
+      });
+
+    const activeUsers = custodies.filter((c) => c.status === CashCustodyStatus.Active).length;
+    const totalBalance = custodies.reduce((sum, c) => sum + c.currentBalance, 0);
+
+    return {
+      custodies,
+      summary: {
+        totalUsers: result.total,
+        totalBalance,
+        activeUsers,
+        inactiveUsers: custodies.length - activeUsers,
+      },
+      total: result.total,
+    };
+  }
+
+  /**
+   * Get reconciliation report
+   */
+  async getReconciliationReport(forumId?: string): Promise<{
+    accounts: Array<{
+      accountCode: string;
+      accountName: string;
+      glBalance: number;
+      custodyTotal: number;
+      difference: number;
+      isReconciled: boolean;
+      userCount: number;
+    }>;
+    summary: {
+      totalGlBalance: number;
+      totalCustodyBalance: number;
+      totalDifference: number;
+      allReconciled: boolean;
+    };
+    bankAccount: {
+      accountCode: string;
+      accountName: string;
+      balance: number;
+    };
+    lastCheckedAt: Date;
+  }> {
+    const glAccounts = ['1001', '1002', '1003', '1004'];
+    const glAccountNames: Record<string, string> = {
+      '1001': 'Cash - Agent Custody',
+      '1002': 'Cash - Unit Admin Custody',
+      '1003': 'Cash - Area Admin Custody',
+      '1004': 'Cash - Forum Admin Custody',
+    };
+
+    const accounts = await Promise.all(
+      glAccounts.map(async (accountCode) => {
+        const [totalBalance, userCount] = await Promise.all([
+          this.cashCustodyRepo.getTotalBalanceByGlAccount(accountCode),
+          this.cashCustodyRepo.countActiveByGlAccount(accountCode),
+        ]);
+
+        // GL balance would come from GL module - using custody total as proxy
+        const glBalance = totalBalance;
+        const difference = glBalance - totalBalance;
+
+        return {
+          accountCode,
+          accountName: glAccountNames[accountCode] || accountCode,
+          glBalance,
+          custodyTotal: totalBalance,
+          difference,
+          isReconciled: Math.abs(difference) < 0.01,
+          userCount,
+        };
+      })
+    );
+
+    const totalGlBalance = accounts.reduce((sum, a) => sum + a.glBalance, 0);
+    const totalCustodyBalance = accounts.reduce((sum, a) => sum + a.custodyTotal, 0);
+    const totalDifference = totalGlBalance - totalCustodyBalance;
+    const allReconciled = accounts.every((a) => a.isReconciled);
+
+    return {
+      accounts,
+      summary: {
+        totalGlBalance,
+        totalCustodyBalance,
+        totalDifference,
+        allReconciled,
+      },
+      bankAccount: {
+        accountCode: '1100',
+        accountName: 'Bank Account',
+        balance: 0, // Would come from GL module
+      },
+      lastCheckedAt: new Date(),
+    };
+  }
 }

@@ -269,11 +269,31 @@ export class PrismaCashHandoverRepository implements CashHandoverRepository {
     };
   }
 
-  async findPendingForUser(userId: string, tx?: any): Promise<CashHandoverWithRelations[]> {
+  async findPendingIncomingForUser(userId: string, tx?: any): Promise<CashHandoverWithRelations[]> {
     const db = tx || prisma;
     const records = await db.cashHandover.findMany({
       where: {
         toUserId: userId,
+        status: CashHandoverStatus.Initiated,
+      },
+      include: {
+        fromUser: true,
+        toUser: true,
+        fromCustody: true,
+        toCustody: true,
+        forum: true,
+        approvalRequest: true,
+      },
+      orderBy: { initiatedAt: 'asc' },
+    });
+    return records.map(mapWithRelations);
+  }
+
+  async findPendingOutgoingForUser(userId: string, tx?: any): Promise<CashHandoverWithRelations[]> {
+    const db = tx || prisma;
+    const records = await db.cashHandover.findMany({
+      where: {
+        fromUserId: userId,
         status: CashHandoverStatus.Initiated,
       },
       include: {
@@ -339,5 +359,122 @@ export class PrismaCashHandoverRepository implements CashHandoverRepository {
         status: CashHandoverStatus.Initiated,
       },
     });
+  }
+
+  async findUserHistory(
+    userId: string,
+    filters: {
+      direction?: 'sent' | 'received' | 'all';
+      status?: CashHandoverStatus;
+      fromDate?: Date;
+      toDate?: Date;
+      page: number;
+      limit: number;
+    }
+  ): Promise<{ handovers: CashHandoverWithRelations[]; total: number }> {
+    const where: any = {};
+
+    // Direction filter
+    if (filters.direction === 'sent') {
+      where.fromUserId = userId;
+    } else if (filters.direction === 'received') {
+      where.toUserId = userId;
+    } else {
+      where.OR = [{ fromUserId: userId }, { toUserId: userId }];
+    }
+
+    // Status filter
+    if (filters.status) {
+      where.status = filters.status;
+    }
+
+    // Date range filter
+    if (filters.fromDate || filters.toDate) {
+      where.initiatedAt = {};
+      if (filters.fromDate) where.initiatedAt.gte = filters.fromDate;
+      if (filters.toDate) where.initiatedAt.lte = filters.toDate;
+    }
+
+    const [records, total] = await Promise.all([
+      prisma.cashHandover.findMany({
+        where,
+        include: {
+          fromUser: true,
+          toUser: true,
+          fromCustody: true,
+          toCustody: true,
+          forum: true,
+          approvalRequest: true,
+        },
+        orderBy: { initiatedAt: 'desc' },
+        skip: (filters.page - 1) * filters.limit,
+        take: filters.limit,
+      }),
+      prisma.cashHandover.count({ where }),
+    ]);
+
+    return {
+      handovers: records.map(mapWithRelations),
+      total,
+    };
+  }
+
+  async findAllPending(filters: {
+    forumId?: string;
+    areaId?: string;
+    fromRole?: string;
+    toRole?: string;
+    minAgeHours?: number;
+    page: number;
+    limit: number;
+  }): Promise<{ handovers: CashHandoverWithRelations[]; total: number }> {
+    const where: any = {
+      status: CashHandoverStatus.Initiated,
+    };
+
+    if (filters.forumId) where.forumId = filters.forumId;
+    if (filters.areaId) where.areaId = filters.areaId;
+    if (filters.fromRole) where.fromUserRole = filters.fromRole;
+    if (filters.toRole) where.toUserRole = filters.toRole;
+
+    if (filters.minAgeHours) {
+      const thresholdDate = new Date();
+      thresholdDate.setHours(thresholdDate.getHours() - filters.minAgeHours);
+      where.initiatedAt = { lt: thresholdDate };
+    }
+
+    const [records, total] = await Promise.all([
+      prisma.cashHandover.findMany({
+        where,
+        include: {
+          fromUser: true,
+          toUser: true,
+          fromCustody: true,
+          toCustody: true,
+          forum: true,
+          approvalRequest: true,
+        },
+        orderBy: { initiatedAt: 'asc' },
+        skip: (filters.page - 1) * filters.limit,
+        take: filters.limit,
+      }),
+      prisma.cashHandover.count({ where }),
+    ]);
+
+    return {
+      handovers: records.map(mapWithRelations),
+      total,
+    };
+  }
+
+  async countPendingRequiringApproval(forumId?: string, tx?: any): Promise<number> {
+    const db = tx || prisma;
+    const where: any = {
+      status: CashHandoverStatus.Initiated,
+      requiresApproval: true,
+    };
+    if (forumId) where.forumId = forumId;
+
+    return db.cashHandover.count({ where });
   }
 }

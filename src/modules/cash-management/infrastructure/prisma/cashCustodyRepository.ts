@@ -292,4 +292,82 @@ export class PrismaCashCustodyRepository implements CashCustodyRepository {
     });
     return toNumber(result._sum.currentBalance);
   }
+
+  async countActiveByGlAccount(glAccountCode: string, tx?: any): Promise<number> {
+    const db = tx || prisma;
+    return db.cashCustody.count({
+      where: {
+        glAccountCode,
+        status: CashCustodyStatus.Active,
+      },
+    });
+  }
+
+  async findOverdue(filters: {
+    thresholdDays: number;
+    forumId?: string;
+    areaId?: string;
+    userRole?: CashCustodyUserRole;
+  }): Promise<CashCustodyWithRelations[]> {
+    const thresholdDate = new Date();
+    thresholdDate.setDate(thresholdDate.getDate() - filters.thresholdDays);
+
+    const where: any = {
+      status: CashCustodyStatus.Active,
+      currentBalance: { gt: 0 },
+      OR: [
+        { lastTransactionAt: { lt: thresholdDate } },
+        { lastTransactionAt: null },
+      ],
+    };
+
+    if (filters.forumId) where.forumId = filters.forumId;
+    if (filters.areaId) where.areaId = filters.areaId;
+    if (filters.userRole) where.userRole = filters.userRole;
+
+    const records = await prisma.cashCustody.findMany({
+      where,
+      include: {
+        user: true,
+        unit: true,
+        area: true,
+        forum: true,
+      },
+      orderBy: { lastTransactionAt: 'asc' },
+    });
+
+    return records.map(mapWithRelations);
+  }
+
+  async getBalancesByRole(
+    forumId?: string,
+    areaId?: string
+  ): Promise<
+    Array<{
+      userRole: CashCustodyUserRole;
+      totalBalance: number;
+      userCount: number;
+    }>
+  > {
+    const where: any = { status: CashCustodyStatus.Active };
+    if (forumId) where.forumId = forumId;
+    if (areaId) where.areaId = areaId;
+
+    const result = await prisma.cashCustody.groupBy({
+      by: ['userRole'],
+      where,
+      _sum: {
+        currentBalance: true,
+      },
+      _count: {
+        custodyId: true,
+      },
+    });
+
+    return result.map((r) => ({
+      userRole: r.userRole as CashCustodyUserRole,
+      totalBalance: toNumber(r._sum.currentBalance),
+      userCount: r._count.custodyId,
+    }));
+  }
 }

@@ -154,6 +154,17 @@ export const GL_ACCOUNT_BY_ROLE: Record<CashCustodyUserRole, string> = {
 };
 
 /**
+ * GL Account names mapping
+ */
+export const GL_ACCOUNT_NAMES: Record<string, string> = {
+  '1001': 'Cash - Agent Custody',
+  '1002': 'Cash - Unit Admin Custody',
+  '1003': 'Cash - Area Admin Custody',
+  '1004': 'Cash - Forum Admin Custody',
+  '1100': 'Bank Account',
+};
+
+/**
  * Bank account code for SuperAdmin transfers
  */
 export const BANK_ACCOUNT_CODE = '1100';

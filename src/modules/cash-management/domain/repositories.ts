@@ -100,6 +100,32 @@ export interface CashCustodyRepository {
    * Get total balance by GL account code
    */
   getTotalBalanceByGlAccount(glAccountCode: string, tx?: unknown): Promise<number>;
+
+  /**
+   * Get count of active custodies by GL account code
+   */
+  countActiveByGlAccount(glAccountCode: string, tx?: unknown): Promise<number>;
+
+  /**
+   * Find overdue custodies (balance > 0, no transaction in threshold days)
+   */
+  findOverdue(filters: {
+    thresholdDays: number;
+    forumId?: string;
+    areaId?: string;
+    userRole?: CashCustodyUserRole;
+  }): Promise<CashCustodyWithRelations[]>;
+
+  /**
+   * Get aggregated balances by user role
+   */
+  getBalancesByRole(forumId?: string, areaId?: string): Promise<
+    Array<{
+      userRole: CashCustodyUserRole;
+      totalBalance: number;
+      userCount: number;
+    }>
+  >;
 }
 
 /**
@@ -152,9 +178,14 @@ export interface CashHandoverRepository {
   }): Promise<{ handovers: CashHandoverWithRelations[]; total: number }>;
 
   /**
-   * Find pending handovers for a user (as receiver)
+   * Find pending handovers for a user (as receiver - incoming)
    */
-  findPendingForUser(userId: string, tx?: unknown): Promise<CashHandoverWithRelations[]>;
+  findPendingIncomingForUser(userId: string, tx?: unknown): Promise<CashHandoverWithRelations[]>;
+
+  /**
+   * Find pending handovers initiated by user (outgoing)
+   */
+  findPendingOutgoingForUser(userId: string, tx?: unknown): Promise<CashHandoverWithRelations[]>;
 
   /**
    * Find pending handovers for a role (for SuperAdmin)
@@ -170,4 +201,37 @@ export interface CashHandoverRepository {
    * Count pending incoming handovers for user
    */
   countPendingIncoming(userId: string, tx?: unknown): Promise<number>;
+
+  /**
+   * Get user's handover history (sent and received)
+   */
+  findUserHistory(
+    userId: string,
+    filters: {
+      direction?: 'sent' | 'received' | 'all';
+      status?: CashHandoverStatus;
+      fromDate?: Date;
+      toDate?: Date;
+      page: number;
+      limit: number;
+    }
+  ): Promise<{ handovers: CashHandoverWithRelations[]; total: number }>;
+
+  /**
+   * Find all pending handovers (admin view)
+   */
+  findAllPending(filters: {
+    forumId?: string;
+    areaId?: string;
+    fromRole?: string;
+    toRole?: string;
+    minAgeHours?: number;
+    page: number;
+    limit: number;
+  }): Promise<{ handovers: CashHandoverWithRelations[]; total: number }>;
+
+  /**
+   * Count pending handovers requiring approval
+   */
+  countPendingRequiringApproval(forumId?: string, tx?: unknown): Promise<number>;
 }

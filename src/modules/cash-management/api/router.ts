@@ -14,6 +14,15 @@ import {
   custodyIdParamsSchema,
   glAccountCodeParamsSchema,
   listCustodiesQuerySchema,
+  custodyActivityQuerySchema,
+  handoverHistoryQuerySchema,
+  adminDashboardQuerySchema,
+  custodyByLevelQuerySchema,
+  custodyReportQuerySchema,
+  overdueQuerySchema,
+  reconciliationQuerySchema,
+  pendingTransfersQuerySchema,
+  approveHandoverBodySchema,
 } from './validations';
 
 export function createCashManagementRouter(controller: CashManagementController): Router {
@@ -27,6 +36,17 @@ export function createCashManagementRouter(controller: CashManagementController)
    * @access Private
    */
   router.get('/custody/me', controller.getMyCustody);
+
+  /**
+   * @route GET /cash-management/custody/me/activity
+   * @desc Get current user's custody activity (stub)
+   * @access Private
+   */
+  router.get(
+    '/custody/me/activity',
+    validateQuery(custodyActivityQuerySchema),
+    controller.getMyCustodyActivity
+  );
 
   /**
    * @route GET /cash-management/custody/summary/:glAccountCode
@@ -87,6 +107,17 @@ export function createCashManagementRouter(controller: CashManagementController)
    * @access Private (SuperAdmin)
    */
   router.get('/handovers/pending/super-admin', controller.getPendingBankDeposits);
+
+  /**
+   * @route GET /cash-management/handovers/history
+   * @desc Get handover history for current user
+   * @access Private
+   */
+  router.get(
+    '/handovers/history',
+    validateQuery(handoverHistoryQuerySchema),
+    controller.getHandoverHistory
+  );
 
   /**
    * @route GET /cash-management/handovers/receivers
@@ -168,6 +199,86 @@ export function createCashManagementRouter(controller: CashManagementController)
     '/handovers',
     validateQuery(listHandoversQuerySchema),
     controller.listHandovers
+  );
+
+  // ==================== ADMIN ROUTES ====================
+
+  /**
+   * @route GET /cash-management/admin/dashboard
+   * @desc Get admin dashboard statistics
+   * @access Private (Admin)
+   */
+  router.get(
+    '/admin/dashboard',
+    validateQuery(adminDashboardQuerySchema),
+    controller.getAdminDashboard
+  );
+
+  /**
+   * @route GET /cash-management/admin/custody-by-level
+   * @desc Get custody aggregated by hierarchy level
+   * @access Private (Admin)
+   */
+  router.get(
+    '/admin/custody-by-level',
+    validateQuery(custodyByLevelQuerySchema),
+    controller.getCustodyByLevel
+  );
+
+  /**
+   * @route GET /cash-management/admin/custody-report
+   * @desc Get detailed custody report by user
+   * @access Private (Admin)
+   */
+  router.get(
+    '/admin/custody-report',
+    validateQuery(custodyReportQuerySchema),
+    controller.getCustodyReport
+  );
+
+  /**
+   * @route GET /cash-management/admin/overdue
+   * @desc Get users holding cash beyond threshold
+   * @access Private (Admin)
+   */
+  router.get(
+    '/admin/overdue',
+    validateQuery(overdueQuerySchema),
+    controller.getOverdueUsers
+  );
+
+  /**
+   * @route GET /cash-management/admin/reconciliation
+   * @desc Get GL reconciliation report
+   * @access Private (Admin)
+   */
+  router.get(
+    '/admin/reconciliation',
+    validateQuery(reconciliationQuerySchema),
+    controller.getReconciliation
+  );
+
+  /**
+   * @route GET /cash-management/admin/pending-transfers
+   * @desc Get all pending transfers across the organization
+   * @access Private (Admin)
+   */
+  router.get(
+    '/admin/pending-transfers',
+    validateQuery(pendingTransfersQuerySchema),
+    controller.getPendingTransfers
+  );
+
+  /**
+   * @route POST /cash-management/admin/handovers/:handoverId/approve
+   * @desc Approve bank deposit (SuperAdmin only)
+   * @access Private (SuperAdmin)
+   */
+  router.post(
+    '/admin/handovers/:handoverId/approve',
+    validateParams(handoverIdParamsSchema),
+    validateBody(approveHandoverBodySchema),
+    controller.approveHandover
   );
 
   return router;

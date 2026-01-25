@@ -1483,3 +1483,14 @@ await increaseCashCustody({
 2. **Wallet Deposit Collection** - Updates agent custody + uses account 1001 (GL at collection, not approval)
 3. **Approval Workflow** - Only for transfers to Super Admin
 4. **Admin Reassignment** - Blocked if custody balance > 0
+
+
+
+
+## rough
+
+API Endpoints
+Agent/Admin APIs
+#MethodEndpointDescription1GET/cash/my-custodyGet logged-in user's custody2GET/cash/my-custody/activityGet recent custody activity3POST/cash/handoversInitiate cash handover4GET/cash/handovers/pendingGet pending handovers (in/out)5POST/cash/handovers/:id/acknowledgeAcknowledge receipt6POST/cash/handovers/:id/rejectReject handover7POST/cash/handovers/:id/cancelCancel own handover8GET/cash/handovers/:idGet handover details9GET/cash/handovers/historyGet handover history10GET/cash/recipientsGet available recipients
+Admin APIs
+#MethodEndpointDescription11GET/admin/cash/dashboardDashboard statistics12GET/admin/cash/custody-by-levelCash by custody level13GET/admin/cash/custody-reportDetailed custody report14GET/admin/cash/overdueOverdue holdings report15GET/admin/cash/reconciliationGL reconciliation16GET/admin/cash/pending-transfersAll pending transfers17POST/admin/cash/handovers/:id/approveSuper Admin approve bank deposit

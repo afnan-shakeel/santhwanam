@@ -446,10 +446,36 @@ export class CashHandoverService {
   }
 
   /**
-   * Get pending handovers for a user (as receiver)
+   * Get pending handovers for a user (both incoming and outgoing)
    */
-  async getPendingHandoversForUser(userId: string): Promise<CashHandoverWithRelations[]> {
-    return this.cashHandoverRepo.findPendingForUser(userId);
+  async getPendingHandoversForUser(userId: string): Promise<{
+    incoming: CashHandoverWithRelations[];
+    outgoing: CashHandoverWithRelations[];
+    summary: {
+      totalIncoming: number;
+      totalIncomingAmount: number;
+      totalOutgoing: number;
+      totalOutgoingAmount: number;
+    };
+  }> {
+    const [incoming, outgoing] = await Promise.all([
+      this.cashHandoverRepo.findPendingIncomingForUser(userId),
+      this.cashHandoverRepo.findPendingOutgoingForUser(userId),
+    ]);
+
+    const totalIncomingAmount = incoming.reduce((sum, h) => sum + h.amount, 0);
+    const totalOutgoingAmount = outgoing.reduce((sum, h) => sum + h.amount, 0);
+
+    return {
+      incoming,
+      outgoing,
+      summary: {
+        totalIncoming: incoming.length,
+        totalIncomingAmount,
+        totalOutgoing: outgoing.length,
+        totalOutgoingAmount,
+      },
+    };
   }
 
   /**
@@ -544,5 +570,215 @@ export class CashHandoverService {
       },
     });
     return !!userRole;
+  }
+
+  /**
+   * Get handover history for a user
+   */
+  async getHandoverHistory(
+    userId: string,
+    filters: {
+      direction?: 'sent' | 'received' | 'all';
+      status?: CashHandoverStatus;
+      fromDate?: Date;
+      toDate?: Date;
+      page?: number;
+      limit?: number;
+    }
+  ): Promise<{
+    handovers: Array<{
+      handoverId: string;
+      handoverNumber: string;
+      direction: 'sent' | 'received';
+      counterpartyName: string | null;
+      counterpartyRole: string | null;
+      amount: number;
+      status: string;
+      initiatedAt: Date;
+      completedAt: Date | null;
+    }>;
+    summary: {
+      totalSent: number;
+      totalReceived: number;
+      countSent: number;
+      countReceived: number;
+    };
+    total: number;
+  }> {
+    const result = await this.cashHandoverRepo.findUserHistory(userId, {
+      ...filters,
+      page: filters.page || 1,
+      limit: filters.limit || 20,
+    });
+
+    // Map handovers with direction
+    const handovers = result.handovers.map((h) => {
+      const isSent = h.fromUserId === userId;
+      const counterparty = isSent ? h.toUser : h.fromUser;
+      const completedAt = h.acknowledgedAt || h.rejectedAt || h.cancelledAt || null;
+
+      return {
+        handoverId: h.handoverId,
+        handoverNumber: h.handoverNumber,
+        direction: (isSent ? 'sent' : 'received') as 'sent' | 'received',
+        counterpartyName: counterparty
+          ? `${counterparty.firstName || ''} ${counterparty.lastName || ''}`.trim()
+          : null,
+        counterpartyRole: (isSent ? h.toUserRole : h.fromUserRole) as string | null,
+        amount: h.amount,
+        status: h.status as string,
+        initiatedAt: h.initiatedAt,
+        completedAt,
+      };
+    });
+
+    // Calculate summary
+    const sentHandovers = result.handovers.filter((h) => h.fromUserId === userId);
+    const receivedHandovers = result.handovers.filter((h) => h.toUserId === userId);
+
+    return {
+      handovers,
+      summary: {
+        totalSent: sentHandovers.reduce((sum, h) => sum + h.amount, 0),
+        totalReceived: receivedHandovers.reduce((sum, h) => sum + h.amount, 0),
+        countSent: sentHandovers.length,
+        countReceived: receivedHandovers.length,
+      },
+      total: result.total,
+    };
+  }
+
+  /**
+   * Get all pending transfers (admin view)
+   */
+  async getAllPendingTransfers(filters: {
+    forumId?: string;
+    areaId?: string;
+    fromRole?: string;
+    toRole?: string;
+    minAgeHours?: number;
+    page?: number;
+    limit?: number;
+  }): Promise<{
+    transfers: Array<{
+      handoverId: string;
+      handoverNumber: string;
+      fromUserName: string | null;
+      fromUserRole: string;
+      fromUnit: string | null;
+      toUserName: string | null;
+      toUserRole: string;
+      amount: number;
+      status: string;
+      requiresApproval: boolean;
+      approvalStatus: string | null;
+      initiatedAt: Date;
+      ageHours: number;
+    }>;
+    summary: {
+      total: number;
+      totalAmount: number;
+      requiresApproval: number;
+      overdue: number;
+    };
+    total: number;
+  }> {
+    const page = filters.page || 1;
+    const limit = filters.limit || 20;
+
+    const result = await this.cashHandoverRepo.findAllPending({
+      ...filters,
+      page,
+      limit,
+    });
+
+    const now = new Date();
+    const overdueThresholdHours = 48;
+
+    const transfers = result.handovers.map((h) => {
+      const ageHours = Math.round(
+        ((now.getTime() - h.initiatedAt.getTime()) / (1000 * 60 * 60)) * 10
+      ) / 10;
+
+      return {
+        handoverId: h.handoverId,
+        handoverNumber: h.handoverNumber,
+        fromUserName: h.fromUser
+          ? `${h.fromUser.firstName || ''} ${h.fromUser.lastName || ''}`.trim()
+          : null,
+        fromUserRole: h.fromUserRole,
+        fromUnit: h.fromCustody?.unitId || null,
+        toUserName: h.toUser
+          ? `${h.toUser.firstName || ''} ${h.toUser.lastName || ''}`.trim()
+          : null,
+        toUserRole: h.toUserRole,
+        amount: h.amount,
+        status: h.status,
+        requiresApproval: h.requiresApproval,
+        approvalStatus: h.approvalRequest?.status || null,
+        initiatedAt: h.initiatedAt,
+        ageHours,
+      };
+    });
+
+    const requiresApprovalCount = transfers.filter((t) => t.requiresApproval).length;
+    const overdueCount = transfers.filter((t) => t.ageHours > overdueThresholdHours).length;
+    const totalAmount = transfers.reduce((sum, t) => sum + t.amount, 0);
+
+    return {
+      transfers,
+      summary: {
+        total: result.total,
+        totalAmount,
+        requiresApproval: requiresApprovalCount,
+        overdue: overdueCount,
+      },
+      total: result.total,
+    };
+  }
+
+  /**
+   * Approve bank deposit (SuperAdmin only)
+   */
+  async approveBankDeposit(
+    handoverId: string,
+    approvedBy: string,
+    approverNotes?: string
+  ): Promise<CashHandover> {
+    return await prisma.$transaction(async (tx: any) => {
+      const handover = await this.cashHandoverRepo.findById(handoverId, tx);
+      if (!handover) {
+        throw new AppError('Handover not found', 404);
+      }
+
+      if (handover.status !== CashHandoverStatus.Initiated) {
+        throw new AppError('Handover is not in Initiated status', 400);
+      }
+
+      if (!handover.requiresApproval) {
+        throw new AppError('This handover does not require approval', 400);
+      }
+
+      // Verify user is SuperAdmin
+      const isSuperAdmin = await this.checkUserHasRole(approvedBy, 'super_admin', tx);
+      if (!isSuperAdmin) {
+        throw new AppError('Only Super Admin can approve bank deposits', 403);
+      }
+
+      // Update approval request if exists
+      if (handover.approvalRequestId) {
+        await tx.approvalRequest.update({
+          where: { requestId: handover.approvalRequestId },
+          data: {
+            status: 'Approved',
+            approvedBy,
+            approvedAt: new Date(),
+            approverNotes: approverNotes || null,
+          },
+        });
+      }
+
+      return handover;
+    });
   }
 }
