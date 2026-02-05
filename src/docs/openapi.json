@@ -1270,7 +1270,7 @@
     "/api/organization-bodies/forums/{forumId}": {
       "get": {
         "tags": ["Organization Bodies - Forums"],
-        "summary": "Get forum by ID",
+        "summary": "Get forum by ID with admin details",
         "parameters": [
           {
             "name": "forumId",
@@ -1281,17 +1281,11 @@
         ],
         "responses": {
           "200": {
-            "description": "Forum details",
+            "description": "Forum details with admin info",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "forumId": { "type": "string", "format": "uuid" },
-                    "forumCode": { "type": "string" },
-                    "forumName": { "type": "string" },
-                    "adminUserId": { "type": "string", "format": "uuid" }
-                  }
+                  "$ref": "#/components/schemas/ForumWithDetailsResponse"
                 }
               }
             }
@@ -1390,6 +1384,32 @@
         }
       }
     },
+    "/api/organization-bodies/forums/{forumId}/stats": {
+      "get": {
+        "tags": ["Organization Bodies - Forums"],
+        "summary": "Get forum statistics",
+        "parameters": [
+          {
+            "name": "forumId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Forum statistics",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForumStatsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/organization-bodies/areas/search": {
       "post": {
         "tags": ["Organization Bodies - Areas"],
@@ -1462,7 +1482,7 @@
     "/api/organization-bodies/areas/{areaId}": {
       "get": {
         "tags": ["Organization Bodies - Areas"],
-        "summary": "Get area by ID",
+        "summary": "Get area by ID with admin and forum details",
         "parameters": [
           {
             "name": "areaId",
@@ -1473,17 +1493,11 @@
         ],
         "responses": {
           "200": {
-            "description": "Area details",
+            "description": "Area details with admin and forum info",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "areaId": { "type": "string", "format": "uuid" },
-                    "areaCode": { "type": "string" },
-                    "areaName": { "type": "string" },
-                    "forumId": { "type": "string", "format": "uuid" }
-                  }
+                  "$ref": "#/components/schemas/AreaWithDetailsResponse"
                 }
               }
             }
@@ -1551,13 +1565,13 @@
         }
       }
     },
-    "/api/organization-bodies/forums/{forumId}/areas": {
+    "/api/organization-bodies/areas/{areaId}/stats": {
       "get": {
         "tags": ["Organization Bodies - Areas"],
-        "summary": "List areas by forum",
+        "summary": "Get area statistics",
         "parameters": [
           {
-            "name": "forumId",
+            "name": "areaId",
             "in": "path",
             "required": true,
             "schema": { "type": "string", "format": "uuid" }
@@ -1565,19 +1579,49 @@
         ],
         "responses": {
           "200": {
-            "description": "List of areas in forum",
+            "description": "Area statistics",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "areaId": { "type": "string", "format": "uuid" },
-                      "areaCode": { "type": "string" },
-                      "areaName": { "type": "string" }
-                    }
-                  }
+                  "$ref": "#/components/schemas/AreaStatsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/organization-bodies/forums/{forumId}/areas": {
+      "get": {
+        "tags": ["Organization Bodies - Areas"],
+        "summary": "List areas by forum with summary and pagination",
+        "parameters": [
+          {
+            "name": "forumId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "default": 1 }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "default": 20 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of areas in forum with summary and counts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AreasListWithSummaryResponse"
                 }
               }
             }
@@ -1657,7 +1701,7 @@
     "/api/organization-bodies/units/{unitId}": {
       "get": {
         "tags": ["Organization Bodies - Units"],
-        "summary": "Get unit by ID",
+        "summary": "Get unit by ID with admin and hierarchy details",
         "parameters": [
           {
             "name": "unitId",
@@ -1668,17 +1712,11 @@
         ],
         "responses": {
           "200": {
-            "description": "Unit details",
+            "description": "Unit details with admin and hierarchy info",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "unitId": { "type": "string", "format": "uuid" },
-                    "unitCode": { "type": "string" },
-                    "unitName": { "type": "string" },
-                    "areaId": { "type": "string", "format": "uuid" }
-                  }
+                  "$ref": "#/components/schemas/UnitWithDetailsResponse"
                 }
               }
             }
@@ -1746,13 +1784,13 @@
         }
       }
     },
-    "/api/organization-bodies/areas/{areaId}/units": {
+    "/api/organization-bodies/units/{unitId}/stats": {
       "get": {
         "tags": ["Organization Bodies - Units"],
-        "summary": "List units by area",
+        "summary": "Get unit statistics",
         "parameters": [
           {
-            "name": "areaId",
+            "name": "unitId",
             "in": "path",
             "required": true,
             "schema": { "type": "string", "format": "uuid" }
@@ -1760,19 +1798,49 @@
         ],
         "responses": {
           "200": {
-            "description": "List of units in area",
+            "description": "Unit statistics",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "unitId": { "type": "string", "format": "uuid" },
-                      "unitCode": { "type": "string" },
-                      "unitName": { "type": "string" }
-                    }
-                  }
+                  "$ref": "#/components/schemas/UnitStatsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/organization-bodies/areas/{areaId}/units": {
+      "get": {
+        "tags": ["Organization Bodies - Units"],
+        "summary": "List units by area with summary and pagination",
+        "parameters": [
+          {
+            "name": "areaId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "default": 1 }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "default": 20 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of units in area with summary and counts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnitsListWithSummaryResponse"
                 }
               }
             }
@@ -2063,33 +2131,37 @@
     "/api/agents/unit/{unitId}": {
       "get": {
         "tags": ["Agents"],
-        "summary": "List agents by unit",
+        "summary": "List agents by unit with summary and member counts",
+        "description": "Retrieves a paginated list of agents in a specific unit with aggregated summary counts and per-agent member counts",
         "parameters": [
           {
             "name": "unitId",
             "in": "path",
             "required": true,
-            "schema": { "type": "string", "format": "uuid" }
+            "schema": { "type": "string", "format": "uuid" },
+            "description": "The ID of the unit"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "default": 1, "minimum": 1 },
+            "description": "Page number (1-indexed)"
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "default": 10, "minimum": 1, "maximum": 100 },
+            "description": "Number of items per page"
           }
         ],
         "responses": {
           "200": {
-            "description": "List of agents in unit",
+            "description": "Paginated list of agents with summary and member counts",
             "content": {
               "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "agentId": { "type": "string", "format": "uuid" },
-                      "agentCode": { "type": "string" },
-                      "firstName": { "type": "string" },
-                      "lastName": { "type": "string" },
-                      "agentStatus": { "type": "string" }
-                    }
-                  }
-                }
+                "schema": { "$ref": "#/components/schemas/AgentsListWithSummaryResponse" }
               }
             }
           }
@@ -8602,6 +8674,227 @@
           "hierarchyLevel": { "type": ["string", "null"], "description": "Organization level (Unit, Area, Forum, Central)" },
           "hierarchyName": { "type": ["string", "null"], "description": "Name of the organizational entity" },
           "requiresApproval": { "type": "boolean", "description": "Whether handover to this receiver requires approval" }
+        }
+      }
+    },
+    "AdminDetails": {
+      "type": "object",
+      "description": "Admin user details",
+      "properties": {
+        "userId": { "type": "string", "format": "uuid" },
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "phone": { "type": ["string", "null"] }
+      }
+    },
+    "AdminSummary": {
+      "type": "object",
+      "description": "Lightweight admin summary",
+      "properties": {
+        "userId": { "type": "string", "format": "uuid" },
+        "name": { "type": "string" }
+      }
+    },
+    "ForumWithDetailsResponse": {
+      "type": "object",
+      "description": "Forum with admin details",
+      "properties": {
+        "forumId": { "type": "string", "format": "uuid" },
+        "forumCode": { "type": "string" },
+        "forumName": { "type": "string" },
+        "establishedDate": { "type": "string", "format": "date" },
+        "adminUserId": { "type": "string", "format": "uuid" },
+        "admin": { "$ref": "#/components/schemas/AdminDetails" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "ForumStatsResponse": {
+      "type": "object",
+      "description": "Forum statistics",
+      "properties": {
+        "forumId": { "type": "string", "format": "uuid" },
+        "totalAreas": { "type": "integer" },
+        "totalUnits": { "type": "integer" },
+        "totalAgents": { "type": "integer" },
+        "activeAgents": { "type": "integer" },
+        "totalMembers": { "type": "integer" },
+        "activeMembers": { "type": "integer" },
+        "pendingApprovals": { "type": "integer" }
+      }
+    },
+    "AreaWithDetailsResponse": {
+      "type": "object",
+      "description": "Area with admin details and forum information",
+      "properties": {
+        "areaId": { "type": "string", "format": "uuid" },
+        "areaCode": { "type": "string" },
+        "areaName": { "type": "string" },
+        "establishedDate": { "type": "string", "format": "date" },
+        "forumId": { "type": "string", "format": "uuid" },
+        "forumName": { "type": "string" },
+        "adminUserId": { "type": "string", "format": "uuid" },
+        "admin": { "$ref": "#/components/schemas/AdminDetails" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "AreaStatsResponse": {
+      "type": "object",
+      "description": "Area statistics",
+      "properties": {
+        "areaId": { "type": "string", "format": "uuid" },
+        "totalUnits": { "type": "integer" },
+        "totalAgents": { "type": "integer" },
+        "activeAgents": { "type": "integer" },
+        "totalMembers": { "type": "integer" },
+        "activeMembers": { "type": "integer" }
+      }
+    },
+    "AreasListWithSummaryResponse": {
+      "type": "object",
+      "description": "Paginated list of areas with summary counts and per-item counts",
+      "properties": {
+        "summary": {
+          "type": "object",
+          "properties": {
+            "totalAreas": { "type": "integer" },
+            "totalUnits": { "type": "integer" },
+            "totalMembers": { "type": "integer" }
+          }
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "areaId": { "type": "string", "format": "uuid" },
+              "areaCode": { "type": "string" },
+              "areaName": { "type": "string" },
+              "establishedDate": { "type": "string", "format": "date" },
+              "unitCount": { "type": "integer" },
+              "memberCount": { "type": "integer" },
+              "admin": { "$ref": "#/components/schemas/AdminSummary" }
+            }
+          }
+        },
+        "pagination": {
+          "type": "object",
+          "properties": {
+            "page": { "type": "integer" },
+            "pageSize": { "type": "integer" },
+            "totalItems": { "type": "integer" },
+            "totalPages": { "type": "integer" }
+          }
+        }
+      }
+    },
+    "UnitWithDetailsResponse": {
+      "type": "object",
+      "description": "Unit with admin details and hierarchy information",
+      "properties": {
+        "unitId": { "type": "string", "format": "uuid" },
+        "unitCode": { "type": "string" },
+        "unitName": { "type": "string" },
+        "establishedDate": { "type": "string", "format": "date" },
+        "areaId": { "type": "string", "format": "uuid" },
+        "areaName": { "type": "string" },
+        "forumId": { "type": "string", "format": "uuid" },
+        "forumName": { "type": "string" },
+        "adminUserId": { "type": "string", "format": "uuid" },
+        "admin": { "$ref": "#/components/schemas/AdminDetails" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "UnitStatsResponse": {
+      "type": "object",
+      "description": "Unit statistics",
+      "properties": {
+        "unitId": { "type": "string", "format": "uuid" },
+        "totalAgents": { "type": "integer" },
+        "activeAgents": { "type": "integer" },
+        "totalMembers": { "type": "integer" },
+        "activeMembers": { "type": "integer" },
+        "suspendedMembers": { "type": "integer" },
+        "pendingApprovals": { "type": "integer" }
+      }
+    },
+    "UnitsListWithSummaryResponse": {
+      "type": "object",
+      "description": "Paginated list of units with summary counts and per-item counts",
+      "properties": {
+        "summary": {
+          "type": "object",
+          "properties": {
+            "totalUnits": { "type": "integer" },
+            "totalAgents": { "type": "integer" },
+            "totalMembers": { "type": "integer" }
+          }
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "unitId": { "type": "string", "format": "uuid" },
+              "unitCode": { "type": "string" },
+              "unitName": { "type": "string" },
+              "establishedDate": { "type": "string", "format": "date" },
+              "agentCount": { "type": "integer" },
+              "memberCount": { "type": "integer" },
+              "admin": { "$ref": "#/components/schemas/AdminSummary" }
+            }
+          }
+        },
+        "pagination": {
+          "type": "object",
+          "properties": {
+            "page": { "type": "integer" },
+            "pageSize": { "type": "integer" },
+            "totalItems": { "type": "integer" },
+            "totalPages": { "type": "integer" }
+          }
+        }
+      }
+    },
+    "AgentListItem": {
+      "type": "object",
+      "description": "Agent item in list response",
+      "properties": {
+        "agentId": { "type": "string", "format": "uuid" },
+        "agentCode": { "type": "string" },
+        "fullName": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "phone": { "type": ["string", "null"] },
+        "status": { "type": "string", "enum": ["Active", "Inactive", "Suspended"] },
+        "memberCount": { "type": "integer" }
+      }
+    },
+    "AgentsListWithSummaryResponse": {
+      "type": "object",
+      "description": "Paginated list of agents with summary counts and per-agent member counts",
+      "properties": {
+        "summary": {
+          "type": "object",
+          "properties": {
+            "totalAgents": { "type": "integer" },
+            "activeAgents": { "type": "integer" },
+            "totalMembers": { "type": "integer" }
+          }
+        },
+        "items": {
+          "type": "array",
+          "items": { "$ref": "#/components/schemas/AgentListItem" }
+        },
+        "pagination": {
+          "type": "object",
+          "properties": {
+            "page": { "type": "integer" },
+            "pageSize": { "type": "integer" },
+            "totalItems": { "type": "integer" },
+            "totalPages": { "type": "integer" }
+          }
         }
       }
     },

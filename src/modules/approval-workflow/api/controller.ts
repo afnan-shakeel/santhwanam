@@ -23,6 +23,7 @@ import {
   SubmitRequestResponseDto,
   ProcessApprovalResponseDto,
   PendingApprovalsListResponseDto,
+  PendingApprovalsCountResponseDto,
   ApprovalRequestWithExecutionsResponseDto,
   SuccessResponseDto,
 } from './dtos/responseDtos';
@@ -155,6 +156,19 @@ export class ApprovalWorkflowController {
       const { approverId } = req.params;
       const executions = await this.requestService.getPendingApprovals(approverId);
       return next({ responseSchema: PendingApprovalsListResponseDto, data: executions, status: 200 });
+    } catch (err) {
+      next(err)
+    }
+  };
+
+  getPendingApprovalsCount = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = (req as any).user?.userId;
+      if (!userId) {
+        throw new Error('User ID not found in request');
+      }
+      const result = await this.requestService.getPendingApprovalsCount(userId);
+      return next({ responseSchema: PendingApprovalsCountResponseDto, data: result, status: 200 });
     } catch (err) {
       next(err)
     }

@@ -16,6 +16,7 @@ import {
   AgentMembersExportResponseDto,
   AgentPerformanceResponseDto,
   AgentHierarchyResponseDto,
+  AgentsListWithSummaryResponseDto,
 } from './dtos/responseDtos'
 import {
   StartAgentRegistrationHandler,
@@ -114,14 +115,14 @@ export class AgentsController {
 
   /**
    * GET /api/agents/unit/:unitId
-   * List agents by unit
+   * List agents by unit with summary and member counts
    */
   listByUnit = async (req: Request, res: Response, next: NextFunction) => {
     const { unitId } = req.params;
     const skip = parseInt(req.query.skip as string) || 0;
     const take = parseInt(req.query.take as string) || 20;
-    const result = await this.agentService.listByUnit(unitId, skip, take);
-    next({ responseSchema: AgentListResponseDto, data: result, status: 200 });
+    const result = await this.agentService.listByUnitWithDetails(unitId, skip, take);
+    next({ responseSchema: AgentsListWithSummaryResponseDto, data: result, status: 200 });
   };
 
   /**

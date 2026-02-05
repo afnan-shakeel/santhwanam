@@ -1,5 +1,5 @@
-import { permissionService, roleService, inviteUserHandler } from '../index';
-import { PermissionResponseDto, PermissionsSearchResponseDto, RoleResponseDto, RolesSearchResponseDto, UserResponseDto, UsersSearchResponseDto, } from './dtos/responseDtos';
+import { permissionService, roleService, inviteUserHandler, assignRoleToUserHandler, revokeRoleFromUserHandler } from '../index';
+import { PermissionResponseDto, PermissionsSearchResponseDto, RoleResponseDto, RolesSearchResponseDto, UserResponseDto, UsersSearchResponseDto, UserRoleResponseDto, UserWithRolesResponseDto, } from './dtos/responseDtos';
 export async function searchPermissions(req, res, next) {
     try {
         const result = await permissionService.searchPermissions(req.body);
@@ -104,6 +104,41 @@ export async function updateRole(req, res, next) {
         const id = req.params.id;
         const r = await roleService.updateRole(id, req.body);
         return next({ responseSchema: RoleResponseDto, data: r, status: 200 });
+    }
+    catch (err) {
+        next(err);
+    }
+}
+export async function assignRoleToUser(req, res, next) {
+    try {
+        const userId = req.params.userId;
+        const payload = {
+            userId,
+            ...req.body,
+        };
+        const userRole = await assignRoleToUserHandler.execute(payload);
+        return next({ responseSchema: UserRoleResponseDto, data: userRole, status: 201 });
+    }
+    catch (err) {
+        next(err);
+    }
+}
+export async function revokeRoleFromUser(req, res, next) {
+    try {
+        const userRoleId = req.params.userRoleId;
+        const payload = { userRoleId };
+        const userRole = await revokeRoleFromUserHandler.execute(payload);
+        return next({ responseSchema: UserRoleResponseDto, data: userRole, status: 200 });
+    }
+    catch (err) {
+        next(err);
+    }
+}
+export async function getUserWithRoles(req, res, next) {
+    try {
+        const userId = req.params.userId;
+        const userWithRoles = await (await import('../index')).userService.getUserWithRoles(userId);
+        return next({ responseSchema: UserWithRolesResponseDto, data: userWithRoles, status: 200 });
     }
     catch (err) {
         next(err);

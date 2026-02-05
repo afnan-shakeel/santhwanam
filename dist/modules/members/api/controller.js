@@ -205,6 +205,7 @@ export class MembersController {
         const { memberId } = req.params;
         try {
             const payment = await this.memberService.getPaymentByMemberId(memberId);
+            console.log(payment, memberId);
             return next({ responseSchema: RegistrationPaymentResponseDto, data: payment, status: 200 });
         }
         catch (err) {
@@ -356,7 +357,7 @@ export class MembersController {
             const userId = asyncLocalStorage.getUserId();
             // Find member by user ID
             const member = await prisma.member.findFirst({
-                where: { createdBy: userId },
+                where: { userId: userId },
             });
             if (!member) {
                 throw new NotFoundError("Member profile not found");

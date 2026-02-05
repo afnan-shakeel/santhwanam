@@ -15,12 +15,14 @@ export class MemberService {
     memberDocumentRepository;
     registrationPaymentRepository;
     membershipTierRepository;
-    constructor(memberRepository, nomineeRepository, memberDocumentRepository, registrationPaymentRepository, membershipTierRepository) {
+    unitRepository;
+    constructor(memberRepository, nomineeRepository, memberDocumentRepository, registrationPaymentRepository, membershipTierRepository, unitRepository) {
         this.memberRepository = memberRepository;
         this.nomineeRepository = nomineeRepository;
         this.memberDocumentRepository = memberDocumentRepository;
         this.registrationPaymentRepository = registrationPaymentRepository;
         this.membershipTierRepository = membershipTierRepository;
+        this.unitRepository = unitRepository;
     }
     // ===== STEP 1: PERSONAL DETAILS =====
     /**
@@ -45,6 +47,11 @@ export class MemberService {
             // For now, we'll need to pass these or fetch from a unit repository
             // if not createdBy, add it
             const userId = asyncLocalStorage.getUserId();
+            // get area id and forum id from unit
+            const unit = await this.unitRepository.findById(input.unitId, tx);
+            if (!unit) {
+                throw new BadRequestError("Invalid unit");
+            }
             // Create member record
             const memberId = uuidv4();
             const member = await this.memberRepository.create({
@@ -70,8 +77,8 @@ export class MemberService {
                 tierId: input.tierId,
                 agentId: input.agentId,
                 unitId: input.unitId,
-                areaId: "", // TODO: Get from unit
-                forumId: "", // TODO: Get from unit
+                areaId: unit.areaId,
+                forumId: unit.forumId,
                 memberStatus: null,
                 suspensionCounter: 0,
                 suspensionReason: null,
@@ -106,9 +113,10 @@ export class MemberService {
             if (!member || member.registrationStatus !== RegistrationStatus.Draft) {
                 throw new BadRequestError("Invalid member or status");
             }
-            if (member.registrationStep !== RegistrationStep.PersonalDetails) {
-                throw new BadRequestError("Cannot save personal details at this step");
-            }
+            // TODO: (MARK:74837) temporarily commenting until further discussion on this logic. This is preventing draft registration on payment step to edit back the personal details
+            // if (member.registrationStep !== RegistrationStep.PersonalDetails) {
+            //   throw new BadRequestError("Cannot save personal details at this step");
+            // }
             // Validate age if dateOfBirth provided
             if (input.dateOfBirth) {
                 const age = calculateAge(input.dateOfBirth);
@@ -139,9 +147,10 @@ export class MemberService {
             if (!member || member.registrationStatus !== RegistrationStatus.Draft) {
                 throw new BadRequestError("Invalid member or status");
             }
-            if (member.registrationStep !== RegistrationStep.PersonalDetails) {
-                throw new BadRequestError("Invalid registration step");
-            }
+            // TODO: (MARK:74837) temporarily commenting until further discussion on this logic. This is preventing draft registration on payment step to edit back the personal details
+            // if (member.registrationStep !== RegistrationStep.PersonalDetails) {
+            //   throw new BadRequestError("Invalid registration step");
+            // }
             // Validate all required fields
             if (!member.firstName || !member.lastName) {
                 throw new BadRequestError("First name and last name are required");
@@ -424,10 +433,13 @@ export class MemberService {
             if (member.registrationStep !== RegistrationStep.DocumentsPayment) {
                 throw new BadRequestError("Cannot record payment at this step");
             }
+            // TODO: verify the logics for only agents recording payments
             // // Verify agent
             // if (member.agentId !== input.collectedBy) {
             //   throw new BadRequestError("Only assigned agent can record payment");
             // } temp commentingg
+            // collectedBy will be the session user
+            const collectedBy = asyncLocalStorage.getAuthContext().user.userId;
             // Validate amounts match tier
             const tier = await this.membershipTierRepository.findById(member.tierId, tx);
             if (!tier) {
@@ -453,7 +465,7 @@ export class MemberService {
                 registrationFee: input.registrationFee,
                 advanceDeposit: input.advanceDeposit,
                 totalAmount,
-                collectedBy: input.collectedBy,
+                collectedBy: collectedBy,
                 collectionDate: input.collectionDate,
                 collectionMode: input.collectionMode,
                 referenceNumber: input.referenceNumber || null,
@@ -470,7 +482,7 @@ export class MemberService {
                 totalAmount,
                 registrationFee: input.registrationFee,
                 advanceDeposit: input.advanceDeposit,
-                collectedBy: input.collectedBy,
+                collectedBy: collectedBy,
                 collectionMode: input.collectionMode,
             }));
             return payment;
@@ -787,6 +799,12 @@ export class MemberService {
      */
     async searchNominees(filters) {
         return await this.nomineeRepository.search(filters);
+    }
+    /**
+     * Get member by user id
+     */
+    async getMemberByUserId(userId) {
+        return this.memberRepository.findByUserId(userId);
     }
 }
 //# sourceMappingURL=memberService.js.map

@@ -1,12 +1,12 @@
 import { Router } from 'express';
 import * as ctrl from './controller';
 import { validateBody } from '@/shared/middleware/validateZod';
-import { createPermissionSchema, createRoleSchema, updatePermissionSchema, updateRoleSchema, inviteUserSchema, updateUserSchema } from './validators';
+import { createPermissionSchema, createRoleSchema, updatePermissionSchema, updateRoleSchema, inviteUserSchema, updateUserSchema, assignRoleToUserSchema } from './validators';
 import { searchValidationSchema } from '@/shared/validators/searchValidator';
 const router = Router();
 // User invites
 router.post('/users/invite', validateBody(inviteUserSchema), 
-// requirePermission('user.invite'),
+// authorize('user.invite'),
 ctrl.inviteUser);
 // Permissions
 router.post('/permissions/search', validateBody(searchValidationSchema), ctrl.searchPermissions);
@@ -17,13 +17,25 @@ router.post('/roles/search', validateBody(searchValidationSchema), ctrl.searchRo
 router.post('/roles', validateBody(createRoleSchema), ctrl.createRole);
 router.patch('/roles/:id', validateBody(updateRoleSchema), ctrl.updateRole);
 router.get('/roles/:id', 
-// requirePermission('role.read'),
+// authorize('role.read'),
 ctrl.getRole);
 // Users
 router.post('/users/search', validateBody(searchValidationSchema), ctrl.searchUsers);
 router.patch('/users/:id', validateBody(updateUserSchema), ctrl.updateUser);
 router.get('/users/:id', 
-// requirePermission('user.read'),
+// authorize('user.read'),
 ctrl.getUser);
+// User Role Assignment
+router.post('/users/:userId/roles', validateBody(assignRoleToUserSchema), 
+// authorize('role.assign'),
+ctrl.assignRoleToUser);
+// User Role Revocation
+router.delete('/users/:userId/roles/:userRoleId', 
+// authorize('role.revoke'),
+ctrl.revokeRoleFromUser);
+// Get User with Roles
+router.get('/users/:userId/roles', 
+// authorize('user.read'),
+ctrl.getUserWithRoles);
 export default router;
 //# sourceMappingURL=router.js.map

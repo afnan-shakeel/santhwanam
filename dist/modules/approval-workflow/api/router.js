@@ -23,6 +23,7 @@ export function createApprovalWorkflowRouter(controller) {
     router.get('/requests/entity/:entityType/:entityId', controller.getRequestByEntity);
     // Approver actions
     router.get('/approvals/pending/:approverId', controller.getPendingApprovals);
+    router.get('/approvals/count', controller.getPendingApprovalsCount);
     return router;
 }
 //# sourceMappingURL=router.js.map

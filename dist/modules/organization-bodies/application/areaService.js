@@ -89,14 +89,14 @@ export class AreaService {
         });
     }
     /**
-     * Get area by ID
+     * Get area by ID with admin and forum details
      */
     async getAreaById(areaId) {
         const area = await this.areaRepo.findById(areaId);
         if (!area) {
             throw new NotFoundError('Area not found');
         }
-        return area;
+        return this.enrichAreaWithDetails(area);
     }
     /**
      * List areas by forum
@@ -112,6 +112,133 @@ export class AreaService {
             ...searchRequest,
             model: 'Area'
         });
+    }
+    /**
+     * Get area stats (counts: units, agents, members)
+     */
+    async getAreaStats(areaId) {
+        const area = await this.areaRepo.findById(areaId);
+        if (!area) {
+            throw new NotFoundError('Area not found');
+        }
+        // Query counts
+        const [unitCount, agentData, memberData] = await Promise.all([
+            prisma.unit.count({ where: { areaId } }),
+            prisma.agent.aggregate({
+                where: { areaId },
+                _count: { agentId: true },
+            }),
+            prisma.member.aggregate({
+                where: { areaId },
+                _count: { memberId: true },
+            }),
+        ]);
+        // Count active agents and members
+        const [activeAgentData, activeMemberData] = await Promise.all([
+            prisma.agent.aggregate({
+                where: {
+                    areaId,
+                    status: 'Active',
+                },
+                _count: { agentId: true },
+            }),
+            prisma.member.aggregate({
+                where: {
+                    areaId,
+                    memberStatus: 'Active',
+                },
+                _count: { memberId: true },
+            }),
+        ]);
+        return {
+            areaId,
+            totalUnits: unitCount,
+            totalAgents: agentData._count.agentId,
+            activeAgents: activeAgentData._count.agentId,
+            totalMembers: memberData._count.memberId,
+            activeMembers: activeMemberData._count.memberId,
+        };
+    }
+    /**
+     * Get units in area with counts and pagination
+     */
+    async listUnitsByAreaWithCounts(areaId, skip = 0, take = 20) {
+        const area = await this.areaRepo.findById(areaId);
+        if (!area) {
+            throw new NotFoundError('Area not found');
+        }
+        // Get total count
+        const totalUnits = await prisma.unit.count({ where: { areaId } });
+        // Get paginated units with admin info
+        const units = await prisma.unit.findMany({
+            where: { areaId },
+            include: {
+                admin: {
+                    select: { userId: true, firstName: true, lastName: true },
+                },
+            },
+            skip,
+            take,
+        });
+        // Get agent and member counts for each unit
+        const itemsWithCounts = await Promise.all(units.map(async (unit) => {
+            const [agentCount, memberCount] = await Promise.all([
+                prisma.agent.count({ where: { unitId: unit.unitId } }),
+                prisma.member.count({ where: { unitId: unit.unitId } }),
+            ]);
+            return {
+                ...unit,
+                admin: unit.admin ? {
+                    userId: unit.admin.userId,
+                    firstName: unit.admin.firstName,
+                    lastName: unit.admin.lastName,
+                } : null,
+                agentCount,
+                memberCount,
+            };
+        }));
+        // Get summary counts for area
+        const [totalAgents, totalMembers] = await Promise.all([
+            prisma.agent.count({ where: { areaId } }),
+            prisma.member.count({ where: { areaId } }),
+        ]);
+        return {
+            summary: {
+                totalUnits,
+                totalAgents,
+                totalMembers,
+            },
+            items: itemsWithCounts,
+            pagination: {
+                skip,
+                take,
+                total: totalUnits,
+                totalPages: Math.ceil(totalUnits / take),
+            },
+        };
+    }
+    /**
+     * Enrich area with admin and forum details
+     */
+    async enrichAreaWithDetails(area) {
+        const [admin, forum] = await Promise.all([
+            this.userRepo.findById(area.adminUserId),
+            this.forumRepo.findById(area.forumId),
+        ]);
+        return {
+            ...area,
+            admin: admin ? {
+                userId: admin.userId,
+                email: admin.email,
+                firstName: admin.firstName,
+                lastName: admin.lastName,
+            } : null,
+            forum: forum ? {
+                forumId: forum.forumId,
+                forumCode: forum.forumCode,
+                forumName: forum.forumName,
+            } : null,
+        };
     }
 }
 //# sourceMappingURL=areaService.js.map

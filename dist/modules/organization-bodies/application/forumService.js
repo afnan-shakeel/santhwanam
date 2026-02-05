@@ -86,24 +86,24 @@ export class ForumService {
         });
     }
     /**
-     * Get forum by ID
+     * Get forum by ID with admin details
      */
     async getForumById(forumId) {
         const forum = await this.forumRepo.findById(forumId);
         if (!forum) {
             throw new NotFoundError('Forum not found');
         }
-        return forum;
+        return this.enrichForumWithAdmin(forum);
     }
     /**
-     * Get forum by code
+     * Get forum by code with admin details
      */
     async getForumByCode(forumCode) {
         const forum = await this.forumRepo.findByCode(forumCode);
         if (!forum) {
             throw new NotFoundError('Forum not found');
         }
-        return forum;
+        return this.enrichForumWithAdmin(forum);
     }
     /**
      * List all forums
@@ -119,6 +119,133 @@ export class ForumService {
             ...searchRequest,
             model: 'Forum'
         });
+    }
+    /**
+     * Get forum stats (counts: areas, units, agents, members, pending approvals)
+     */
+    async getForumStats(forumId) {
+        const forum = await this.forumRepo.findById(forumId);
+        if (!forum) {
+            throw new NotFoundError('Forum not found');
+        }
+        // Query counts
+        const [areaCount, unitCount, agentData, memberData, pendingApprovalsData] = await Promise.all([
+            prisma.area.count({ where: { forumId } }),
+            prisma.unit.count({ where: { forumId } }),
+            prisma.agent.aggregate({
+                where: { forumId },
+                _count: { agentId: true },
+            }),
+            prisma.member.aggregate({
+                where: { forumId },
+                _count: { memberId: true },
+            }),
+            prisma.approvalRequest.count({
+                where: {
+                    forumId,
+                    status: 'Pending',
+                },
+            }),
+        ]);
+        // Count active agents
+        const activeAgentData = await prisma.agent.aggregate({
+            where: {
+                forumId,
+                status: 'Active',
+            },
+            _count: { agentId: true },
+        });
+        // Count active members
+        const activeMemberData = await prisma.member.aggregate({
+            where: {
+                forumId,
+                memberStatus: 'Active',
+            },
+            _count: { memberId: true },
+        });
+        return {
+            forumId,
+            totalAreas: areaCount,
+            totalUnits: unitCount,
+            totalAgents: agentData._count.agentId,
+            activeAgents: activeAgentData._count.agentId,
+            totalMembers: memberData._count.memberId,
+            activeMembers: activeMemberData._count.memberId,
+            pendingApprovals: pendingApprovalsData,
+        };
+    }
+    /**
+     * Get areas in forum with counts and pagination
+     */
+    async listAreasByForumWithCounts(forumId, skip = 0, take = 20) {
+        const forum = await this.forumRepo.findById(forumId);
+        if (!forum) {
+            throw new NotFoundError('Forum not found');
+        }
+        // Get total count
+        const totalAreas = await prisma.area.count({ where: { forumId } });
+        // Get paginated areas with admin info
+        const areas = await prisma.area.findMany({
+            where: { forumId },
+            include: {
+                admin: {
+                    select: { userId: true, firstName: true, lastName: true },
+                },
+            },
+            skip,
+            take,
+        });
+        // Get unit and member counts for each area
+        const itemsWithCounts = await Promise.all(areas.map(async (area) => {
+            const [unitCount, memberCount] = await Promise.all([
+                prisma.unit.count({ where: { areaId: area.areaId } }),
+                prisma.member.count({ where: { areaId: area.areaId } }),
+            ]);
+            return {
+                ...area,
+                admin: area.admin ? {
+                    userId: area.admin.userId,
+                    firstName: area.admin.firstName,
+                    lastName: area.admin.lastName,
+                } : null,
+                unitCount,
+                memberCount,
+            };
+        }));
+        // Get summary counts for forum
+        const [totalUnits, totalMembers] = await Promise.all([
+            prisma.unit.count({ where: { forumId } }),
+            prisma.member.count({ where: { forumId } }),
+        ]);
+        return {
+            summary: {
+                totalAreas,
+                totalUnits,
+                totalMembers,
+            },
+            items: itemsWithCounts,
+            pagination: {
+                skip,
+                take,
+                total: totalAreas,
+                totalPages: Math.ceil(totalAreas / take),
+            },
+        };
+    }
+    /**
+     * Enrich forum with admin details
+     */
+    async enrichForumWithAdmin(forum) {
+        const admin = await this.userRepo.findById(forum.adminUserId);
+        return {
+            ...forum,
+            admin: admin ? {
+                userId: admin.userId,
+                email: admin.email,
+                firstName: admin.firstName,
+                lastName: admin.lastName,
+            } : null,
+        };
     }
 }
 //# sourceMappingURL=forumService.js.map

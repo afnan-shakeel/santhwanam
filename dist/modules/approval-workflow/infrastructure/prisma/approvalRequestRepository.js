@@ -23,6 +23,9 @@ export class PrismaApprovalRequestRepository {
         const client = tx ?? prisma;
         return client.approvalRequest.findUnique({
             where: { requestId },
+            include: {
+                requestedByUser: true,
+            },
         });
     }
     async updateStatus(requestId, data, tx) {

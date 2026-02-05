@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { asyncLocalStorage } from './AsyncLocalStorageManager';
+import { buildAuthContext } from '@/shared/infrastructure/auth/helpers/buildAuthContext';
 /**
- * Extract user session from request
+ * Extract user session from request (legacy, for backward compatibility)
  * Assumes authentication middleware has set req.user
  */
 function extractUserSession(req) {
@@ -26,12 +27,29 @@ function extractIpAddress(req) {
 }
 /**
  * Express middleware to initialize AsyncLocalStorage context
- * Should be registered early in the middleware chain
+ * Should be registered after authentication middleware
+ * Builds full AuthContext for authenticated users
  */
-export function contextMiddleware(req, res, next) {
+export async function contextMiddleware(req, res, next) {
+    const userSession = extractUserSession(req);
+    let authContext;
+    // If user is authenticated, build full AuthContext
+    if (userSession?.userId) {
+        try {
+            const ctx = await buildAuthContext(userSession.userId);
+            if (ctx) {
+                authContext = ctx;
+            }
+        }
+        catch (error) {
+            // Log error but don't fail the request - continue without auth context
+            console.error('Failed to build auth context:', error);
+        }
+    }
     const context = {
         requestId: randomUUID(),
-        userSession: extractUserSession(req),
+        userSession,
+        authContext,
         ipAddress: extractIpAddress(req),
         method: req.method,
         path: req.path,

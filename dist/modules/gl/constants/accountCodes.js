@@ -20,6 +20,10 @@ export var NormalBalance;
 export const ACCOUNT_CODES = {
     // ASSETS (1000-1999)
     CASH: '1000',
+    CASH_AGENT_CUSTODY: '1001',
+    CASH_UNIT_ADMIN_CUSTODY: '1002',
+    CASH_AREA_ADMIN_CUSTODY: '1003',
+    CASH_FORUM_ADMIN_CUSTODY: '1004',
     BANK_ACCOUNT: '1100',
     // LIABILITIES (2000-2999)
     MEMBER_WALLET_LIABILITY: '2100',
@@ -45,6 +49,10 @@ export const ACCOUNT_CODE_RANGES = {
  */
 export const SYSTEM_ACCOUNT_CODES = [
     ACCOUNT_CODES.CASH,
+    ACCOUNT_CODES.CASH_AGENT_CUSTODY,
+    ACCOUNT_CODES.CASH_UNIT_ADMIN_CUSTODY,
+    ACCOUNT_CODES.CASH_AREA_ADMIN_CUSTODY,
+    ACCOUNT_CODES.CASH_FORUM_ADMIN_CUSTODY,
     ACCOUNT_CODES.MEMBER_WALLET_LIABILITY,
     ACCOUNT_CODES.REGISTRATION_FEE_REVENUE,
     ACCOUNT_CODES.CONTRIBUTION_INCOME,
@@ -102,6 +110,7 @@ export const TRANSACTION_SOURCE = {
     CLAIM: 'Claim',
     DONATION: 'Donation',
     MANUAL_ADJUSTMENT: 'ManualAdjustment',
+    CASH_MANAGEMENT: 'CashManagement',
 };
 /**
  * Transaction types for audit trail
@@ -114,6 +123,7 @@ export const TRANSACTION_TYPE = {
     ACCOUNT_CLOSURE_REFUND: 'AccountClosureRefund',
     // Wallet
     WALLET_DEPOSIT: 'WalletDeposit',
+    WALLET_DEPOSIT_COLLECTION: 'WalletDepositCollection',
     WALLET_WITHDRAWAL: 'WalletWithdrawal',
     // Contribution
     CONTRIBUTION_FROM_WALLET: 'ContributionFromWallet',
@@ -126,6 +136,9 @@ export const TRANSACTION_TYPE = {
     // Operating
     OPERATING_EXPENSE: 'OperatingExpense',
     ADMINISTRATIVE_EXPENSE: 'AdministrativeExpense',
+    // Cash Management
+    CASH_HANDOVER: 'CashHandover',
+    CASH_HANDOVER_TO_BANK: 'CashHandoverToBank',
     // Manual
     MANUAL_JOURNAL_ENTRY: 'ManualJournalEntry',
     REVERSAL: 'Reversal',

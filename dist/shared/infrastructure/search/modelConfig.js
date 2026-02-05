@@ -33,7 +33,7 @@ export const modelConfigs = {
         searchable: ['entityType', 'entityId', 'requestedBy', 'status'],
         sortable: ['requestedAt', 'status'],
         filters: ['status', 'workflowId', 'requestedBy', 'entityType', 'forumId', 'areaId', 'unitId', 'createdAt'],
-        relations: ['executions', 'workflow'],
+        relations: ['stageExecutions', 'workflow', 'requestedByUser'],
     },
     Area: {
         searchable: ['areaName'],
@@ -56,7 +56,7 @@ export const modelConfigs = {
     Member: {
         searchable: ['firstName', 'middleName', 'lastName', 'memberCode'],
         sortable: ['createdAt', 'memberCode'],
-        filters: ['createdAt', 'firstName', 'middleName', 'lastName', 'memberCode', 'unitId'],
+        filters: ['createdAt', 'firstName', 'middleName', 'lastName', 'memberCode', 'unitId', 'registrationStatus'],
         relations: [],
     },
     DeathClaim: {

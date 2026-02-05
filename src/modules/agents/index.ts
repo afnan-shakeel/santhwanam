@@ -18,12 +18,17 @@ import { createAgentsRouter } from "./api/router";
 
 // Import approval workflow service for submit command
 import { requestService as approvalRequestService } from "@/modules/approval-workflow";
+import { PrismaUnitRepository } from "../organization-bodies/infrastructure/prisma/unitRepository";
+
+// Import organization bodies repo
+// import { PrismaUnitRepository } from "@/modules/organization-bodies/infrastructure";
 
 // Initialize repositories
 const agentRepo = new PrismaAgentRepository();
+const unitRepo = new PrismaUnitRepository();
 
 // Initialize services
-const agentService = new AgentService(agentRepo);
+const agentService = new AgentService(agentRepo, unitRepo);
 const agentProfileService = new AgentProfileService(agentRepo);
 
 // Initialize command handlers

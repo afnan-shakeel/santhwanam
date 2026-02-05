@@ -8,8 +8,10 @@ import { searchService } from "@/shared/infrastructure/search";
 import { AgentRegistrationStartedEvent, AgentDraftUpdatedEvent, AgentRegistrationRejectedEvent, AgentUpdatedEvent, AgentTerminatedEvent, } from "../domain/events";
 export class AgentService {
     agentRepository;
-    constructor(agentRepository) {
+    unitRepository;
+    constructor(agentRepository, unitRepository) {
         this.agentRepository = agentRepository;
+        this.unitRepository = unitRepository;
     }
     /**
      * Start agent registration in Draft status
@@ -222,6 +224,60 @@ export class AgentService {
      */
     async listByUnit(unitId, skip = 0, take = 20) {
         return this.agentRepository.listByUnit(unitId, skip, take);
+    }
+    /**
+     * List agents by unit with member counts and summary
+     */
+    async listByUnitWithCounts(unitId, skip = 0, take = 20) {
+        // Get unit to verify it exists
+        const unit = await this.unitRepository.findById(unitId);
+        if (!unit) {
+            throw new NotFoundError('Unit not found');
+        }
+        // Get total agent count
+        const totalAgents = await prisma.agent.count({ where: { unitId } });
+        // Get paginated agents
+        const agents = await prisma.agent.findMany({
+            where: { unitId },
+            skip,
+            take,
+        });
+        // Get member count for each agent
+        const itemsWithCounts = await Promise.all(agents.map(async (agent) => {
+            const memberCount = await prisma.member.count({
+                where: { agentId: agent.agentId },
+            });
+            return {
+                ...agent,
+                memberCount,
+            };
+        }));
+        // Get summary counts for unit
+        const [activeAgents, totalMembers] = await Promise.all([
+            prisma.agent.count({
+                where: {
+                    unitId,
+                    agentStatus: 'Active',
+                },
+            }),
+            prisma.member.count({
+                where: { unitId },
+            }),
+        ]);
+        return {
+            summary: {
+                totalAgents,
+                activeAgents,
+                totalMembers,
+            },
+            items: itemsWithCounts,
+            pagination: {
+                skip,
+                take,
+                total: totalAgents,
+                totalPages: Math.ceil(totalAgents / take),
+            },
+        };
     }
     /**
      * List agents by area

@@ -163,4 +163,198 @@ export class AreaService {
       model: 'Area'
     });
   }
+
+  /**
+   * Get area by ID with admin and forum details
+   */
+  async getAreaByIdWithDetails(areaId: string): Promise<any> {
+    const area = await prisma.area.findUnique({
+      where: { areaId },
+      include: {
+        forum: {
+          select: {
+            forumId: true,
+            forumCode: true,
+            forumName: true,
+          },
+        },
+      },
+    });
+
+    if (!area) {
+      throw new NotFoundError('Area not found');
+    }
+
+    // Fetch admin user details
+    const adminUser = await this.userRepo.findById(area.adminUserId);
+
+    return {
+      areaId: area.areaId,
+      areaCode: area.areaCode,
+      areaName: area.areaName,
+      establishedDate: area.establishedDate,
+      forumId: area.forumId,
+      forumName: area.forum.forumName,
+      adminUserId: area.adminUserId,
+      admin: adminUser
+        ? {
+            userId: adminUser.userId,
+            name: `${adminUser.firstName || ''} ${adminUser.lastName || ''}`.trim(),
+            email: adminUser.email,
+            phone: null,
+          }
+        : null,
+      createdAt: area.createdAt,
+      updatedAt: area.updatedAt,
+    };
+  }
+
+  /**
+   * Get area statistics
+   */
+  async getAreaStats(areaId: string): Promise<{
+    areaId: string;
+    totalUnits: number;
+    totalAgents: number;
+    activeAgents: number;
+    totalMembers: number;
+    activeMembers: number;
+  }> {
+    const area = await this.areaRepo.findById(areaId);
+    if (!area) {
+      throw new NotFoundError('Area not found');
+    }
+
+    // Count units
+    const totalUnits = await prisma.unit.count({
+      where: { areaId },
+    });
+
+    // Count agents via units
+    const agentCounts = await prisma.agent.groupBy({
+      by: ['agentStatus'],
+      where: { areaId },
+      _count: true,
+    });
+
+    const totalAgents = agentCounts.reduce((sum, g) => sum + g._count, 0);
+    const activeAgents = agentCounts.find((g) => g.agentStatus === 'Active')?._count || 0;
+
+    // Count members via units
+    const memberCounts = await prisma.member.groupBy({
+      by: ['memberStatus'],
+      where: { areaId },
+      _count: true,
+    });
+
+    const totalMembers = memberCounts.reduce((sum, g) => sum + g._count, 0);
+    const activeMembers = memberCounts.find((g) => g.memberStatus === 'Active')?._count || 0;
+
+    return {
+      areaId,
+      totalUnits,
+      totalAgents,
+      activeAgents,
+      totalMembers,
+      activeMembers,
+    };
+  }
+
+  /**
+   * List units by area with pagination and counts
+   */
+  async listUnitsByAreaWithDetails(
+    areaId: string,
+    page: number = 1,
+    pageSize: number = 20
+  ): Promise<{
+    summary: {
+      totalUnits: number;
+      totalAgents: number;
+      totalMembers: number;
+    };
+    items: any[];
+    pagination: {
+      page: number;
+      pageSize: number;
+      totalItems: number;
+      totalPages: number;
+    };
+  }> {
+    const area = await this.areaRepo.findById(areaId);
+    if (!area) {
+      throw new NotFoundError('Area not found');
+    }
+
+    const skip = (page - 1) * pageSize;
+
+    // Get total counts for summary
+    const totalUnits = await prisma.unit.count({ where: { areaId } });
+    const totalAgents = await prisma.agent.count({ where: { areaId } });
+    const totalMembers = await prisma.member.count({ where: { areaId } });
+
+    // Get units with pagination
+    const units = await prisma.unit.findMany({
+      where: { areaId },
+      skip,
+      take: pageSize,
+      orderBy: { unitName: 'asc' },
+    });
+
+    // Get agent counts and member counts per unit
+    const unitIds = units.map((u) => u.unitId);
+
+    const agentCounts = await prisma.agent.groupBy({
+      by: ['unitId'],
+      where: { unitId: { in: unitIds } },
+      _count: true,
+    });
+
+    const memberCounts = await prisma.member.groupBy({
+      by: ['unitId'],
+      where: { unitId: { in: unitIds } },
+      _count: true,
+    });
+
+    // Get admin users for all units
+    const adminUserIds = [...new Set(units.map((u) => u.adminUserId))];
+    const adminUsers = await prisma.user.findMany({
+      where: { userId: { in: adminUserIds } },
+      select: { userId: true, firstName: true, lastName: true, email: true },
+    });
+    const adminUserMap = new Map(adminUsers.map((u) => [u.userId, u]));
+
+    const agentCountMap = new Map(agentCounts.map((c) => [c.unitId, c._count]));
+    const memberCountMap = new Map(memberCounts.map((c) => [c.unitId, c._count]));
+
+    const items = units.map((unit) => {
+      const adminUser = adminUserMap.get(unit.adminUserId);
+      return {
+        ...unit,
+        admin: adminUser
+          ? {
+              userId: adminUser.userId,
+              name: `${adminUser.firstName || ''} ${adminUser.lastName || ''}`.trim(),
+            }
+          : null,
+        agentCount: agentCountMap.get(unit.unitId) || 0,
+        memberCount: memberCountMap.get(unit.unitId) || 0,
+      };
+    });
+
+    return {
+      summary: {
+        totalUnits,
+        totalAgents,
+        totalMembers,
+      },
+      items,
+      pagination: {
+        page,
+        pageSize,
+        totalItems: totalUnits,
+        totalPages: Math.ceil(totalUnits / pageSize),
+      },
+    };
+  }
 }

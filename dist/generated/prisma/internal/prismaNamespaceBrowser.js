@@ -39,6 +39,7 @@ export const JsonNull = runtime.JsonNull;
  */
 export const AnyNull = runtime.AnyNull;
 export const ModelName = {
+    SystemConfiguration: 'SystemConfiguration',
     User: 'User',
     Role: 'Role',
     Permission: 'Permission',
@@ -70,7 +71,9 @@ export const ModelName = {
     DeathClaim: 'DeathClaim',
     DeathClaimDocument: 'DeathClaimDocument',
     ContributionCycle: 'ContributionCycle',
-    MemberContribution: 'MemberContribution'
+    MemberContribution: 'MemberContribution',
+    CashCustody: 'CashCustody',
+    CashHandover: 'CashHandover'
 };
 /*
  * Enums
@@ -80,6 +83,16 @@ export const TransactionIsolationLevel = {
     ReadCommitted: 'ReadCommitted',
     RepeatableRead: 'RepeatableRead',
     Serializable: 'Serializable'
+};
+export const SystemConfigurationScalarFieldEnum = {
+    configId: 'configId',
+    key: 'key',
+    value: 'value',
+    description: 'description',
+    dataType: 'dataType',
+    updatedBy: 'updatedBy',
+    updatedAt: 'updatedAt',
+    createdAt: 'createdAt'
 };
 export const UserScalarFieldEnum = {
     userId: 'userId',
@@ -508,9 +521,12 @@ export const WalletDebitRequestScalarFieldEnum = {
     contributionCycleId: 'contributionCycleId',
     contributionId: 'contributionId',
     status: 'status',
+    isAutoDebit: 'isAutoDebit',
+    failureReason: 'failureReason',
     createdAt: 'createdAt',
     acknowledgedAt: 'acknowledgedAt',
-    completedAt: 'completedAt'
+    completedAt: 'completedAt',
+    processedAt: 'processedAt'
 };
 export const DeathClaimScalarFieldEnum = {
     claimId: 'claimId',
@@ -617,6 +633,56 @@ export const MemberContributionScalarFieldEnum = {
     createdAt: 'createdAt',
     updatedAt: 'updatedAt'
 };
+export const CashCustodyScalarFieldEnum = {
+    custodyId: 'custodyId',
+    userId: 'userId',
+    userRole: 'userRole',
+    glAccountCode: 'glAccountCode',
+    unitId: 'unitId',
+    areaId: 'areaId',
+    forumId: 'forumId',
+    status: 'status',
+    currentBalance: 'currentBalance',
+    totalReceived: 'totalReceived',
+    totalTransferred: 'totalTransferred',
+    lastTransactionAt: 'lastTransactionAt',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt',
+    deactivatedAt: 'deactivatedAt',
+    deactivatedBy: 'deactivatedBy',
+    deactivatedReason: 'deactivatedReason'
+};
+export const CashHandoverScalarFieldEnum = {
+    handoverId: 'handoverId',
+    handoverNumber: 'handoverNumber',
+    fromUserId: 'fromUserId',
+    fromUserRole: 'fromUserRole',
+    fromCustodyId: 'fromCustodyId',
+    fromGlAccountCode: 'fromGlAccountCode',
+    toUserId: 'toUserId',
+    toUserRole: 'toUserRole',
+    toCustodyId: 'toCustodyId',
+    toGlAccountCode: 'toGlAccountCode',
+    amount: 'amount',
+    unitId: 'unitId',
+    areaId: 'areaId',
+    forumId: 'forumId',
+    status: 'status',
+    handoverType: 'handoverType',
+    sourceHandoverId: 'sourceHandoverId',
+    requiresApproval: 'requiresApproval',
+    approvalRequestId: 'approvalRequestId',
+    journalEntryId: 'journalEntryId',
+    initiatedAt: 'initiatedAt',
+    acknowledgedAt: 'acknowledgedAt',
+    rejectedAt: 'rejectedAt',
+    cancelledAt: 'cancelledAt',
+    initiatorNotes: 'initiatorNotes',
+    receiverNotes: 'receiverNotes',
+    rejectionReason: 'rejectionReason',
+    createdBy: 'createdBy',
+    updatedAt: 'updatedAt'
+};
 export const SortOrder = {
     asc: 'asc',
     desc: 'desc'
@@ -632,13 +698,13 @@ export const QueryMode = {
     default: 'default',
     insensitive: 'insensitive'
 };
+export const NullsOrder = {
+    first: 'first',
+    last: 'last'
+};
 export const JsonNullValueFilter = {
     DbNull: 'DbNull',
     JsonNull: 'JsonNull',
     AnyNull: 'AnyNull'
-};
-export const NullsOrder = {
-    first: 'first',
-    last: 'last'
 };
 //# sourceMappingURL=prismaNamespaceBrowser.js.map

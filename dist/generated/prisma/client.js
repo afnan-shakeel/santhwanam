@@ -22,8 +22,8 @@ export * from "./enums.js";
  * @example
  * ```
  * const prisma = new PrismaClient()
- * // Fetch zero or more Users
- * const users = await prisma.user.findMany()
+ * // Fetch zero or more SystemConfigurations
+ * const systemConfigurations = await prisma.systemConfiguration.findMany()
  * ```
  *
  * Read more in our [docs](https://pris.ly/d/client).

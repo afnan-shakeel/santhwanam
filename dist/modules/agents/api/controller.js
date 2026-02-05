@@ -1,7 +1,7 @@
 /**
  * Controller for Agents API
  */
-import { AgentResponseDto, AgentListResponseDto, AgentSubmissionResponseDto, AgentsSearchResponseDto, AgentProfileResponseDto, AgentStatsResponseDto, AgentMembersResponseDto, AgentMembersExportResponseDto, AgentPerformanceResponseDto, AgentHierarchyResponseDto, } from './dtos/responseDtos';
+import { AgentResponseDto, AgentListResponseDto, AgentSubmissionResponseDto, AgentsSearchResponseDto, AgentProfileResponseDto, AgentStatsResponseDto, AgentMembersResponseDto, AgentMembersExportResponseDto, AgentPerformanceResponseDto, AgentHierarchyResponseDto, AgentsWithCountsResponseDto, } from './dtos/responseDtos';
 export class AgentsController {
     agentService;
     agentProfileService;
@@ -83,14 +83,14 @@ export class AgentsController {
     };
     /**
      * GET /api/agents/unit/:unitId
-     * List agents by unit
+     * List agents by unit with member counts
      */
     listByUnit = async (req, res, next) => {
         const { unitId } = req.params;
         const skip = parseInt(req.query.skip) || 0;
         const take = parseInt(req.query.take) || 20;
-        const result = await this.agentService.listByUnit(unitId, skip, take);
-        next({ responseSchema: AgentListResponseDto, data: result, status: 200 });
+        const result = await this.agentService.listByUnitWithCounts(unitId, skip, take);
+        next({ responseSchema: AgentsWithCountsResponseDto, data: result, status: 200 });
     };
     /**
      * GET /api/agents/area/:areaId
@@ -180,6 +180,7 @@ export class AgentsController {
             search: req.query.search,
         };
         const members = await this.agentProfileService.getAgentMembers(agentId, query);
+        console.log(JSON.stringify(members, null, 2));
         next({ responseSchema: AgentMembersResponseDto, data: members, status: 200 });
     };
     /**

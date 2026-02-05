@@ -16,6 +16,7 @@ import {
   AgentUpdatedEvent,
   AgentTerminatedEvent,
 } from "../domain/events";
+import { UnitRepository } from "@/modules/organization-bodies/domain/repositories";
 
 interface StartRegistrationInput {
   unitId: string;
@@ -74,7 +75,10 @@ interface UpdateAgentInput {
 }
 
 export class AgentService {
-  constructor(private agentRepository: AgentRepository) {}
+  constructor(
+    private agentRepository: AgentRepository,
+    private unitRepository: UnitRepository,
+  ) {}
 
   /**
    * Start agent registration in Draft status
@@ -400,6 +404,84 @@ export class AgentService {
     take: number = 20
   ): Promise<{ agents: Agent[]; total: number }> {
     return this.agentRepository.listByUnit(unitId, skip, take);
+  }
+
+  /**
+   * List agents by unit with summary and member counts
+   */
+  async listByUnitWithDetails(
+    unitId: string,
+    skip: number = 0,
+    take: number = 20
+  ): Promise<{
+    summary: {
+      totalAgents: number;
+      activeAgents: number;
+      totalMembers: number;
+    };
+    items: any[];
+    pagination: {
+      page: number;
+      pageSize: number;
+      totalItems: number;
+      totalPages: number;
+    };
+  }> {
+    // Get summary counts
+    const agentCounts = await prisma.agent.groupBy({
+      by: ['agentStatus'],
+      where: { unitId },
+      _count: true,
+    });
+
+    const totalAgents = agentCounts.reduce((sum, g) => sum + g._count, 0);
+    const activeAgents = agentCounts.find((g) => g.agentStatus === 'Active')?._count || 0;
+    const totalMembers = await prisma.member.count({ where: { unitId } });
+
+    // Get agents with pagination
+    const agents = await prisma.agent.findMany({
+      where: { unitId },
+      skip,
+      take,
+      orderBy: { firstName: 'asc' },
+    });
+
+    // Get member counts per agent
+    const agentIds = agents.map((a) => a.agentId);
+    const memberCounts = await prisma.member.groupBy({
+      by: ['agentId'],
+      where: { agentId: { in: agentIds } },
+      _count: true,
+    });
+
+    const memberCountMap = new Map(memberCounts.map((c) => [c.agentId, c._count]));
+
+    const items = agents.map((agent) => ({
+      agentId: agent.agentId,
+      agentCode: agent.agentCode,
+      fullName: `${agent.firstName} ${agent.lastName}`.trim(),
+      email: agent.email,
+      phone: agent.contactNumber,
+      status: agent.agentStatus,
+      memberCount: memberCountMap.get(agent.agentId) || 0,
+    }));
+
+    const page = Math.floor(skip / take) + 1;
+
+    return {
+      summary: {
+        totalAgents,
+        activeAgents,
+        totalMembers,
+      },
+      items,
+      pagination: {
+        page,
+        pageSize: take,
+        totalItems: totalAgents,
+        totalPages: Math.ceil(totalAgents / take),
+      },
+    };
   }
 
   /**

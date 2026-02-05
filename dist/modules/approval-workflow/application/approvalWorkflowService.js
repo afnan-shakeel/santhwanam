@@ -134,19 +134,30 @@ export class ApprovalWorkflowService {
                             // Stage has executions - limited updates allowed
                             // Can update: stageName, isOptional
                             // Cannot update: stageOrder, approverRole
-                            if (existingStage.stageOrder !== stageInput.stageOrder) {
-                                throw new BadRequestError(`Cannot change order of stage "${existingStage.stageName}" ` +
-                                    `as it has existing executions`);
-                            }
-                            if (existingStage.approverType !== stageInput.approverType) {
-                                throw new BadRequestError(`Cannot change approver type of stage "${existingStage.stageName}" ` +
-                                    `as it has existing executions`);
-                            }
+                            // TODO: Temporarily disabling order change restriction
+                            // if (existingStage.stageOrder !== stageInput.stageOrder) {
+                            //   throw new BadRequestError(
+                            //     `Cannot change order of stage "${existingStage.stageName}" ` +
+                            //     `as it has existing executions`
+                            //   );
+                            // }
+                            // TODO: Temporarily disabling approverType change restriction
+                            // if (existingStage.approverType !== stageInput.approverType) {
+                            //   throw new BadRequestError(
+                            //     `Cannot change approver type of stage "${existingStage.stageName}" ` +
+                            //     `as it has existing executions`
+                            //   );
+                            // }
                             // Safe to update name and optional flag
                             await this.stageRepo.update(stageInput.stageId, {
                                 stageName: stageInput.stageName,
                                 isOptional: stageInput.isOptional,
+                                autoApprove: stageInput.autoApprove,
                                 updatedBy: data.updatedBy,
+                                approverType: stageInput.approverType,
+                                roleId: stageInput.roleId,
+                                userId: stageInput.userId,
+                                organizationBody: stageInput.organizationBody,
                             }, tx);
                         }
                         else {

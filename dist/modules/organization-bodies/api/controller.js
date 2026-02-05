@@ -1,7 +1,7 @@
 /**
  * Controller for Organization Bodies API
  */
-import { ForumResponseDto, ForumListResponseDto, ForumsSearchResponseDto, AreaResponseDto, AreaListResponseDto, AreasSearchResponseDto, UnitResponseDto, UnitListResponseDto, UnitsSearchResponseDto, } from './dtos/responseDtos';
+import { ForumResponseDto, ForumListResponseDto, ForumsSearchResponseDto, ForumStatsResponseDto, AreaResponseDto, AreasSearchResponseDto, AreaStatsResponseDto, AreasWithCountsResponseDto, UnitResponseDto, UnitListResponseDto, UnitsSearchResponseDto, UnitStatsResponseDto, UnitsWithCountsResponseDto, } from './dtos/responseDtos';
 export class OrganizationBodiesController {
     forumService;
     areaService;
@@ -69,6 +69,16 @@ export class OrganizationBodiesController {
             next(err);
         }
     };
+    getForumStats = async (req, res, next) => {
+        try {
+            const { forumId } = req.params;
+            const stats = await this.forumService.getForumStats(forumId);
+            return next({ responseSchema: ForumStatsResponseDto, data: stats, status: 200 });
+        }
+        catch (err) {
+            next(err);
+        }
+    };
     getForumByCode = async (req, res, next) => {
         try {
             const { forumCode } = req.params;
@@ -128,11 +138,23 @@ export class OrganizationBodiesController {
             next(err);
         }
     };
+    getAreaStats = async (req, res, next) => {
+        try {
+            const { areaId } = req.params;
+            const stats = await this.areaService.getAreaStats(areaId);
+            return next({ responseSchema: AreaStatsResponseDto, data: stats, status: 200 });
+        }
+        catch (err) {
+            next(err);
+        }
+    };
     listAreasByForum = async (req, res, next) => {
         try {
             const { forumId } = req.params;
-            const areas = await this.areaService.listAreasByForum(forumId);
-            return next({ responseSchema: AreaListResponseDto, data: areas, status: 200 });
+            const skip = parseInt(req.query.skip) || 0;
+            const take = parseInt(req.query.take) || 20;
+            const result = await this.areaService.listAreasByForumWithCounts(forumId, skip, take);
+            return next({ responseSchema: AreasWithCountsResponseDto, data: result, status: 200 });
         }
         catch (err) {
             next(err);
@@ -178,11 +200,23 @@ export class OrganizationBodiesController {
             next(err);
         }
     };
+    getUnitStats = async (req, res, next) => {
+        try {
+            const { unitId } = req.params;
+            const stats = await this.unitService.getUnitStats(unitId);
+            return next({ responseSchema: UnitStatsResponseDto, data: stats, status: 200 });
+        }
+        catch (err) {
+            next(err);
+        }
+    };
     listUnitsByArea = async (req, res, next) => {
         try {
             const { areaId } = req.params;
-            const units = await this.unitService.listUnitsByArea(areaId);
-            return next({ responseSchema: UnitListResponseDto, data: units, status: 200 });
+            const skip = parseInt(req.query.skip) || 0;
+            const take = parseInt(req.query.take) || 20;
+            const result = await this.unitService.listUnitsByAreaWithCounts(areaId, skip, take);
+            return next({ responseSchema: UnitsWithCountsResponseDto, data: result, status: 200 });
         }
         catch (err) {
             next(err);

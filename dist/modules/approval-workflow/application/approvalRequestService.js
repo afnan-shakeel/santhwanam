@@ -253,5 +253,36 @@ export class ApprovalRequestService {
         const workflow = await this.workflowRepo.findById(request.workflowId);
         return { request, executions, workflow };
     }
+    /**
+     * Get pending approval counts for a user, broken down by workflow
+     */
+    async getPendingApprovalsCount(userId) {
+        // Get all pending stage executions assigned to this user
+        const pendingExecutions = await prisma.approvalStageExecution.findMany({
+            where: {
+                assignedApproverId: userId,
+                status: 'Pending',
+            },
+            include: {
+                request: {
+                    include: {
+                        workflow: true,
+                    },
+                },
+            },
+        });
+        // Group by workflow code and count
+        const countByWorkflow = {};
+        let totalPending = 0;
+        for (const execution of pendingExecutions) {
+            const workflowCode = execution.request.workflow.workflowCode;
+            countByWorkflow[workflowCode] = (countByWorkflow[workflowCode] || 0) + 1;
+            totalPending++;
+        }
+        return {
+            pendingCount: totalPending,
+            byWorkflow: countByWorkflow,
+        };
+    }
 }
 //# sourceMappingURL=approvalRequestService.js.map

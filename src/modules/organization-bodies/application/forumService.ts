@@ -168,4 +168,198 @@ export class ForumService {
       model: 'Forum'
     });
   }
+
+  /**
+   * Get forum by ID with admin details
+   */
+  async getForumByIdWithDetails(forumId: string): Promise<any> {
+    const forum = await prisma.forum.findUnique({
+      where: { forumId },
+    });
+
+    if (!forum) {
+      throw new NotFoundError('Forum not found');
+    }
+
+    // Fetch admin user details
+    const adminUser = await this.userRepo.findById(forum.adminUserId);
+
+    return {
+      ...forum,
+      admin: adminUser
+        ? {
+            userId: adminUser.userId,
+            name: `${adminUser.firstName || ''} ${adminUser.lastName || ''}`.trim(),
+            email: adminUser.email,
+            phone: null, // User model doesn't have phone, can be extended if needed
+          }
+        : null,
+    };
+  }
+
+  /**
+   * Get forum statistics
+   */
+  async getForumStats(forumId: string): Promise<{
+    forumId: string;
+    totalAreas: number;
+    totalUnits: number;
+    totalAgents: number;
+    activeAgents: number;
+    totalMembers: number;
+    activeMembers: number;
+    pendingApprovals: number;
+  }> {
+    const forum = await this.forumRepo.findById(forumId);
+    if (!forum) {
+      throw new NotFoundError('Forum not found');
+    }
+
+    // Count areas
+    const totalAreas = await prisma.area.count({
+      where: { forumId },
+    });
+
+    // Count units
+    const totalUnits = await prisma.unit.count({
+      where: { forumId },
+    });
+
+    // Count agents
+    const agentCounts = await prisma.agent.groupBy({
+      by: ['agentStatus'],
+      where: { forumId },
+      _count: true,
+    });
+
+    const totalAgents = agentCounts.reduce((sum, g) => sum + g._count, 0);
+    const activeAgents = agentCounts.find((g) => g.agentStatus === 'Active')?._count || 0;
+
+    // Count members
+    const memberCounts = await prisma.member.groupBy({
+      by: ['memberStatus'],
+      where: { forumId },
+      _count: true,
+    });
+
+    const totalMembers = memberCounts.reduce((sum, g) => sum + g._count, 0);
+    const activeMembers = memberCounts.find((g) => g.memberStatus === 'Active')?._count || 0;
+
+    // Count pending approvals
+    const pendingApprovals = await prisma.approvalRequest.count({
+      where: {
+        forumId,
+        status: 'Pending',
+      },
+    });
+
+    return {
+      forumId,
+      totalAreas,
+      totalUnits,
+      totalAgents,
+      activeAgents,
+      totalMembers,
+      activeMembers,
+      pendingApprovals,
+    };
+  }
+
+  /**
+   * List areas by forum with pagination and counts
+   */
+  async listAreasByForumWithDetails(
+    forumId: string,
+    page: number = 1,
+    pageSize: number = 20
+  ): Promise<{
+    summary: {
+      totalAreas: number;
+      totalUnits: number;
+      totalMembers: number;
+    };
+    items: any[];
+    pagination: {
+      page: number;
+      pageSize: number;
+      totalItems: number;
+      totalPages: number;
+    };
+  }> {
+    const forum = await this.forumRepo.findById(forumId);
+    if (!forum) {
+      throw new NotFoundError('Forum not found');
+    }
+
+    const skip = (page - 1) * pageSize;
+
+    // Get total counts for summary
+    const totalAreas = await prisma.area.count({ where: { forumId } });
+    const totalUnits = await prisma.unit.count({ where: { forumId } });
+    const totalMembers = await prisma.member.count({ where: { forumId } });
+
+    // Get areas with pagination
+    const areas = await prisma.area.findMany({
+      where: { forumId },
+      skip,
+      take: pageSize,
+      orderBy: { areaName: 'asc' },
+    });
+
+    // Get unit counts and member counts per area
+    const areaIds = areas.map((a) => a.areaId);
+
+    const unitCounts = await prisma.unit.groupBy({
+      by: ['areaId'],
+      where: { areaId: { in: areaIds } },
+      _count: true,
+    });
+
+    const memberCounts = await prisma.member.groupBy({
+      by: ['areaId'],
+      where: { areaId: { in: areaIds } },
+      _count: true,
+    });
+
+    // Get admin users for all areas
+    const adminUserIds = [...new Set(areas.map((a) => a.adminUserId))];
+    const adminUsers = await prisma.user.findMany({
+      where: { userId: { in: adminUserIds } },
+      select: { userId: true, firstName: true, lastName: true, email: true },
+    });
+    const adminUserMap = new Map(adminUsers.map((u) => [u.userId, u]));
+
+    const unitCountMap = new Map(unitCounts.map((c) => [c.areaId, c._count]));
+    const memberCountMap = new Map(memberCounts.map((c) => [c.areaId, c._count]));
+
+    const items = areas.map((area) => {
+      const adminUser = adminUserMap.get(area.adminUserId);
+      return {
+        ...area,
+        admin: adminUser
+          ? {
+              userId: adminUser.userId,
+              name: `${adminUser.firstName || ''} ${adminUser.lastName || ''}`.trim(),
+            }
+          : null,
+        unitCount: unitCountMap.get(area.areaId) || 0,
+        memberCount: memberCountMap.get(area.areaId) || 0,
+      };
+    });
+
+    return {
+      summary: {
+        totalAreas,
+        totalUnits,
+        totalMembers,
+      },
+      items,
+      pagination: {
+        page,
+        pageSize,
+        totalItems: totalAreas,
+        totalPages: Math.ceil(totalAreas / pageSize),
+      },
+    };
+  }
 }

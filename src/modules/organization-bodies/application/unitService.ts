@@ -177,4 +177,118 @@ export class UnitService {
       model: 'Unit'
     });
   }
+
+  /**
+   * Get unit by ID with admin, area, and forum details
+   */
+  async getUnitByIdWithDetails(unitId: string): Promise<any> {
+    const unit = await prisma.unit.findUnique({
+      where: { unitId },
+      include: {
+        area: {
+          select: {
+            areaId: true,
+            areaCode: true,
+            areaName: true,
+            forum: {
+              select: {
+                forumId: true,
+                forumCode: true,
+                forumName: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!unit) {
+      throw new NotFoundError('Unit not found');
+    }
+
+    // Fetch admin user details
+    const adminUser = await this.userRepo.findById(unit.adminUserId);
+
+    return {
+      unitId: unit.unitId,
+      unitCode: unit.unitCode,
+      unitName: unit.unitName,
+      establishedDate: unit.establishedDate,
+      areaId: unit.areaId,
+      areaName: unit.area.areaName,
+      forumId: unit.forumId,
+      forumName: unit.area.forum.forumName,
+      adminUserId: unit.adminUserId,
+      admin: adminUser
+        ? {
+            userId: adminUser.userId,
+            name: `${adminUser.firstName || ''} ${adminUser.lastName || ''}`.trim(),
+            email: adminUser.email,
+            phone: null,
+          }
+        : null,
+      createdAt: unit.createdAt,
+      updatedAt: unit.updatedAt,
+    };
+  }
+
+  /**
+   * Get unit statistics
+   */
+  async getUnitStats(unitId: string): Promise<{
+    unitId: string;
+    totalAgents: number;
+    activeAgents: number;
+    totalMembers: number;
+    activeMembers: number;
+    suspendedMembers: number;
+    pendingApprovals: number;
+  }> {
+    const unit = await this.unitRepo.findById(unitId);
+    if (!unit) {
+      throw new NotFoundError('Unit not found');
+    }
+
+    // Count agents
+    const agentCounts = await prisma.agent.groupBy({
+      by: ['agentStatus'],
+      where: { unitId },
+      _count: true,
+    });
+
+    const totalAgents = agentCounts.reduce((sum, g) => sum + g._count, 0);
+    const activeAgents = agentCounts.find((g) => g.agentStatus === 'Active')?._count || 0;
+
+    // Count members
+    const memberCounts = await prisma.member.groupBy({
+      by: ['memberStatus'],
+      where: { unitId },
+      _count: true,
+    });
+
+    const totalMembers = memberCounts.reduce((sum, g) => sum + g._count, 0);
+    const activeMembers = memberCounts.find((g) => g.memberStatus === 'Active')?._count || 0;
+    const suspendedMembers = memberCounts.find((g) => g.memberStatus === 'Suspended')?._count || 0;
+
+    // Count pending approvals (member registrations)
+    const pendingApprovals = await prisma.approvalRequest.count({
+      where: {
+        unitId,
+        status: 'Pending',
+        workflow: {
+          workflowCode: 'member_registration',
+        },
+      },
+    });
+
+    return {
+      unitId,
+      totalAgents,
+      activeAgents,
+      totalMembers,
+      activeMembers,
+      suspendedMembers,
+      pendingApprovals,
+    };
+  }
 }

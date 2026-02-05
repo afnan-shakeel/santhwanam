@@ -1,7 +1,7 @@
 /**
  * Controller for Approval Workflow API
  */
-import { ApprovalWorkflowResponseDto, ApprovalWorkflowListResponseDto, ApprovalWorkflowsSearchResponseDto, ApprovalRequestsSearchResponseDto, SubmitRequestResponseDto, ProcessApprovalResponseDto, PendingApprovalsListResponseDto, ApprovalRequestWithExecutionsResponseDto, } from './dtos/responseDtos';
+import { ApprovalWorkflowResponseDto, ApprovalWorkflowListResponseDto, ApprovalWorkflowsSearchResponseDto, ApprovalRequestsSearchResponseDto, SubmitRequestResponseDto, ProcessApprovalResponseDto, PendingApprovalsListResponseDto, PendingApprovalsCountResponseDto, ApprovalRequestWithExecutionsResponseDto, } from './dtos/responseDtos';
 export class ApprovalWorkflowController {
     workflowService;
     requestService;
@@ -140,11 +140,23 @@ export class ApprovalWorkflowController {
             next(err);
         }
     };
+    getPendingApprovalsCount = async (req, res, next) => {
+        try {
+            const userId = req.user?.userId;
+            if (!userId) {
+                throw new Error('User ID not found in request');
+            }
+            const result = await this.requestService.getPendingApprovalsCount(userId);
+            return next({ responseSchema: PendingApprovalsCountResponseDto, data: result, status: 200 });
+        }
+        catch (err) {
+            next(err);
+        }
+    };
     getRequestById = async (req, res, next) => {
         try {
             const { requestId } = req.params;
             const result = await this.requestService.getRequestById(requestId);
-            console.log('Fetched request with executions and workflow:', result);
             return next({ responseSchema: ApprovalRequestWithExecutionsResponseDto, data: result, status: 200 });
         }
         catch (err) {

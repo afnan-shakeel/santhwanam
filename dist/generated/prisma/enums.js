@@ -12,7 +12,8 @@ export const ScopeType = {
     Forum: 'Forum',
     Area: 'Area',
     Unit: 'Unit',
-    Agent: 'Agent'
+    Agent: 'Agent',
+    Member: 'Member'
 };
 export const WorkflowModule = {
     Agents: 'Agents',
@@ -20,7 +21,8 @@ export const WorkflowModule = {
     Wallet: 'Wallet',
     Claims: 'Claims',
     Contributions: 'Contributions',
-    Organization: 'Organization'
+    Organization: 'Organization',
+    CashManagement: 'CashManagement'
 };
 export const ApproverType = {
     Role: 'Role',
@@ -235,5 +237,26 @@ export const MemberContributionStatus = {
 export const ContributionPaymentMethod = {
     Wallet: 'Wallet',
     DirectCash: 'DirectCash'
+};
+export const CashCustodyUserRole = {
+    Agent: 'Agent',
+    UnitAdmin: 'UnitAdmin',
+    AreaAdmin: 'AreaAdmin',
+    ForumAdmin: 'ForumAdmin'
+};
+export const CashCustodyStatus = {
+    Active: 'Active',
+    Inactive: 'Inactive',
+    Suspended: 'Suspended'
+};
+export const CashHandoverStatus = {
+    Initiated: 'Initiated',
+    Acknowledged: 'Acknowledged',
+    Rejected: 'Rejected',
+    Cancelled: 'Cancelled'
+};
+export const CashHandoverType = {
+    Normal: 'Normal',
+    AdminTransition: 'AdminTransition'
 };
 //# sourceMappingURL=enums.js.map

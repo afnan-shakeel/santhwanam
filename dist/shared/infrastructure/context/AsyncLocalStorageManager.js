@@ -103,6 +103,96 @@ class AsyncLocalStorageManager {
     updateRequestContext(updates) {
         this.updateContext(updates);
     }
+    // =====================
+    // AuthContext Methods
+    // =====================
+    /**
+     * Get the full authentication context
+     * @throws Error if no auth context is available (user not authenticated)
+     */
+    getAuthContext() {
+        const context = this.getRequestContext();
+        if (!context.authContext) {
+            throw new Error('No auth context available. User is not authenticated.');
+        }
+        return context.authContext;
+    }
+    /**
+     * Get the auth context (returns undefined if not authenticated)
+     */
+    tryGetAuthContext() {
+        const context = this.tryGetRequestContext();
+        return context?.authContext;
+    }
+    /**
+     * Get all permissions for the current user
+     * @throws Error if not authenticated
+     */
+    getPermissions() {
+        return this.getAuthContext().permissions;
+    }
+    /**
+     * Check if current user has a specific permission
+     */
+    hasPermission(permission) {
+        const authContext = this.tryGetAuthContext();
+        if (!authContext)
+            return false;
+        return authContext.permissions.includes(permission);
+    }
+    /**
+     * Check if current user has any of the specified permissions
+     */
+    hasAnyPermission(permissions) {
+        const authContext = this.tryGetAuthContext();
+        if (!authContext)
+            return false;
+        return permissions.some((p) => authContext.permissions.includes(p));
+    }
+    /**
+     * Check if current user has all of the specified permissions
+     */
+    hasAllPermissions(permissions) {
+        const authContext = this.tryGetAuthContext();
+        if (!authContext)
+            return false;
+        return permissions.every((p) => authContext.permissions.includes(p));
+    }
+    /**
+     * Get the user's primary scope
+     * @throws Error if not authenticated
+     */
+    getScope() {
+        return this.getAuthContext().scope;
+    }
+    /**
+     * Get the user's scope (returns undefined if not authenticated)
+     */
+    tryGetScope() {
+        return this.tryGetAuthContext()?.scope;
+    }
+    /**
+     * Get the user's hierarchy
+     * @throws Error if not authenticated
+     */
+    getHierarchy() {
+        return this.getAuthContext().hierarchy;
+    }
+    /**
+     * Get the user's hierarchy (returns undefined if not authenticated)
+     */
+    tryGetHierarchy() {
+        return this.tryGetAuthContext()?.hierarchy;
+    }
+    /**
+     * Check if current user has a specific role
+     */
+    hasRole(roleCode) {
+        const authContext = this.tryGetAuthContext();
+        if (!authContext)
+            return false;
+        return authContext.roles.some((r) => r.roleCode === roleCode);
+    }
 }
 // Singleton instance
 export const asyncLocalStorage = new AsyncLocalStorageManager();

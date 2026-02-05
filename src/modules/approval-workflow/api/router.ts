@@ -34,6 +34,7 @@ export function createApprovalWorkflowRouter(controller: ApprovalWorkflowControl
 
   // Approver actions
   router.get('/approvals/pending/:approverId', controller.getPendingApprovals);
+  router.get('/approvals/count', controller.getPendingApprovalsCount);
 
   return router;
 }

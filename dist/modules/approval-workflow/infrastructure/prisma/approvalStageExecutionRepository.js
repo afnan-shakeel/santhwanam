@@ -30,6 +30,9 @@ export class PrismaApprovalStageExecutionRepository {
         return client.approvalStageExecution.findMany({
             where: { requestId },
             orderBy: { stageOrder: 'asc' },
+            include: {
+                reviewedByUser: true
+            }
         });
     }
     async findById(executionId, tx) {

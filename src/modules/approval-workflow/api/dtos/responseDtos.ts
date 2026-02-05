@@ -125,6 +125,12 @@ export const PendingApprovalsListResponseDto = z.array(
   })
 );
 
+// Pending approvals count response
+export const PendingApprovalsCountResponseDto = z.object({
+  pendingCount: z.number(),
+  byWorkflow: z.record(z.string(), z.number()),
+});
+
 // Approval request with executions response
 export const ApprovalRequestWithExecutionsResponseDto = z.object({
   request: ApprovalRequestResponseDto.nullable(),
@@ -149,5 +155,6 @@ export type SubmitRequestResponse = z.infer<typeof SubmitRequestResponseDto>;
 export type ApprovalExecutionResponse = z.infer<typeof ApprovalExecutionResponseDto>;
 export type ProcessApprovalResponse = z.infer<typeof ProcessApprovalResponseDto>;
 export type PendingApprovalsListResponse = z.infer<typeof PendingApprovalsListResponseDto>;
+export type PendingApprovalsCountResponse = z.infer<typeof PendingApprovalsCountResponseDto>;
 export type ApprovalRequestWithExecutionsResponse = z.infer<typeof ApprovalRequestWithExecutionsResponseDto>;
 export type SuccessResponse = z.infer<typeof SuccessResponseDto>;

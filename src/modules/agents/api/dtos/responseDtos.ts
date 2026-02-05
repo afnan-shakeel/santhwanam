@@ -61,6 +61,33 @@ export const AgentListResponseDto = z.object({
   totalPages: z.number(),
 });
 
+// Agent list item with member count (for unit agents list)
+const AgentListItemDto = z.object({
+  agentId: z.string(),
+  agentCode: z.string(),
+  fullName: z.string(),
+  email: z.string(),
+  phone: z.string(),
+  status: z.string(),
+  memberCount: z.number(),
+});
+
+// Agents list with summary response (enhanced)
+export const AgentsListWithSummaryResponseDto = z.object({
+  summary: z.object({
+    totalAgents: z.number(),
+    activeAgents: z.number(),
+    totalMembers: z.number(),
+  }),
+  items: z.array(AgentListItemDto),
+  pagination: z.object({
+    page: z.number(),
+    pageSize: z.number(),
+    totalItems: z.number(),
+    totalPages: z.number(),
+  }),
+});
+
 // Agent submission response
 export const AgentSubmissionResponseDto = z.object({
   agent: AgentResponseDto,

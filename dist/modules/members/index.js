@@ -51,7 +51,7 @@ const areaRepo = new PrismaAreaRepository();
 const unitRepo = new PrismaUnitRepository();
 const approvalRequestService = new ApprovalRequestService(workflowRepo, approvalStageRepo, approvalRequestRepo, approvalStageExecutionRepo, forumRepo, areaRepo, unitRepo);
 // Initialize service
-const memberService = new MemberService(memberRepo, nomineeRepo, memberDocumentRepo, registrationPaymentRepo, membershipTierRepo);
+const memberService = new MemberService(memberRepo, nomineeRepo, memberDocumentRepo, registrationPaymentRepo, membershipTierRepo, unitRepo);
 // Initialize commands
 const submitRegistrationCmd = new SubmitMemberRegistrationHandler(memberService, approvalRequestService);
 const suspendMemberCmd = new SuspendMemberCommand(memberRepo, agentRepo);
