@@ -83,6 +83,7 @@ export class CashCustodyService {
 
   /**
    * Increase cash custody balance when cash is collected
+   * If custody doesn't exist, it will be created automatically
    */
   async increaseCashCustody(
     data: {
@@ -94,10 +95,35 @@ export class CashCustodyService {
     },
     tx?: unknown
   ): Promise<CashCustody> {
-    // Get existing custody
-    const custody = await this.cashCustodyRepo.findActiveByUserId(data.userId, tx);
+    // Try to get existing custody
+    let custody = await this.cashCustodyRepo.findActiveByUserId(data.userId, tx);
+    
+    // If no custody exists, create one (first-time cash collection)
     if (!custody) {
-      throw new AppError('No active cash custody found for user', 404);
+      // Determine user's cash-handling role and hierarchy
+      const roleInfo = await this.getUserCashRoleAndHierarchy(data.userId);
+      
+      if (!roleInfo) {
+        throw new AppError(
+          'User does not have a cash-handling role (agent, unit admin, area admin, or forum admin)',
+          400
+        );
+      }
+
+      // Map string role to enum
+      const userRole = roleInfo.cashRole as CashCustodyUserRole;
+      
+      // Create custody record
+      custody = await this.getOrCreateCashCustody(
+        {
+          userId: data.userId,
+          userRole,
+          unitId: roleInfo.unitId,
+          areaId: roleInfo.areaId,
+          forumId: roleInfo.forumId,
+        },
+        tx
+      );
     }
 
     if (custody.status !== CashCustodyStatus.Active) {
@@ -234,6 +260,82 @@ export class CashCustodyService {
 
       return updated;
     });
+  }
+
+  /**
+   * Determine user's cash-handling role and hierarchy from organizational tables
+   * Used when creating custody for first-time cash collection
+   */
+  async getUserCashRoleAndHierarchy(userId: string): Promise<{
+    cashRole: string;
+    unitId: string | null;
+    areaId: string | null;
+    forumId: string | null;
+  } | null> {
+    // Check if user is an Agent
+    const agent = await prisma.agent.findFirst({
+      where: {
+        userId,
+        registrationStatus: 'Approved',
+      },
+      select: { unitId: true, areaId: true, forumId: true },
+    });
+
+    if (agent) {
+      return {
+        cashRole: CashCustodyUserRole.Agent,
+        unitId: agent.unitId,
+        areaId: agent.areaId,
+        forumId: agent.forumId,
+      };
+    }
+
+    // Check if user is a Unit Admin (adminUserId on a unit)
+    const unit = await prisma.unit.findFirst({
+      where: { adminUserId: userId },
+      select: { unitId: true, areaId: true, forumId: true },
+    });
+
+    if (unit) {
+      return {
+        cashRole: CashCustodyUserRole.UnitAdmin,
+        unitId: unit.unitId,
+        areaId: unit.areaId,
+        forumId: unit.forumId,
+      };
+    }
+
+    // Check if user is an Area Admin
+    const area = await prisma.area.findFirst({
+      where: { adminUserId: userId },
+      select: { areaId: true, forumId: true },
+    });
+
+    if (area) {
+      return {
+        cashRole: CashCustodyUserRole.AreaAdmin,
+        unitId: null,
+        areaId: area.areaId,
+        forumId: area.forumId,
+      };
+    }
+
+    // Check if user is a Forum Admin
+    const forum = await prisma.forum.findFirst({
+      where: { adminUserId: userId },
+      select: { forumId: true },
+    });
+
+    if (forum) {
+      return {
+        cashRole: CashCustodyUserRole.ForumAdmin,
+        unitId: null,
+        areaId: null,
+        forumId: forum.forumId,
+      };
+    }
+
+    return null; // User has no cash-handling role
   }
 
   /**
@@ -402,6 +504,8 @@ export class CashCustodyService {
       custodyId: string;
       userId: string;
       userName: string | null;
+      firstName: string | null;
+      lastName: string | null;
       userRole: string;
       unitName: string | null;
       areaName: string | null;
@@ -453,6 +557,8 @@ export class CashCustodyService {
           userName: c.user
             ? `${c.user.firstName || ''} ${c.user.lastName || ''}`.trim()
             : null,
+          firstName: c.user?.firstName || null,
+          lastName: c.user?.lastName || null,
           userRole: c.userRole,
           unitName: c.unit?.unitName || null,
           areaName: c.area?.areaName || null,

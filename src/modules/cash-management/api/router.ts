@@ -21,8 +21,8 @@ import {
   custodyReportQuerySchema,
   overdueQuerySchema,
   reconciliationQuerySchema,
-  pendingTransfersQuerySchema,
   approveHandoverBodySchema,
+  pendingHandoversQuerySchema,
 } from './validations';
 
 export function createCashManagementRouter(controller: CashManagementController): Router {
@@ -214,6 +214,18 @@ export function createCashManagementRouter(controller: CashManagementController)
     controller.getAdminDashboard
   );
 
+    /**
+   * @route GET /cash-management/admin/custodians/:custodyId
+   * @desc Get custody by ID for Admin
+   * @access Private (Admin)
+   */
+  router.get(
+    '/admin/custodians/:custodyId',
+    validateParams(custodyIdParamsSchema),
+    controller.getCustodyById
+  );
+
+
   /**
    * @route GET /cash-management/admin/custody-by-level
    * @desc Get custody aggregated by hierarchy level
@@ -228,7 +240,7 @@ export function createCashManagementRouter(controller: CashManagementController)
   /**
    * @route GET /cash-management/admin/custody-report
    * @desc Get detailed custody report by user
-   * @access Private (Admin)
+   * @access Private (Admin)`
    */
   router.get(
     '/admin/custody-report',
@@ -259,14 +271,25 @@ export function createCashManagementRouter(controller: CashManagementController)
   );
 
   /**
-   * @route GET /cash-management/admin/pending-transfers
-   * @desc Get all pending transfers across the organization
+   * @route GET /cash-management/admin/pending-handovers
+   * @desc Get all pending handovers across the organization
    * @access Private (Admin)
    */
   router.get(
-    '/admin/pending-transfers',
-    validateQuery(pendingTransfersQuerySchema),
-    controller.getPendingTransfers
+    '/admin/pending-handovers',
+    validateQuery(pendingHandoversQuerySchema),
+    controller.getPendingHandovers
+  );
+
+  /**
+   * @route GET /cash-management/admin/custodian/:custodyId/pending-handovers
+   * @desc Get all pending handovers for a specific custodian
+   * @access Private (Admin)
+   */
+  router.get(
+    '/admin/custodians/:custodyId/pending-handovers',
+    validateQuery(pendingHandoversQuerySchema),
+    controller.getPendingHandoversForCustodian
   );
 
   /**

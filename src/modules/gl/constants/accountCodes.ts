@@ -137,6 +137,7 @@ export const TRANSACTION_TYPE = {
 
   // Wallet
   WALLET_DEPOSIT: 'WalletDeposit',
+  WALLET_DEPOSIT_COLLECTION: 'WalletDepositCollection',
   WALLET_WITHDRAWAL: 'WalletWithdrawal',
 
   // Contribution

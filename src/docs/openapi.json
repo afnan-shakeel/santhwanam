@@ -6531,7 +6531,7 @@
       "get": {
         "tags": ["Cash Management - Handovers"],
         "summary": "Get valid receivers for current user",
-        "description": "Returns list of users who can receive cash handovers from the current user based on hierarchy",
+        "description": "Returns list of users who can receive cash handovers from the current user based on organizational hierarchy (Unit Admin, Area Admin, Forum Admin, or Bank Deposit). Recipients are determined by assigned admins in the hierarchy, not custody existence.",
         "responses": {
           "200": {
             "description": "Valid receivers retrieved successfully",
@@ -6542,8 +6542,13 @@
                   "properties": {
                     "success": { "type": "boolean" },
                     "data": {
-                      "type": "array",
-                      "items": { "$ref": "#/components/schemas/ValidReceiver" }
+                      "type": "object",
+                      "properties": {
+                        "recipients": {
+                          "type": "array",
+                          "items": { "$ref": "#/components/schemas/ValidReceiver" }
+                        }
+                      }
                     }
                   }
                 }
@@ -8588,16 +8593,15 @@
       },
       "ValidReceiver": {
         "type": "object",
-        "description": "Valid receiver for cash handover",
+        "description": "Valid receiver for cash handover based on organizational hierarchy",
         "properties": {
-          "userId": { "type": "string", "format": "uuid" },
-          "email": { "type": "string", "format": "email" },
-          "firstName": { "type": "string" },
-          "lastName": { "type": "string" },
-          "roleCode": { "type": "string" },
-          "roleName": { "type": "string" },
-          "scopeEntityId": { "type": ["string", "null"], "format": "uuid" },
-          "scopeEntityName": { "type": ["string", "null"] }
+          "userId": { "type": ["string", "null"], "format": "uuid", "description": "User ID (null for SuperAdmin/Bank option)" },
+          "fullName": { "type": "string", "description": "Display name of the receiver" },
+          "role": { "type": "string", "enum": ["UnitAdmin", "AreaAdmin", "ForumAdmin", "SuperAdmin"], "description": "Cash custody role" },
+          "roleDisplayName": { "type": "string", "description": "Human-readable role name" },
+          "hierarchyLevel": { "type": ["string", "null"], "description": "Organization level (Unit, Area, Forum, Central)" },
+          "hierarchyName": { "type": ["string", "null"], "description": "Name of the organizational entity" },
+          "requiresApproval": { "type": "boolean", "description": "Whether handover to this receiver requires approval" }
         }
       }
     },

@@ -30,6 +30,7 @@ import { PrismaUnitRepository } from '@/modules/organization-bodies/infrastructu
 // Event bus
 import { eventBus } from '@/shared/domain/events/event-bus';
 import { ContributionCollectedEvent } from '@/modules/contributions/domain/events';
+import { WalletDepositRequestedEvent } from '@/modules/wallet/domain/events';
 
 // Initialize repositories
 const cashCustodyRepo = new PrismaCashCustodyRepository();
@@ -84,6 +85,16 @@ eventBus.subscribe(
   {
     handle: async (event: ContributionCollectedEvent) => {
       await cashManagementEventHandlers.handleContributionCollected(event);
+    }
+  }
+);
+
+// Subscribe to WalletDepositRequestedEvent
+eventBus.subscribe(
+  WalletDepositRequestedEvent.EVENT_TYPE,
+  {
+    handle: async (event: WalletDepositRequestedEvent) => {
+      await cashManagementEventHandlers.handleWalletDepositRequested(event);
     }
   }
 );

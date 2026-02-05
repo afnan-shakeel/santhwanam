@@ -10,8 +10,9 @@ import { z } from 'zod';
 // User reference in responses
 const UserRefDto = z.object({
   userId: z.string(),
-  fullName: z.string().nullable(),
-  role: z.string().nullable(),
+  firstName: z.string().nullable(),
+  lastName: z.string().nullable(),
+  // role: z.string().nullable(),
 });
 
 // User with unit info (for handover detail)
@@ -232,7 +233,7 @@ export const PendingHandoversListResponseDto = z.object({
 
 // Valid receiver for handover
 const ValidReceiverDto = z.object({
-  userId: z.string(),
+  userId: z.string().nullable(),
   fullName: z.string(),
   role: z.string(),
   roleDisplayName: z.string(),
@@ -294,7 +295,7 @@ const HandoverHistorySummaryDto = z.object({
 
 // Handover history response
 export const HandoverHistoryResponseDto = z.object({
-  handovers: z.array(HandoverHistoryItemDto),
+  items: z.array(CashHandoverDto),
   summary: HandoverHistorySummaryDto,
   pagination: PaginationDto,
 });
@@ -373,6 +374,8 @@ const CustodyReportItemDto = z.object({
   custodyId: z.string(),
   userId: z.string(),
   userName: z.string().nullable(),
+  firstName: z.string().nullable(),
+  lastName: z.string().nullable(),
   userRole: z.string(),
   unitName: z.string().nullable(),
   areaName: z.string().nullable(),
@@ -396,7 +399,7 @@ const CustodyReportSummaryDto = z.object({
 
 // Custody report response
 export const CustodyReportResponseDto = z.object({
-  custodies: z.array(CustodyReportItemDto),
+  items: z.array(CustodyReportItemDto),
   summary: CustodyReportSummaryDto,
   pagination: PaginationDto,
 });

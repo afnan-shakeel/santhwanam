@@ -32,6 +32,7 @@ import {
 } from "../domain/events";
 import { MemberStatus } from "@/modules/members/domain/entities";
 import { AgentRepository } from "@/modules/agents/domain/repositories";
+import { logger } from "@/shared/utils/logger";
 
 export class DepositRequestService {
   constructor(
@@ -45,7 +46,10 @@ export class DepositRequestService {
   ) {}
 
   /**
-   * Request a wallet deposit (by agent)
+   * Request and process a wallet deposit (by agent)
+   * This is the main entry point for wallet deposits.
+   * GL entry is created at collection time, wallet is credited immediately.
+   * No approval workflow required.
    */
   async requestDeposit(data: {
     memberId: string;
@@ -86,7 +90,42 @@ export class DepositRequestService {
 
       // Create deposit request
       const depositRequestId = uuidv4();
-      const depositRequest = await this.depositRequestRepo.create(
+
+      // Create GL entry at collection time (Dr Cash Agent Custody, Cr Member Wallet Liability)
+      const journalEntry = await this.journalEntryService.createJournalEntry({
+        entryDate: data.collectionDate,
+        description: `Wallet Deposit - ${member.memberCode}`,
+        reference: `DEP-${depositRequestId.substring(0, 8)}`,
+        sourceModule: TRANSACTION_SOURCE.WALLET,
+        sourceEntityId: depositRequestId,
+        sourceTransactionType: TRANSACTION_TYPE.WALLET_DEPOSIT_COLLECTION,
+        lines: [
+          {
+            accountCode: ACCOUNT_CODES.CASH_AGENT_CUSTODY,
+            debitAmount: data.amount,
+            creditAmount: 0,
+            description: "Cash collected for wallet deposit",
+          },
+          {
+            accountCode: ACCOUNT_CODES.MEMBER_WALLET_LIABILITY,
+            debitAmount: 0,
+            creditAmount: data.amount,
+            description: "Member wallet balance increase",
+          },
+        ],
+        createdBy: data.collectedBy,
+        autoPost: true,
+      });
+
+      // Credit wallet immediately
+      const updatedWallet = await this.walletRepo.incrementBalance(
+        wallet.walletId,
+        data.amount,
+        tx
+      );
+
+      // Create deposit request record (already approved)
+      let depositRequest = await this.depositRequestRepo.create(
         {
           depositRequestId,
           memberId: data.memberId,
@@ -95,14 +134,39 @@ export class DepositRequestService {
           collectionDate: data.collectionDate,
           collectedBy: data.collectedBy,
           notes: data.notes || null,
-          requestStatus: WalletDepositRequestStatus.Draft,
+          requestStatus: WalletDepositRequestStatus.Approved, // Direct approval
           approvalRequestId: null,
-          journalEntryId: null,
+          journalEntryId: journalEntry.entry.entryId,
         },
         tx
       );
 
-      // Emit event
+      // Update approved timestamp
+      depositRequest = await this.depositRequestRepo.update(
+        depositRequestId,
+        { approvedAt: new Date() },
+        tx
+      );
+
+      // Create wallet transaction record
+      await this.walletTransactionRepo.create(
+        {
+          transactionId: uuidv4(),
+          walletId: wallet.walletId,
+          transactionType: WalletTransactionType.Deposit,
+          amount: data.amount,
+          balanceAfter: updatedWallet.currentBalance,
+          sourceModule: TRANSACTION_SOURCE.WALLET,
+          sourceEntityId: depositRequestId,
+          description: `Deposit by agent`,
+          journalEntryId: journalEntry.entry.entryId,
+          status: WalletTransactionStatus.Completed,
+          createdBy: data.collectedBy,
+        },
+        tx
+      );
+
+      // Emit event (cash custody update is handled by event handler)
       eventBus.publish(
         new WalletDepositRequestedEvent(
           {
@@ -116,12 +180,31 @@ export class DepositRequestService {
         )
       );
 
+      // Also emit approved event for any listeners
+      logger.info("Emitting WalletDepositApprovedEvent for depositRequestId:", { depositRequestId });
+      eventBus.publish(
+        new WalletDepositApprovedEvent(
+          {
+            depositRequestId,
+            memberId: data.memberId,
+            walletId: wallet.walletId,
+            amount: data.amount,
+            newBalance: updatedWallet.currentBalance,
+            approvedBy: data.collectedBy,
+          },
+          data.collectedBy
+        )
+      );
+
       return depositRequest;
     });
   }
 
   /**
    * Submit deposit request for approval
+   * @deprecated This method is kept for backward compatibility but is no longer needed.
+   * Deposits are now processed immediately in requestDeposit().
+   * If called on an already-approved deposit, it returns the deposit as-is.
    */
   async submitForApproval(
     depositRequestId: string,
@@ -136,6 +219,12 @@ export class DepositRequestService {
       throw new AppError("Deposit request not found", 404);
     }
 
+    // If already approved (new flow), just return it
+    if (depositRequest.requestStatus === WalletDepositRequestStatus.Approved) {
+      return depositRequest;
+    }
+
+    // Legacy: Only process if still in Draft status
     if (depositRequest.requestStatus !== WalletDepositRequestStatus.Draft) {
       throw new AppError("Deposit request is not in Draft status", 400);
     }
@@ -175,7 +264,10 @@ export class DepositRequestService {
   }
 
   /**
+  /**
    * Process deposit approval (called by event handler)
+   * @deprecated This method is kept for backward compatibility with legacy approval workflows.
+   * New deposits are processed immediately in requestDeposit().
    */
   async processApproval(
     depositRequestId: string,
@@ -192,6 +284,16 @@ export class DepositRequestService {
         throw new AppError("Deposit request not found", 404);
       }
 
+      // If already approved (new flow processed it), skip
+      if (depositRequest.requestStatus === WalletDepositRequestStatus.Approved) {
+        return;
+      }
+
+      // Only process pending approval status (legacy flow)
+      if (depositRequest.requestStatus !== WalletDepositRequestStatus.PendingApproval) {
+        throw new AppError("Deposit request is not pending approval", 400);
+      }
+
       // Credit wallet
       const updatedWallet = await this.walletRepo.incrementBalance(
         depositRequest.walletId,
@@ -199,7 +301,8 @@ export class DepositRequestService {
         tx
       );
 
-      // Create GL entry (Dr Cash, Cr Member Wallet Liability)
+      // For legacy deposits that didn't have GL at collection, create it now
+      // Note: This uses WALLET_DEPOSIT type for legacy compatibility
       const journalEntry = await this.journalEntryService.createJournalEntry({
         entryDate: depositRequest.collectionDate,
         description: `Wallet Deposit - ${depositRequest.member?.memberCode}`,
@@ -273,6 +376,8 @@ export class DepositRequestService {
 
   /**
    * Process deposit rejection (called by event handler)
+   * @deprecated This method is kept for backward compatibility with legacy approval workflows.
+   * New deposits are processed immediately and cannot be rejected.
    */
   async processRejection(
     depositRequestId: string,

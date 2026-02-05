@@ -227,7 +227,7 @@ export const custodyReportQuerySchema = z.object({
   page: z
     .string()
     .transform((val) => parseInt(val, 10))
-    .pipe(z.number().int().positive())
+    .pipe(z.number().int())
     .optional()
     .default(1),
   limit: z
@@ -268,9 +268,9 @@ export const reconciliationQuerySchema = z.object({
 });
 
 /**
- * Pending transfers query schema
+ * Pending handovers query schema
  */
-export const pendingTransfersQuerySchema = z.object({
+export const pendingHandoversQuerySchema = z.object({
   forumId: z.string().uuid().optional(),
   areaId: z.string().uuid().optional(),
   fromRole: z
@@ -329,5 +329,5 @@ export type CustodyByLevelQuery = z.infer<typeof custodyByLevelQuerySchema>;
 export type CustodyReportQuery = z.infer<typeof custodyReportQuerySchema>;
 export type OverdueQuery = z.infer<typeof overdueQuerySchema>;
 export type ReconciliationQuery = z.infer<typeof reconciliationQuerySchema>;
-export type PendingTransfersQuery = z.infer<typeof pendingTransfersQuerySchema>;
+export type PendingTransfersQuery = z.infer<typeof pendingHandoversQuerySchema>;
 export type ApproveHandoverBody = z.infer<typeof approveHandoverBodySchema>;

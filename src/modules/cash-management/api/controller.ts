@@ -40,7 +40,7 @@ export class CashManagementController {
   constructor(
     private readonly custodyService: CashCustodyService,
     private readonly handoverService: CashHandoverService
-  ) {}
+  ) { }
 
   // ==================== CUSTODY ENDPOINTS ====================
 
@@ -50,12 +50,22 @@ export class CashManagementController {
    */
   getMyCustody = async (req: Request, res: Response, next: NextFunction) => {
     const userId = asyncLocalStorage.getUserId();
-    
-    // Get custody and pending handovers in parallel
-    const [custody, pendingData] = await Promise.all([
-      this.custodyService.getCustodyByUserId(userId),
-      this.handoverService.getPendingHandoversForUser(userId),
-    ]);
+
+    // Get custody first
+    const custody = await this.custodyService.getCustodyByUserId(userId);
+
+    // If no custody exists, return graceful response with null/empty data
+    if (!custody) {
+      const responseData = {
+        custody: null,
+        pendingOutgoing: [],
+        pendingIncoming: [],
+      };
+      return next({ responseSchema: MyCustodyResponseDto, data: responseData, status: 200 });
+    }
+
+    // Get pending handovers only if custody exists
+    const pendingData = await this.handoverService.getPendingHandoversForUser(userId);
 
     // Build response matching API spec
     const responseData = {
@@ -302,8 +312,8 @@ export class CashManagementController {
       action: 'Initiated',
       timestamp: handover.initiatedAt,
       userId: handover.fromUserId,
-      userName: handover.fromUser 
-        ? `${handover.fromUser.firstName || ''} ${handover.fromUser.lastName || ''}`.trim() 
+      userName: handover.fromUser
+        ? `${handover.fromUser.firstName || ''} ${handover.fromUser.lastName || ''}`.trim()
         : null,
       notes: handover.initiatorNotes ?? null,
     });
@@ -314,8 +324,8 @@ export class CashManagementController {
         action: 'Acknowledged',
         timestamp: handover.acknowledgedAt,
         userId: handover.toUserId,
-        userName: handover.toUser 
-          ? `${handover.toUser.firstName || ''} ${handover.toUser.lastName || ''}`.trim() 
+        userName: handover.toUser
+          ? `${handover.toUser.firstName || ''} ${handover.toUser.lastName || ''}`.trim()
           : null,
         notes: handover.receiverNotes ?? null,
       });
@@ -327,8 +337,8 @@ export class CashManagementController {
         action: 'Rejected',
         timestamp: handover.rejectedAt,
         userId: handover.toUserId,
-        userName: handover.toUser 
-          ? `${handover.toUser.firstName || ''} ${handover.toUser.lastName || ''}`.trim() 
+        userName: handover.toUser
+          ? `${handover.toUser.firstName || ''} ${handover.toUser.lastName || ''}`.trim()
           : null,
         notes: handover.rejectionReason ?? null,
       });
@@ -340,8 +350,8 @@ export class CashManagementController {
         action: 'Cancelled',
         timestamp: handover.cancelledAt,
         userId: handover.fromUserId,
-        userName: handover.fromUser 
-          ? `${handover.fromUser.firstName || ''} ${handover.fromUser.lastName || ''}`.trim() 
+        userName: handover.fromUser
+          ? `${handover.fromUser.firstName || ''} ${handover.fromUser.lastName || ''}`.trim()
           : null,
         notes: null,
       });
@@ -353,16 +363,16 @@ export class CashManagementController {
       handoverNumber: handover.handoverNumber,
       fromUser: {
         userId: handover.fromUserId,
-        fullName: handover.fromUser 
-          ? `${handover.fromUser.firstName || ''} ${handover.fromUser.lastName || ''}`.trim() 
+        fullName: handover.fromUser
+          ? `${handover.fromUser.firstName || ''} ${handover.fromUser.lastName || ''}`.trim()
           : null,
         role: handover.fromUserRole,
         unit: handover.fromCustody?.unitId || null, // Could be enhanced to include unit name
       },
       toUser: {
         userId: handover.toUserId,
-        fullName: handover.toUser 
-          ? `${handover.toUser.firstName || ''} ${handover.toUser.lastName || ''}`.trim() 
+        fullName: handover.toUser
+          ? `${handover.toUser.firstName || ''} ${handover.toUser.lastName || ''}`.trim()
           : null,
         role: handover.toUserRole,
         unit: handover.toCustody?.unitId || null,
@@ -481,10 +491,21 @@ export class CashManagementController {
     const userId = asyncLocalStorage.getUserId();
     const receivers = await this.handoverService.getValidReceivers(userId);
 
+    // Map to DTO format (userName -> fullName)
+    const mappedRecipients = receivers.map((r) => ({
+      userId: r.userId,
+      fullName: r.userName,
+      role: r.role,
+      roleDisplayName: r.roleDisplayName,
+      hierarchyLevel: r.hierarchyLevel || null,
+      hierarchyName: r.hierarchyName || null,
+      requiresApproval: r.requiresApproval || false,
+    }));
+
     return next({
       responseSchema: ValidReceiversResponseDto,
       data: {
-        recipients: receivers,
+        recipients: mappedRecipients,
       },
       status: 200,
     });
@@ -561,7 +582,7 @@ export class CashManagementController {
     const pageNum = Number(page) || 1;
     const limitNum = Number(limit) || 20;
 
-    const result = await this.handoverService.getHandoverHistory(userId, {
+    const result = await this.handoverService.getHandoverHistory(userId, null, {
       direction: direction as 'sent' | 'received' | 'all',
       status: status as CashHandoverStatus,
       fromDate: fromDate ? new Date(fromDate as string) : undefined,
@@ -573,7 +594,7 @@ export class CashManagementController {
     return next({
       responseSchema: HandoverHistoryResponseDto,
       data: {
-        handovers: result.handovers,
+        items: result.handovers,
         summary: result.summary,
         pagination: {
           page: pageNum,
@@ -698,7 +719,7 @@ export class CashManagementController {
     return next({
       responseSchema: CustodyReportResponseDto,
       data: {
-        custodies: result.custodies,
+        items: result.custodies,
         summary: result.summary,
         pagination: {
           page: pageNum,
@@ -741,10 +762,10 @@ export class CashManagementController {
   };
 
   /**
-   * GET /cash-management/admin/pending-transfers
-   * Get all pending transfers across the organization
+   * GET /cash-management/admin/pending-handovers
+   * Get all pending handovers across the organization
    */
-  getPendingTransfers = async (req: Request, res: Response, next: NextFunction) => {
+  getPendingHandovers = async (req: Request, res: Response, next: NextFunction) => {
     const { forumId, areaId, fromRole, toRole, minAge, page, limit } = req.query;
 
     const pageNum = Number(page) || 1;
@@ -775,6 +796,44 @@ export class CashManagementController {
       status: 200,
     });
   };
+
+  /**
+   * GET /cash-management/admin/custodians/:custodyId/pending-handovers
+   * Get all pending handovers for a specific custodian
+   */
+  getPendingHandoversForCustodian = async (req: Request, res: Response, next: NextFunction) => {
+    const { custodyId } = req.params;
+    const { status, direction, page, limit } = req.query;
+    const pageNum = Number(page) || 1;
+    const limitNum = Number(limit) || 20;
+
+    const userId = ''
+    const result = await this.handoverService.getHandoverHistory(null, custodyId, {
+      direction: direction as 'sent' | 'received' | 'all',
+      page: pageNum,
+      limit: limitNum,
+      status: status as CashHandoverStatus,
+    });
+
+    return next({
+      responseSchema: HandoverHistoryResponseDto,
+      data: {
+        items: result.handovers,
+        summary: result.summary,
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total: result.total,
+          totalPages: Math.ceil(result.total / limitNum),
+        },
+      },
+      status: 200,
+    });
+
+  }
+
+
+
 
   /**
    * POST /cash-management/admin/handovers/:handoverId/approve

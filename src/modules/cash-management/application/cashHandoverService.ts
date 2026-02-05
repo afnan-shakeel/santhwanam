@@ -81,15 +81,20 @@ export class CashHandoverService {
         );
       }
 
-      // 4. Determine if approval required (only for SuperAdmin)
+      // 4. Validate recipient exists and is assigned admin in hierarchy
+      await this.validateRecipientInHierarchy(fromCustody, data.toUserId, data.toUserRole, tx);
+
+      // 5. Determine if approval required (only for SuperAdmin)
       const needsApproval = requiresApproval(data.toUserRole);
 
-      // 5. Get or create receiver's custody (if not SuperAdmin)
-      let toCustody = null;
-      let toGlAccountCode = BANK_ACCOUNT_CODE;
+      // 6. Determine receiver's GL account code
+      const toGlAccountCode = getReceiverGlAccountCode(data.toUserRole);
 
+      // 7. Create receiver's custody at initiation (not at acknowledgment)
+      // For SuperAdmin, custody is null (cash goes directly to bank)
+      let toCustodyId: string | null = null;
       if (data.toUserRole !== 'SuperAdmin') {
-        toCustody = await this.cashCustodyService.getOrCreateCashCustody(
+        const toCustody = await this.cashCustodyService.getOrCreateCashCustody(
           {
             userId: data.toUserId,
             userRole: data.toUserRole as CashCustodyUserRole,
@@ -99,15 +104,13 @@ export class CashHandoverService {
           },
           tx
         );
-        toGlAccountCode = toCustody.glAccountCode;
-      } else {
-        toGlAccountCode = getReceiverGlAccountCode(data.toUserRole);
+        toCustodyId = toCustody.custodyId;
       }
 
-      // 6. Generate handover number
+      // 8. Generate handover number
       const handoverNumber = await this.cashHandoverRepo.getNextHandoverNumber(tx);
 
-      // 7. Create handover record
+      // 9. Create handover record (toCustodyId populated at initiation for non-SuperAdmin)
       const handover = await this.cashHandoverRepo.create(
         {
           handoverNumber,
@@ -117,7 +120,7 @@ export class CashHandoverService {
           fromGlAccountCode: fromCustody.glAccountCode,
           toUserId: data.toUserId,
           toUserRole: data.toUserRole,
-          toCustodyId: toCustody?.custodyId || null,
+          toCustodyId, // Set at initiation (null only for SuperAdmin)
           toGlAccountCode,
           amount: data.amount,
           unitId: fromCustody.unitId,
@@ -141,7 +144,7 @@ export class CashHandoverService {
         tx
       );
 
-      // 8. If approval required (SuperAdmin only), create approval request
+      // 10. If approval required (SuperAdmin only), create approval request
       if (needsApproval) {
         const { request: approvalRequest } = await this.approvalRequestService.submitRequest({
           workflowCode: 'cash_handover_to_bank',
@@ -160,7 +163,7 @@ export class CashHandoverService {
         );
       }
 
-      // 9. Emit event
+      // 11. Emit event
       eventBus.publish(
         new CashHandoverInitiatedEvent(
           {
@@ -177,6 +180,83 @@ export class CashHandoverService {
 
       return handover;
     });
+  }
+
+  /**
+   * Validate that the recipient is the actual assigned admin in the hierarchy
+   */
+  private async validateRecipientInHierarchy(
+    fromCustody: { unitId?: string | null; areaId?: string | null; forumId?: string | null },
+    toUserId: string,
+    toUserRole: string,
+    tx: any
+  ): Promise<void> {
+    const db = tx || prisma;
+
+    // SuperAdmin validation - just check role assignment
+    if (toUserRole === 'SuperAdmin') {
+      const hasSuperAdminRole = await this.checkUserHasRole(toUserId, 'super_admin', tx);
+      if (!hasSuperAdminRole) {
+        throw new AppError('Recipient is not a Super Admin', 400);
+      }
+      return;
+    }
+
+    // Unit Admin validation - check if user is the unit's assigned admin
+    if (toUserRole === 'UnitAdmin') {
+      if (!fromCustody.unitId) {
+        throw new AppError('Cannot determine unit for handover', 400);
+      }
+      const unit = await db.unit.findUnique({
+        where: { unitId: fromCustody.unitId },
+        select: { adminUserId: true, unitName: true },
+      });
+      if (!unit) {
+        throw new AppError('Unit not found', 404);
+      }
+      if (unit.adminUserId !== toUserId) {
+        throw new AppError('Recipient is not the Unit Admin for your unit', 400);
+      }
+      return;
+    }
+
+    // Area Admin validation - check if user is the area's assigned admin
+    if (toUserRole === 'AreaAdmin') {
+      if (!fromCustody.areaId) {
+        throw new AppError('Cannot determine area for handover', 400);
+      }
+      const area = await db.area.findUnique({
+        where: { areaId: fromCustody.areaId },
+        select: { adminUserId: true, areaName: true },
+      });
+      if (!area) {
+        throw new AppError('Area not found', 404);
+      }
+      if (area.adminUserId !== toUserId) {
+        throw new AppError('Recipient is not the Area Admin for your area', 400);
+      }
+      return;
+    }
+
+    // Forum Admin validation - check if user is the forum's assigned admin
+    if (toUserRole === 'ForumAdmin') {
+      if (!fromCustody.forumId) {
+        throw new AppError('Cannot determine forum for handover', 400);
+      }
+      const forum = await db.forum.findUnique({
+        where: { forumId: fromCustody.forumId },
+        select: { adminUserId: true, forumName: true },
+      });
+      if (!forum) {
+        throw new AppError('Forum not found', 404);
+      }
+      if (forum.adminUserId !== toUserId) {
+        throw new AppError('Recipient is not the Forum Admin for your forum', 400);
+      }
+      return;
+    }
+
+    throw new AppError('Invalid recipient role', 400);
   }
 
   /**
@@ -263,7 +343,14 @@ export class CashHandoverService {
       await this.cashCustodyRepo.decrementBalance(handover.fromCustodyId, handover.amount, tx);
 
       // 7. Update to custody (increase) - if not SuperAdmin
-      if (handover.toCustodyId) {
+      // Note: Custody was already created at initiation time
+      if (handover.toUserRole !== 'SuperAdmin') {
+        if (!handover.toCustodyId) {
+          // This shouldn't happen since custody is created at initiation
+          throw new AppError('Receiver custody not found - handover may have been initiated before custody creation logic was added', 500);
+        }
+        
+        // Increment receiver's custody balance
         await this.cashCustodyRepo.incrementBalance(handover.toCustodyId, handover.amount, tx);
       }
 
@@ -486,68 +573,266 @@ export class CashHandoverService {
   }
 
   /**
-   * Get valid receivers for a user based on their role
+   * Get valid receivers for a user based on their role and organizational hierarchy
+   * Queries organization structure (units, areas, forums) instead of custody table
+   * Recipients are determined by role assignment, NOT custody existence
    */
   async getValidReceivers(userId: string): Promise<
     Array<{
-      userId: string;
+      userId: string | null;
       userName: string;
       role: string;
       roleDisplayName: string;
+      hierarchyLevel?: string;
+      hierarchyName?: string;
+      requiresApproval?: boolean;
     }>
   > {
-    // Get user's custody to determine their role
-    const custody = await this.cashCustodyRepo.findActiveByUserId(userId);
-    if (!custody) {
-      throw new AppError('No active cash custody found for user', 404);
+    // Determine user's cash-handling role and hierarchy from role assignments
+    const userRoleInfo = await this.getUserCashRoleAndHierarchy(userId);
+    
+    if (!userRoleInfo) {
+      // User has no cash-handling role - return empty array
+      return [];
     }
 
-    const validTargetRoles: string[] = [];
+    const { cashRole, unitId, areaId, forumId } = userRoleInfo;
 
-    switch (custody.userRole) {
-      case CashCustodyUserRole.Agent:
-        validTargetRoles.push('unit_admin', 'area_admin', 'forum_admin', 'super_admin');
-        break;
-      case CashCustodyUserRole.UnitAdmin:
-        validTargetRoles.push('area_admin', 'forum_admin', 'super_admin');
-        break;
-      case CashCustodyUserRole.AreaAdmin:
-        validTargetRoles.push('forum_admin', 'super_admin');
-        break;
-      case CashCustodyUserRole.ForumAdmin:
-        validTargetRoles.push('super_admin');
-        break;
+    const recipients: Array<{
+      userId: string | null;
+      userName: string;
+      role: string;
+      roleDisplayName: string;
+      hierarchyLevel: string;
+      hierarchyName: string;
+      requiresApproval: boolean;
+    }> = [];
+
+    // Determine valid recipient roles based on current user's role
+    const validRoles = this.getValidRecipientRolesFromString(cashRole);
+
+    // 1. Unit Admin (if valid and user belongs to a unit)
+    if (validRoles.includes('UnitAdmin') && unitId) {
+      const unit = await prisma.unit.findUnique({
+        where: { unitId },
+      });
+
+      if (unit?.adminUserId) {
+        const admin = await prisma.user.findUnique({
+          where: { userId: unit.adminUserId },
+          select: { userId: true, firstName: true, lastName: true, email: true },
+        });
+
+        if (admin) {
+          recipients.push({
+            userId: admin.userId,
+            userName: `${admin.firstName || ''} ${admin.lastName || ''}`.trim() || admin.email,
+            role: 'UnitAdmin',
+            roleDisplayName: 'Unit Admin',
+            hierarchyLevel: 'Unit',
+            hierarchyName: unit.unitName,
+            requiresApproval: false,
+          });
+        }
+      }
     }
 
-    // Query users with valid roles
-    const usersWithRoles = await prisma.userRole.findMany({
-      where: {
-        isActive: true,
-        role: {
-          roleCode: { in: validTargetRoles },
+    // 2. Area Admin (if valid and user belongs to an area)
+    if (validRoles.includes('AreaAdmin') && areaId) {
+      const area = await prisma.area.findUnique({
+        where: { areaId },
+      });
+
+      if (area?.adminUserId) {
+        const admin = await prisma.user.findUnique({
+          where: { userId: area.adminUserId },
+          select: { userId: true, firstName: true, lastName: true, email: true },
+        });
+
+        if (admin) {
+          recipients.push({
+            userId: admin.userId,
+            userName: `${admin.firstName || ''} ${admin.lastName || ''}`.trim() || admin.email,
+            role: 'AreaAdmin',
+            roleDisplayName: 'Area Admin',
+            hierarchyLevel: 'Area',
+            hierarchyName: area.areaName,
+            requiresApproval: false,
+          });
+        }
+      }
+    }
+
+    // 3. Forum Admin (if valid and user belongs to a forum)
+    if (validRoles.includes('ForumAdmin') && forumId) {
+      const forum = await prisma.forum.findUnique({
+        where: { forumId },
+      });
+
+      if (forum?.adminUserId) {
+        const admin = await prisma.user.findUnique({
+          where: { userId: forum.adminUserId },
+          select: { userId: true, firstName: true, lastName: true, email: true },
+        });
+
+        if (admin) {
+          recipients.push({
+            userId: admin.userId,
+            userName: `${admin.firstName || ''} ${admin.lastName || ''}`.trim() || admin.email,
+            role: 'ForumAdmin',
+            roleDisplayName: 'Forum Admin',
+            hierarchyLevel: 'Forum',
+            hierarchyName: forum.forumName,
+            requiresApproval: false,
+          });
+        }
+      }
+    }
+
+    // 4. Super Admin (Central/Bank) - always available for eligible roles
+    if (validRoles.includes('SuperAdmin')) {
+      // Get first super admin or use placeholder
+      const superAdmin = await prisma.userRole.findFirst({
+        where: {
           isActive: true,
+          role: {
+            roleCode: 'super_admin',
+            isActive: true,
+          },
         },
+        include: {
+          user: {
+            select: { userId: true, firstName: true, lastName: true, email: true },
+          },
+        },
+      });
+
+      recipients.push({
+        userId: superAdmin?.user.userId || null, // null signals "any super admin"
+        userName: 'Central Account',
+        role: 'SuperAdmin',
+        roleDisplayName: 'Bank Deposit',
+        hierarchyLevel: 'Central',
+        hierarchyName: 'Bank Account',
+        requiresApproval: true,
+      });
+    }
+
+    return recipients;
+  }
+
+  /**
+   * Helper: Determine user's cash-handling role and hierarchy from role assignments
+   * Returns the user's role for cash management and their organizational hierarchy
+   */
+  private async getUserCashRoleAndHierarchy(userId: string): Promise<{
+    cashRole: string;
+    unitId: string | null;
+    areaId: string | null;
+    forumId: string | null;
+  } | null> {
+    // Check if user is an Agent
+    const agent = await prisma.agent.findFirst({
+      where: {
+        userId,
+        registrationStatus: 'Approved',
       },
-      include: {
-        user: true,
-        role: true,
-      },
+      select: { unitId: true, areaId: true, forumId: true },
     });
 
-    // Map to response format
-    const roleDisplayNames: Record<string, string> = {
-      unit_admin: 'UnitAdmin',
-      area_admin: 'AreaAdmin',
-      forum_admin: 'ForumAdmin',
-      super_admin: 'SuperAdmin',
-    };
+    if (agent) {
+      return {
+        cashRole: 'Agent',
+        unitId: agent.unitId,
+        areaId: agent.areaId,
+        forumId: agent.forumId,
+      };
+    }
 
-    return usersWithRoles.map((ur) => ({
-      userId: ur.user.userId,
-      userName: `${ur.user.firstName || ''} ${ur.user.lastName || ''}`.trim() || ur.user.email,
-      role: roleDisplayNames[ur.role.roleCode] || ur.role.roleCode,
-      roleDisplayName: ur.role.roleName,
-    }));
+    // Check if user is a Unit Admin (adminUserId on a unit)
+    const unit = await prisma.unit.findFirst({
+      where: { adminUserId: userId },
+      select: { unitId: true, areaId: true, forumId: true },
+    });
+
+    if (unit) {
+      return {
+        cashRole: 'UnitAdmin',
+        unitId: unit.unitId,
+        areaId: unit.areaId,
+        forumId: unit.forumId,
+      };
+    }
+
+    // Check if user is an Area Admin
+    const area = await prisma.area.findFirst({
+      where: { adminUserId: userId },
+      select: { areaId: true, forumId: true },
+    });
+
+    if (area) {
+      return {
+        cashRole: 'AreaAdmin',
+        unitId: null,
+        areaId: area.areaId,
+        forumId: area.forumId,
+      };
+    }
+
+    // Check if user is a Forum Admin
+    const forum = await prisma.forum.findFirst({
+      where: { adminUserId: userId },
+      select: { forumId: true },
+    });
+
+    if (forum) {
+      return {
+        cashRole: 'ForumAdmin',
+        unitId: null,
+        areaId: null,
+        forumId: forum.forumId,
+      };
+    }
+
+    // Check if user has super_admin role
+    const hasSuperAdminRole = await this.checkUserHasRole(userId, 'super_admin');
+    if (hasSuperAdminRole) {
+      return {
+        cashRole: 'SuperAdmin',
+        unitId: null,
+        areaId: null,
+        forumId: null,
+      };
+    }
+
+    return null; // User has no cash-handling role
+  }
+
+  /**
+   * Helper: Get valid recipient roles based on sender's role (string version)
+   */
+  private getValidRecipientRolesFromString(fromRole: string): string[] {
+    const validPaths: Record<string, string[]> = {
+      Agent: ['UnitAdmin', 'AreaAdmin', 'ForumAdmin', 'SuperAdmin'],
+      UnitAdmin: ['AreaAdmin', 'ForumAdmin', 'SuperAdmin'],
+      AreaAdmin: ['ForumAdmin', 'SuperAdmin'],
+      ForumAdmin: ['SuperAdmin'],
+      SuperAdmin: [], // SuperAdmin doesn't transfer to anyone
+    };
+    return validPaths[fromRole] || [];
+  }
+
+  /**
+   * Helper: Get valid recipient roles based on sender's role
+   */
+  private getValidRecipientRoles(fromRole: CashCustodyUserRole): string[] {
+    const validPaths: Record<string, string[]> = {
+      [CashCustodyUserRole.Agent]: ['UnitAdmin', 'AreaAdmin', 'ForumAdmin', 'SuperAdmin'],
+      [CashCustodyUserRole.UnitAdmin]: ['AreaAdmin', 'ForumAdmin', 'SuperAdmin'],
+      [CashCustodyUserRole.AreaAdmin]: ['ForumAdmin', 'SuperAdmin'],
+      [CashCustodyUserRole.ForumAdmin]: ['SuperAdmin'],
+    };
+    return validPaths[fromRole] || [];
   }
 
   /**
@@ -576,7 +861,8 @@ export class CashHandoverService {
    * Get handover history for a user
    */
   async getHandoverHistory(
-    userId: string,
+    userId: string | null,
+    custodyId: string | null,
     filters: {
       direction?: 'sent' | 'received' | 'all';
       status?: CashHandoverStatus;
@@ -586,17 +872,7 @@ export class CashHandoverService {
       limit?: number;
     }
   ): Promise<{
-    handovers: Array<{
-      handoverId: string;
-      handoverNumber: string;
-      direction: 'sent' | 'received';
-      counterpartyName: string | null;
-      counterpartyRole: string | null;
-      amount: number;
-      status: string;
-      initiatedAt: Date;
-      completedAt: Date | null;
-    }>;
+    handovers: (CashHandoverWithRelations & { direction: 'sent' | 'received'; completedAt: Date | null })[];
     summary: {
       totalSent: number;
       totalReceived: number;
@@ -605,6 +881,17 @@ export class CashHandoverService {
     };
     total: number;
   }> {
+    if(!userId && custodyId) {
+      // Get userId from custodyId
+      const custody = await this.cashCustodyRepo.findById(custodyId);
+      if(!custody) {
+        throw new AppError('Cash custody not found', 404);
+      }
+      userId = custody.userId;
+    }
+    if(!userId) {
+      throw new AppError('Either user or custody reference must be provided', 400);
+    }
     const result = await this.cashHandoverRepo.findUserHistory(userId, {
       ...filters,
       page: filters.page || 1,
@@ -618,16 +905,8 @@ export class CashHandoverService {
       const completedAt = h.acknowledgedAt || h.rejectedAt || h.cancelledAt || null;
 
       return {
-        handoverId: h.handoverId,
-        handoverNumber: h.handoverNumber,
+        ...h,
         direction: (isSent ? 'sent' : 'received') as 'sent' | 'received',
-        counterpartyName: counterparty
-          ? `${counterparty.firstName || ''} ${counterparty.lastName || ''}`.trim()
-          : null,
-        counterpartyRole: (isSent ? h.toUserRole : h.fromUserRole) as string | null,
-        amount: h.amount,
-        status: h.status as string,
-        initiatedAt: h.initiatedAt,
         completedAt,
       };
     });
