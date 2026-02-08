@@ -66,9 +66,13 @@ export class CashHandoverService {
         throw new AppError('Amount must be positive', 400);
       }
 
-      if (data.amount > fromCustody.currentBalance) {
+      // 2a. Calculate available balance (currentBalance - pending outgoing handovers)
+      const pendingOutgoingAmount = await this.cashHandoverRepo.sumPendingOutgoingAmount(data.fromUserId, tx);
+      const availableBalance = fromCustody.currentBalance - pendingOutgoingAmount;
+
+      if (data.amount > availableBalance) {
         throw new AppError(
-          `Insufficient cash custody balance. Available: ${fromCustody.currentBalance}, Requested: ${data.amount}`,
+          `Insufficient available balance. Current: ${fromCustody.currentBalance}, Pending handovers: ${pendingOutgoingAmount}, Available: ${availableBalance}, Requested: ${data.amount}`,
           400
         );
       }

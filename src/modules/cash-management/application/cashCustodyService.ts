@@ -263,6 +263,53 @@ export class CashCustodyService {
   }
 
   /**
+   * Validate if a user can be reassigned from an admin role
+   * Checks for active custody with balance > 0 or pending incoming handovers
+   * Used by organization-bodies module before admin reassignment
+   */
+  async validateAdminCanBeReassigned(userId: string): Promise<{
+    canReassign: boolean;
+    reason?: string;
+    currentBalance?: number;
+    pendingIncomingHandovers?: number;
+  }> {
+    // Check if user has active custody
+    const custody = await this.cashCustodyRepo.findActiveByUserId(userId);
+    
+    if (!custody) {
+      // No custody, can reassign
+      return { canReassign: true };
+    }
+
+    // Check balance
+    if (custody.currentBalance > 0) {
+      return {
+        canReassign: false,
+        reason: `User has ${custody.currentBalance} in cash custody balance. Cash must be transferred upward before reassignment.`,
+        currentBalance: custody.currentBalance,
+      };
+    }
+
+    // Check pending incoming handovers
+    const pendingIncoming = await prisma.cashHandover.count({
+      where: {
+        toUserId: userId,
+        status: 'Initiated',
+      },
+    });
+
+    if (pendingIncoming > 0) {
+      return {
+        canReassign: false,
+        reason: `User has ${pendingIncoming} pending incoming handover(s). Must acknowledge or reject before reassignment.`,
+        pendingIncomingHandovers: pendingIncoming,
+      };
+    }
+
+    return { canReassign: true };
+  }
+
+  /**
    * Determine user's cash-handling role and hierarchy from organizational tables
    * Used when creating custody for first-time cash collection
    */

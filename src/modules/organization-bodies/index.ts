@@ -7,6 +7,8 @@ import { PrismaForumRepository } from './infrastructure/prisma/forumRepository';
 import { PrismaAreaRepository } from './infrastructure/prisma/areaRepository';
 import { PrismaUnitRepository } from './infrastructure/prisma/unitRepository';
 import { PrismaUserRepository } from '@/modules/iam/infrastructure/prisma/userRepository';
+import { PrismaRoleRepository } from '@/modules/iam/infrastructure/prisma/roleRepository';
+import { PrismaUserRoleRepository } from '@/modules/iam/infrastructure/prisma/userRoleRepository';
 import { ForumService } from './application/forumService';
 import { AreaService } from './application/areaService';
 import { UnitService } from './application/unitService';
@@ -29,11 +31,13 @@ const forumRepo = new PrismaForumRepository();
 const areaRepo = new PrismaAreaRepository();
 const unitRepo = new PrismaUnitRepository();
 const userRepo = new PrismaUserRepository();
+const roleRepo = new PrismaRoleRepository();
+const userRoleRepo = new PrismaUserRoleRepository();
 
 // Initialize services
-const forumService = new ForumService(forumRepo, userRepo);
-const areaService = new AreaService(areaRepo, forumRepo, userRepo);
-const unitService = new UnitService(unitRepo, areaRepo, forumRepo, userRepo);
+const forumService = new ForumService(forumRepo, userRepo, roleRepo, userRoleRepo);
+const areaService = new AreaService(areaRepo, forumRepo, userRepo, roleRepo, userRoleRepo);
+const unitService = new UnitService(unitRepo, areaRepo, forumRepo, userRepo, roleRepo, userRoleRepo);
 
 // Initialize commands
 const createForumCmd = new CreateForumCommand(forumService);

@@ -351,6 +351,20 @@ export class PrismaCashHandoverRepository implements CashHandoverRepository {
     return `${prefix}${nextSeq.toString().padStart(5, '0')}`;
   }
 
+  async sumPendingOutgoingAmount(userId: string, tx?: any): Promise<number> {
+    const db = tx || prisma;
+    const result = await db.cashHandover.aggregate({
+      where: {
+        fromUserId: userId,
+        status: CashHandoverStatus.Initiated,
+      },
+      _sum: {
+        amount: true,
+      },
+    });
+    return result._sum.amount || 0;
+  }
+
   async countPendingIncoming(userId: string, tx?: any): Promise<number> {
     const db = tx || prisma;
     return db.cashHandover.count({

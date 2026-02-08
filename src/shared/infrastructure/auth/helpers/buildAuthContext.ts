@@ -145,8 +145,8 @@ export async function buildAuthContext(userId: string): Promise<AuthContext | nu
   // Determine primary scope based on role priority
   const scope = determinePrimaryScope(user.userRoles);
 
-  // Build hierarchy from user's agent/member relations
-  const hierarchy = buildHierarchy(user);
+  // Build hierarchy from user's agent/member relations or role scopes
+  const hierarchy = await buildHierarchy(user);
 
   return {
     user: authUser,
@@ -184,9 +184,9 @@ function determinePrimaryScope(
 }
 
 /**
- * Build hierarchy based on user's agent or member relations
+ * Build hierarchy based on user's agent, member relations, or role scope assignments
  */
-function buildHierarchy(user: UserWithRelations): AuthHierarchy {
+async function buildHierarchy(user: UserWithRelations): Promise<AuthHierarchy> {
   const hierarchy: AuthHierarchy = {
     forumId: null,
     areaId: null,
@@ -215,7 +215,110 @@ function buildHierarchy(user: UserWithRelations): AuthHierarchy {
     if (!hierarchy.forumId) hierarchy.forumId = member.forumId;
   }
 
+  // If hierarchy is still empty, try to derive from user's role scope assignments
+  // This handles admin users who are not agents/members but have Forum/Area/Unit admin roles
+  if (!hierarchy.forumId && !hierarchy.areaId && !hierarchy.unitId && !hierarchy.agentId) {
+    await populateHierarchyFromRoles(user.userRoles, hierarchy);
+  }
+
   return hierarchy;
+}
+
+/**
+ * Populate hierarchy from user's role scope assignments
+ * Uses the highest priority (most specific) scope that has an entity assigned
+ */
+async function populateHierarchyFromRoles(
+  userRoles: UserWithRelations['userRoles'],
+  hierarchy: AuthHierarchy
+): Promise<void> {
+  // Sort roles by priority (higher priority = more specific scope)
+  // We want to use the most specific scope available
+  const sortedRoles = [...userRoles].sort((a, b) => {
+    const priorityA = SCOPE_PRIORITY[a.role.scopeType as ScopeType] ?? 999;
+    const priorityB = SCOPE_PRIORITY[b.role.scopeType as ScopeType] ?? 999;
+    return priorityB - priorityA; // Higher priority number = more specific
+  });
+
+  for (const role of sortedRoles) {
+    if (!role.scopeEntityId || !role.scopeEntityType) continue;
+
+    const scopeType = role.scopeEntityType as ScopeType;
+
+    switch (scopeType) {
+      case 'Forum': {
+        if (!hierarchy.forumId) {
+          hierarchy.forumId = role.scopeEntityId;
+        }
+        break;
+      }
+      case 'Area': {
+        if (!hierarchy.areaId) {
+          hierarchy.areaId = role.scopeEntityId;
+          // Also fetch parent forum
+          if (!hierarchy.forumId) {
+            const area = await prisma.area.findUnique({
+              where: { areaId: role.scopeEntityId },
+              select: { forumId: true },
+            });
+            if (area) hierarchy.forumId = area.forumId;
+          }
+        }
+        break;
+      }
+      case 'Unit': {
+        if (!hierarchy.unitId) {
+          hierarchy.unitId = role.scopeEntityId;
+          // Also fetch parent area and forum
+          if (!hierarchy.areaId || !hierarchy.forumId) {
+            const unit = await prisma.unit.findUnique({
+              where: { unitId: role.scopeEntityId },
+              select: { areaId: true, forumId: true },
+            });
+            if (unit) {
+              if (!hierarchy.areaId) hierarchy.areaId = unit.areaId;
+              if (!hierarchy.forumId) hierarchy.forumId = unit.forumId;
+            }
+          }
+        }
+        break;
+      }
+      case 'Agent': {
+        if (!hierarchy.agentId) {
+          hierarchy.agentId = role.scopeEntityId;
+          // Also fetch parent unit, area, forum
+          const agent = await prisma.agent.findUnique({
+            where: { agentId: role.scopeEntityId },
+            select: { unitId: true, areaId: true, forumId: true },
+          });
+          if (agent) {
+            if (!hierarchy.unitId) hierarchy.unitId = agent.unitId;
+            if (!hierarchy.areaId) hierarchy.areaId = agent.areaId;
+            if (!hierarchy.forumId) hierarchy.forumId = agent.forumId;
+          }
+        }
+        break;
+      }
+      case 'Member': {
+        if (!hierarchy.memberId) {
+          hierarchy.memberId = role.scopeEntityId;
+          // Also fetch parent agent, unit, area, forum
+          const member = await prisma.member.findUnique({
+            where: { memberId: role.scopeEntityId },
+            select: { agentId: true, unitId: true, areaId: true, forumId: true },
+          });
+          if (member) {
+            if (!hierarchy.agentId) hierarchy.agentId = member.agentId;
+            if (!hierarchy.unitId) hierarchy.unitId = member.unitId;
+            if (!hierarchy.areaId) hierarchy.areaId = member.areaId;
+            if (!hierarchy.forumId) hierarchy.forumId = member.forumId;
+          }
+        }
+        break;
+      }
+      // 'None' scope type doesn't have entity IDs, skip
+    }
+  }
 }
 
 /**

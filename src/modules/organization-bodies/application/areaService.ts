@@ -5,16 +5,19 @@
 
 import type { AreaRepository, ForumRepository } from '../domain/repositories';
 import type { Area } from '../domain/entities';
-import type { UserRepository } from '@/modules/iam/domain/repositories';
+import type { UserRepository, RoleRepository, UserRoleRepository } from '@/modules/iam/domain/repositories';
 import { BadRequestError, NotFoundError } from '@/shared/utils/error-handling/httpErrors';
 import prisma from '@/shared/infrastructure/prisma/prismaClient';
 import { searchService, SearchRequest } from '@/shared/infrastructure/search';
+import { cashCustodyService } from '@/modules/cash-management';
 
 export class AreaService {
   constructor(
     private readonly areaRepo: AreaRepository,
     private readonly forumRepo: ForumRepository,
-    private readonly userRepo: UserRepository
+    private readonly userRepo: UserRepository,
+    private readonly roleRepo: RoleRepository,
+    private readonly userRoleRepo: UserRoleRepository
   ) {}
 
   /**
@@ -68,7 +71,20 @@ export class AreaService {
     return await prisma.$transaction(async (tx: any) => {
       const area = await this.areaRepo.create(data, tx);
 
-      // TODO: Assign Area Admin role to adminUserId
+      // Assign area_admin role to adminUserId
+      const areaAdminRole = await this.roleRepo.findByCode('area_admin', tx);
+      if (areaAdminRole) {
+        await this.userRoleRepo.create(
+          {
+            userId: data.adminUserId,
+            roleId: areaAdminRole.roleId,
+            scopeEntityType: 'Area',
+            scopeEntityId: area.areaId,
+            assignedBy: data.createdBy,
+          },
+          tx
+        );
+      }
       
       return area;
     });
@@ -122,7 +138,24 @@ export class AreaService {
       throw new NotFoundError('New admin user not found');
     }
 
+    // Get the area_admin role
+    const areaAdminRole = await this.roleRepo.findByCode('area_admin');
+    if (!areaAdminRole) {
+      throw new BadRequestError('Area Admin role not configured in system');
+    }
+
+    const oldAdminUserId = area.adminUserId;
+
+    // Check if old admin can be reassigned (cash custody validation)
+    if (oldAdminUserId && oldAdminUserId !== newAdminUserId) {
+      const validation = await cashCustodyService.validateAdminCanBeReassigned(oldAdminUserId);
+      if (!validation.canReassign) {
+        throw new BadRequestError(validation.reason || 'Cannot reassign admin with active cash custody');
+      }
+    }
+
     return await prisma.$transaction(async (tx: any) => {
+      // 1. Update area entity with new admin
       const updatedArea = await this.areaRepo.updateAdmin(
         areaId,
         newAdminUserId,
@@ -130,7 +163,60 @@ export class AreaService {
         tx
       );
 
-      // TODO: Revoke old admin's Area Admin role, assign to new admin
+      // 2. Revoke old admin's area_admin role for this area (if different from new admin)
+      if (oldAdminUserId && oldAdminUserId !== newAdminUserId) {
+        const oldAdminRole = await this.userRoleRepo.findByUserAndRole(
+          oldAdminUserId,
+          areaAdminRole.roleId,
+          areaId,
+          tx
+        );
+        if (oldAdminRole && oldAdminRole.isActive) {
+          await this.userRoleRepo.updateById(
+            oldAdminRole.userRoleId,
+            {
+              isActive: false,
+              revokedAt: new Date(),
+              revokedBy: assignedBy,
+            },
+            tx
+          );
+        }
+      }
+
+      // 3. Assign area_admin role to new admin (check if already has it)
+      const existingNewAdminRole = await this.userRoleRepo.findByUserAndRole(
+        newAdminUserId,
+        areaAdminRole.roleId,
+        areaId,
+        tx
+      );
+
+      if (!existingNewAdminRole) {
+        // Create new role assignment
+        await this.userRoleRepo.create(
+          {
+            userId: newAdminUserId,
+            roleId: areaAdminRole.roleId,
+            scopeEntityType: 'Area',
+            scopeEntityId: areaId,
+            assignedBy,
+          },
+          tx
+        );
+      } else if (!existingNewAdminRole.isActive) {
+        // Reactivate if previously revoked
+        await this.userRoleRepo.updateById(
+          existingNewAdminRole.userRoleId,
+          {
+            isActive: true,
+            revokedAt: null,
+            revokedBy: null,
+            assignedBy,
+          },
+          tx
+        );
+      }
 
       return updatedArea;
     });

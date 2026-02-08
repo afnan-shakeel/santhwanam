@@ -5,17 +5,20 @@
 
 import type { UnitRepository, AreaRepository, ForumRepository } from '../domain/repositories';
 import type { Unit } from '../domain/entities';
-import type { UserRepository } from '@/modules/iam/domain/repositories';
+import type { UserRepository, RoleRepository, UserRoleRepository } from '@/modules/iam/domain/repositories';
 import { BadRequestError, NotFoundError } from '@/shared/utils/error-handling/httpErrors';
 import prisma from '@/shared/infrastructure/prisma/prismaClient';
 import { searchService, SearchRequest } from '@/shared/infrastructure/search';
+import { cashCustodyService } from '@/modules/cash-management';
 
 export class UnitService {
   constructor(
     private readonly unitRepo: UnitRepository,
     private readonly areaRepo: AreaRepository,
     private readonly forumRepo: ForumRepository,
-    private readonly userRepo: UserRepository
+    private readonly userRepo: UserRepository,
+    private readonly roleRepo: RoleRepository,
+    private readonly userRoleRepo: UserRoleRepository
   ) {}
 
   /**
@@ -75,7 +78,20 @@ export class UnitService {
         tx
       );
 
-      // TODO: Assign Unit Admin role to adminUserId
+      // Assign unit_admin role to adminUserId
+      const unitAdminRole = await this.roleRepo.findByCode('unit_admin', tx);
+      if (unitAdminRole) {
+        await this.userRoleRepo.create(
+          {
+            userId: data.adminUserId,
+            roleId: unitAdminRole.roleId,
+            scopeEntityType: 'Unit',
+            scopeEntityId: unit.unitId,
+            assignedBy: data.createdBy,
+          },
+          tx
+        );
+      }
 
       return unit;
     });
@@ -129,7 +145,24 @@ export class UnitService {
       throw new NotFoundError('New admin user not found');
     }
 
+    // Get the unit_admin role
+    const unitAdminRole = await this.roleRepo.findByCode('unit_admin');
+    if (!unitAdminRole) {
+      throw new BadRequestError('Unit Admin role not configured in system');
+    }
+
+    const oldAdminUserId = unit.adminUserId;
+
+    // Check if old admin can be reassigned (cash custody validation)
+    if (oldAdminUserId && oldAdminUserId !== newAdminUserId) {
+      const validation = await cashCustodyService.validateAdminCanBeReassigned(oldAdminUserId);
+      if (!validation.canReassign) {
+        throw new BadRequestError(validation.reason || 'Cannot reassign admin with active cash custody');
+      }
+    }
+
     return await prisma.$transaction(async (tx: any) => {
+      // 1. Update unit entity with new admin
       const updatedUnit = await this.unitRepo.updateAdmin(
         unitId,
         newAdminUserId,
@@ -137,7 +170,60 @@ export class UnitService {
         tx
       );
 
-      // TODO: Revoke old admin's Unit Admin role, assign to new admin
+      // 2. Revoke old admin's unit_admin role for this unit (if different from new admin)
+      if (oldAdminUserId && oldAdminUserId !== newAdminUserId) {
+        const oldAdminRole = await this.userRoleRepo.findByUserAndRole(
+          oldAdminUserId,
+          unitAdminRole.roleId,
+          unitId,
+          tx
+        );
+        if (oldAdminRole && oldAdminRole.isActive) {
+          await this.userRoleRepo.updateById(
+            oldAdminRole.userRoleId,
+            {
+              isActive: false,
+              revokedAt: new Date(),
+              revokedBy: assignedBy,
+            },
+            tx
+          );
+        }
+      }
+
+      // 3. Assign unit_admin role to new admin (check if already has it)
+      const existingNewAdminRole = await this.userRoleRepo.findByUserAndRole(
+        newAdminUserId,
+        unitAdminRole.roleId,
+        unitId,
+        tx
+      );
+
+      if (!existingNewAdminRole) {
+        // Create new role assignment
+        await this.userRoleRepo.create(
+          {
+            userId: newAdminUserId,
+            roleId: unitAdminRole.roleId,
+            scopeEntityType: 'Unit',
+            scopeEntityId: unitId,
+            assignedBy,
+          },
+          tx
+        );
+      } else if (!existingNewAdminRole.isActive) {
+        // Reactivate if previously revoked
+        await this.userRoleRepo.updateById(
+          existingNewAdminRole.userRoleId,
+          {
+            isActive: true,
+            revokedAt: null,
+            revokedBy: null,
+            assignedBy,
+          },
+          tx
+        );
+      }
 
       return updatedUnit;
     });

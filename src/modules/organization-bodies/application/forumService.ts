@@ -5,15 +5,18 @@
 
 import type { ForumRepository } from '../domain/repositories';
 import type { Forum } from '../domain/entities';
-import type { UserRepository } from '@/modules/iam/domain/repositories';
+import type { UserRepository, RoleRepository, UserRoleRepository } from '@/modules/iam/domain/repositories';
 import { BadRequestError, NotFoundError, ForbiddenError } from '@/shared/utils/error-handling/httpErrors';
 import prisma from '@/shared/infrastructure/prisma/prismaClient';
 import { searchService, SearchRequest } from '@/shared/infrastructure/search';
+import { cashCustodyService } from '@/modules/cash-management';
 
 export class ForumService {
   constructor(
     private readonly forumRepo: ForumRepository,
-    private readonly userRepo: UserRepository
+    private readonly userRepo: UserRepository,
+    private readonly roleRepo: RoleRepository,
+    private readonly userRoleRepo: UserRoleRepository
   ) {}
 
   /**
@@ -60,8 +63,20 @@ export class ForumService {
     return await prisma.$transaction(async (tx: any) => {
       const forum = await this.forumRepo.create(data, tx);
 
-      // TODO: Assign Forum Admin role to adminUserId
-      // Will be implemented after role assignment logic is ready
+      // Assign forum_admin role to adminUserId
+      const forumAdminRole = await this.roleRepo.findByCode('forum_admin', tx);
+      if (forumAdminRole) {
+        await this.userRoleRepo.create(
+          {
+            userId: data.adminUserId,
+            roleId: forumAdminRole.roleId,
+            scopeEntityType: 'Forum',
+            scopeEntityId: forum.forumId,
+            assignedBy: data.createdBy,
+          },
+          tx
+        );
+      }
 
       return forum;
     });
@@ -115,7 +130,24 @@ export class ForumService {
       throw new NotFoundError('New admin user not found');
     }
 
+    // Get the forum_admin role
+    const forumAdminRole = await this.roleRepo.findByCode('forum_admin');
+    if (!forumAdminRole) {
+      throw new BadRequestError('Forum Admin role not configured in system');
+    }
+
+    const oldAdminUserId = forum.adminUserId;
+
+    // Check if old admin can be reassigned (cash custody validation)
+    if (oldAdminUserId && oldAdminUserId !== newAdminUserId) {
+      const validation = await cashCustodyService.validateAdminCanBeReassigned(oldAdminUserId);
+      if (!validation.canReassign) {
+        throw new BadRequestError(validation.reason || 'Cannot reassign admin with active cash custody');
+      }
+    }
+
     return await prisma.$transaction(async (tx: any) => {
+      // 1. Update forum entity with new admin
       const updatedForum = await this.forumRepo.updateAdmin(
         forumId,
         newAdminUserId,
@@ -123,8 +155,60 @@ export class ForumService {
         tx
       );
 
-      // TODO: Revoke old admin's Forum Admin role, assign to new admin
-      // Will be implemented after role assignment logic is ready
+      // 2. Revoke old admin's forum_admin role for this forum (if different from new admin)
+      if (oldAdminUserId && oldAdminUserId !== newAdminUserId) {
+        const oldAdminRole = await this.userRoleRepo.findByUserAndRole(
+          oldAdminUserId,
+          forumAdminRole.roleId,
+          forumId,
+          tx
+        );
+        if (oldAdminRole && oldAdminRole.isActive) {
+          await this.userRoleRepo.updateById(
+            oldAdminRole.userRoleId,
+            {
+              isActive: false,
+              revokedAt: new Date(),
+              revokedBy: assignedBy,
+            },
+            tx
+          );
+        }
+      }
+
+      // 3. Assign forum_admin role to new admin (check if already has it)
+      const existingNewAdminRole = await this.userRoleRepo.findByUserAndRole(
+        newAdminUserId,
+        forumAdminRole.roleId,
+        forumId,
+        tx
+      );
+
+      if (!existingNewAdminRole) {
+        // Create new role assignment
+        await this.userRoleRepo.create(
+          {
+            userId: newAdminUserId,
+            roleId: forumAdminRole.roleId,
+            scopeEntityType: 'Forum',
+            scopeEntityId: forumId,
+            assignedBy,
+          },
+          tx
+        );
+      } else if (!existingNewAdminRole.isActive) {
+        // Reactivate if previously revoked
+        await this.userRoleRepo.updateById(
+          existingNewAdminRole.userRoleId,
+          {
+            isActive: true,
+            revokedAt: null,
+            revokedBy: null,
+            assignedBy,
+          },
+          tx
+        );
+      }
 
       return updatedForum;
     });

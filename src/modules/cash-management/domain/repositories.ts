@@ -198,6 +198,12 @@ export interface CashHandoverRepository {
   getNextHandoverNumber(tx?: unknown): Promise<string>;
 
   /**
+   * Sum of pending outgoing handover amounts for a user
+   * Used to calculate available balance at initiation time
+   */
+  sumPendingOutgoingAmount(userId: string, tx?: unknown): Promise<number>;
+
+  /**
    * Count pending incoming handovers for user
    */
   countPendingIncoming(userId: string, tx?: unknown): Promise<number>;
