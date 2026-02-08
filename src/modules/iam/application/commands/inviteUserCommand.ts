@@ -26,20 +26,47 @@ export class InviteUserHandler {
 
   async execute(cmd: InviteUserCommand) {
     if (!cmd || !cmd.email) throw new AppError('Invalid invite payload', 400)
-      console.log('InviteUserCommand:', cmd)
-    // 1) Create the user in Supabase (invite flow)
+
+    const userRepo = new PrismaUserRepository()
+    const userRoleRepo = new PrismaUserRoleRepository()
+
+    // Check if a local user with this email already exists
+    const existingUser = await userRepo.findByEmail(cmd.email)
+
+    if (existingUser) {
+      // User already exists (e.g., registered as agent or member) — just assign the requested roles
+      const result = await prisma.$transaction(async (tx) => {
+        if (cmd.roles && Array.isArray(cmd.roles) && cmd.roles.length > 0) {
+          for (const r of cmd.roles) {
+            const existingRole = await userRoleRepo.findByUserAndRole(
+              existingUser.userId,
+              r.roleId,
+              r.scopeEntityId ?? null,
+              tx as any
+            )
+
+            if (!existingRole) {
+              await userRoleRepo.create({
+                userId: existingUser.userId,
+                roleId: r.roleId,
+                scopeEntityType: r.scopeEntityType ?? null,
+                scopeEntityId: r.scopeEntityId ?? null,
+              }, tx as any)
+            }
+          }
+        }
+
+        return existingUser
+      })
+
+      return result
+    }
+
+    // No existing user — create in Supabase + local DB
     const supUser = await authClientService.inviteUser(cmd.email, cmd.userMetadata)
     if (!supUser || !supUser.id) throw new AppError('Failed to create external auth user', 500)
 
     const externalAuthId = supUser.id
-
-    // 2) Persist local user and optional user roles in a single transaction
-    const userRepo = new PrismaUserRepository()
-    const userRoleRepo = new PrismaUserRoleRepository()
-
-    // get actor from request context
-    // const actorId = asyncLocalStorage.tryGetUserId()
-    // if (!actorId) throw new AppError('Unauthenticated', 401)
 
     const created = await prisma.$transaction(async (tx) => {
       const user = await userRepo.create({
@@ -55,10 +82,8 @@ export class InviteUserHandler {
           roleId: r.roleId,
           scopeEntityType: r.scopeEntityType ?? null,
           scopeEntityId: r.scopeEntityId ?? null,
-          // assignedBy: actorId,
         }))
 
-        // create many user roles via repository
         await userRoleRepo.createMany(userRoleCreates, tx as any)
       }
 
