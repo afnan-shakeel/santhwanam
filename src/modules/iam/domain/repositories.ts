@@ -67,6 +67,7 @@ export interface RoleRepository {
 export interface UserRepository {
   create(data: Partial<any>, tx?: any): Promise<any>
   findById(id: string, tx?: any): Promise<any | null>
+  findByEmail(email: string, tx?: any): Promise<any | null>
   findByIdWithRoles(id: string, tx?: any): Promise<any | null>
   updateById(id: string, updates: Partial<any>, tx?: any): Promise<any>
   listAll(): Promise<any[]>

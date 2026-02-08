@@ -14,6 +14,12 @@ export class PrismaUserRepository implements UserRepository {
     return u ?? null
   }
 
+  async findByEmail(email: string, tx?: any): Promise<any | null> {
+    const client = tx ?? prisma
+    const u = await client.user.findUnique({ where: { email } })
+    return u ?? null
+  }
+
   async findByIdWithRoles(id: string, tx?: any): Promise<any | null> {
     const client = tx ?? prisma
     const u = await client.user.findUnique({

@@ -107,82 +107,135 @@ export class ActivateMemberOnApprovalHandler implements IEventHandler<DomainEven
         });
       }
 
-      // 4. Create user in Supabase (if email is provided)
+      // 4. Resolve or create user account (if email is provided)
       let userId: string | null = null;
       if (member.email) {
-        logger.info("Creating Supabase user for member", { email: member.email });
-        const { data: supabaseUser, error: supabaseError } = 
-          await supabaseAdmin.auth.admin.createUser({
+        const existingUser = await this.userRepository.findByEmail(member.email, tx);
+
+        if (existingUser) {
+          // User already exists (e.g., already registered as an agent) — reuse the account
+          logger.info("Existing user found for member email, reusing account", {
             email: member.email,
-            email_confirm: true,
-            user_metadata: {
-              firstName: member.firstName,
-              lastName: member.lastName,
-              memberId: member.memberId,
-            }
+            existingUserId: existingUser.userId,
+            memberId,
           });
+          userId = existingUser.userId;
 
-        if (supabaseError || !supabaseUser.user) {
-          logger.error("Supabase user creation failed", { 
-            error: supabaseError?.message,
-            email: member.email 
-          });
-          // Don't fail the whole transaction - log and continue
-          logger.warn("Member activation continuing without user account");
-        } else {
-          // 5. Create local user
-          logger.info("Creating local user", { externalAuthId: supabaseUser.user.id });
-          const localUser = await this.userRepository.create({
-            externalAuthId: supabaseUser.user.id,
-            email: member.email,
-            firstName: member.firstName,
-            lastName: member.lastName,
-            isActive: true,
-            userMetadata: null,
-            lastSyncedAt: new Date(),
-          }, tx);
-
-          userId = localUser.userId;
-
-          // 6. Get Member role
+          // Assign Member role (only if not already assigned)
           const memberRole = await this.roleRepository.findByCode("member", tx);
           if (memberRole) {
-            // 7. Assign Member role
-            logger.info("Assigning Member role", { 
-              userId: localUser.userId, 
-              roleId: memberRole.roleId,
-              memberId 
-            });
-            await this.userRoleRepository.create({
-              userId: localUser.userId,
-              roleId: memberRole.roleId,
-              scopeEntityType: "Member",
-              scopeEntityId: member.memberId,
-              assignedBy: approvedBy,
-            }, tx);
+            const existingMemberRole = await this.userRoleRepository.findByUserAndRole(
+              existingUser.userId,
+              memberRole.roleId,
+              member.memberId,
+              tx
+            );
+
+            if (!existingMemberRole) {
+              logger.info("Assigning Member role to existing user", {
+                userId: existingUser.userId,
+                roleId: memberRole.roleId,
+                memberId,
+              });
+              await this.userRoleRepository.create(
+                {
+                  userId: existingUser.userId,
+                  roleId: memberRole.roleId,
+                  scopeEntityType: "Member",
+                  scopeEntityId: member.memberId,
+                  assignedBy: approvedBy,
+                },
+                tx
+              );
+            } else {
+              logger.info("Member role already assigned, skipping", {
+                userId: existingUser.userId,
+                memberId,
+              });
+            }
           } else {
             logger.warn("Member role not found in system - skipping role assignment");
           }
+        } else {
+          // No existing user — create Supabase auth user + local user
+          logger.info("Creating Supabase user for member", { email: member.email });
+          const { data: supabaseUser, error: supabaseError } =
+            await supabaseAdmin.auth.admin.createUser({
+              email: member.email,
+              email_confirm: true,
+              user_metadata: {
+                firstName: member.firstName,
+                lastName: member.lastName,
+                memberId: member.memberId,
+              },
+            });
 
-          // 8. Generate invitation link
-          try {
-            const { data: inviteLink, error: linkError } = 
-              await supabaseAdmin.auth.admin.generateLink({
-                type: "invite",
+          if (supabaseError || !supabaseUser.user) {
+            logger.error("Supabase user creation failed", {
+              error: supabaseError?.message,
+              email: member.email,
+            });
+            // Don't fail the whole transaction - log and continue
+            logger.warn("Member activation continuing without user account");
+          } else {
+            logger.info("Creating local user", { externalAuthId: supabaseUser.user.id });
+            const localUser = await this.userRepository.create(
+              {
+                externalAuthId: supabaseUser.user.id,
                 email: member.email,
-                options: {
-                  redirectTo: `${process.env.APP_URL || "http://localhost:3000"}/auth/set-password`
-                }
-              });
+                firstName: member.firstName,
+                lastName: member.lastName,
+                isActive: true,
+                userMetadata: null,
+                lastSyncedAt: new Date(),
+              },
+              tx
+            );
 
-            if (linkError) {
-              logger.error("Failed to generate invite link", { error: linkError.message });
+            userId = localUser.userId;
+
+            // Assign Member role
+            const memberRole = await this.roleRepository.findByCode("member", tx);
+            if (memberRole) {
+              logger.info("Assigning Member role", {
+                userId: localUser.userId,
+                roleId: memberRole.roleId,
+                memberId,
+              });
+              await this.userRoleRepository.create(
+                {
+                  userId: localUser.userId,
+                  roleId: memberRole.roleId,
+                  scopeEntityType: "Member",
+                  scopeEntityId: member.memberId,
+                  assignedBy: approvedBy,
+                },
+                tx
+              );
             } else {
-              logger.info("Invitation link generated", { email: member.email });
-              // TODO: Send invitation email with inviteLink.properties.action_link
+              logger.warn("Member role not found in system - skipping role assignment");
             }
-          } catch (error: any) {
-            logger.error("Error generating invite link", { error: error.message });
+
+            // Generate invitation link only for new users
+            try {
+              const { data: inviteLink, error: linkError } =
+                await supabaseAdmin.auth.admin.generateLink({
+                  type: "invite",
+                  email: member.email,
+                  options: {
+                    redirectTo: `${process.env.APP_URL || "http://localhost:3000"}/auth/set-password`,
+                  },
+                });
+
+              if (linkError) {
+                logger.error("Failed to generate invite link", { error: linkError.message });
+              } else {
+                logger.info("Invitation link generated", { email: member.email });
+                // TODO: Send invitation email with inviteLink.properties.action_link
+              }
+            } catch (error: any) {
+              logger.error("Error generating invite link", { error: error.message });
+            }
           }
         }
       } else {

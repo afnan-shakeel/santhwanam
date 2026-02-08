@@ -59,40 +59,80 @@ export class ActivateAgentOnApprovalHandler implements IEventHandler<DomainEvent
         throw new Error('Agent not found');
       }
 
-      // 2. Create user in Supabase
-      logger.info('Creating Supabase user', { email: agent.email });
-      const { data: supabaseUser, error: supabaseError } = 
-        await supabaseAdmin.auth.admin.createUser({
+      // 2. Resolve or create user account
+      let localUser: any;
+      let invitationSent = false;
+
+      const existingUser = await this.userRepository.findByEmail(agent.email, tx);
+
+      if (existingUser) {
+        // User already exists (e.g., already registered as a member) — reuse the account
+        logger.info('Existing user found for agent email, reusing account', {
           email: agent.email,
-          email_confirm: true,
-          user_metadata: {
+          existingUserId: existingUser.userId,
+          agentId,
+        });
+        localUser = existingUser;
+      } else {
+        // No existing user — create Supabase auth user + local user
+        logger.info('Creating Supabase user for agent', { email: agent.email });
+        const { data: supabaseUser, error: supabaseError } =
+          await supabaseAdmin.auth.admin.createUser({
+            email: agent.email,
+            email_confirm: true,
+            user_metadata: {
+              firstName: agent.firstName,
+              lastName: agent.lastName,
+              agentId: agent.agentId,
+            },
+          });
+
+        if (supabaseError || !supabaseUser.user) {
+          logger.error('Supabase user creation failed', {
+            error: supabaseError?.message,
+            email: agent.email,
+          });
+          throw new Error(`Supabase user creation failed: ${supabaseError?.message}`);
+        }
+
+        logger.info('Creating local user', { externalAuthId: supabaseUser.user.id });
+        localUser = await this.userRepository.create(
+          {
+            externalAuthId: supabaseUser.user.id,
+            email: agent.email,
             firstName: agent.firstName,
             lastName: agent.lastName,
-            agentId: agent.agentId,
-          }
-        });
+            isActive: true,
+            userMetadata: null,
+            lastSyncedAt: new Date(),
+          },
+          tx
+        );
 
-      if (supabaseError || !supabaseUser.user) {
-        logger.error('Supabase user creation failed', { 
-          error: supabaseError?.message,
-          email: agent.email 
-        });
-        throw new Error(`Supabase user creation failed: ${supabaseError?.message}`);
+        // Generate invitation link only for new users
+        try {
+          const { data: inviteLink, error: linkError } =
+            await supabaseAdmin.auth.admin.generateLink({
+              type: 'invite',
+              email: agent.email,
+              options: {
+                redirectTo: `${process.env.APP_URL || 'http://localhost:3000'}/auth/set-password`,
+              },
+            });
+
+          if (linkError) {
+            logger.error('Failed to generate invite link', { error: linkError.message });
+          } else {
+            invitationSent = true;
+            logger.info('Invitation link generated', { email: agent.email });
+            // TODO: Send invitation email with the link
+          }
+        } catch (error) {
+          logger.error('Error generating invitation', { error });
+        }
       }
 
-      // 3. Create local user
-      logger.info('Creating local user', { externalAuthId: supabaseUser.user.id });
-      const localUser = await this.userRepository.create({
-        externalAuthId: supabaseUser.user.id,
-        email: agent.email,
-        firstName: agent.firstName,
-        lastName: agent.lastName,
-        isActive: true,
-        userMetadata: null,
-        lastSyncedAt: new Date(),
-      }, tx);
-
-      // 4. Update agent with userId and status
+      // 3. Update agent with userId and status
       logger.info('Updating agent status to Approved/Active', { agentId, userId: localUser.userId });
       await this.agentRepository.updateRegistrationStatus(
         agentId,
@@ -112,51 +152,44 @@ export class ActivateAgentOnApprovalHandler implements IEventHandler<DomainEvent
         tx
       );
 
-      // 5. Get Agent role
+      // 4. Assign Agent role (only if not already assigned)
       const agentRole = await this.roleRepository.findByCode('agent', tx);
       if (!agentRole) {
         logger.error('Agent role not found in system');
         throw new Error('Agent role not found');
       }
 
-      // 6. Assign Agent role with Agent scope
-      logger.info('Assigning Agent role', { 
-        userId: localUser.userId, 
-        roleId: agentRole.roleId,
-        agentId 
-      });
-      await this.userRoleRepository.create({
-        userId: localUser.userId,
-        roleId: agentRole.roleId,
-        scopeEntityType: 'Agent',
-        scopeEntityId: agentId,
-        assignedBy: approvedBy,
-      }, tx);
+      const existingAgentRole = await this.userRoleRepository.findByUserAndRole(
+        localUser.userId,
+        agentRole.roleId,
+        agentId,
+        tx
+      );
 
-      // 7. Generate invitation link
-      let invitationSent = false;
-      try {
-        const { data: inviteLink, error: linkError } = 
-          await supabaseAdmin.auth.admin.generateLink({
-            type: 'invite',
-            email: agent.email,
-            options: {
-              redirectTo: `${process.env.APP_URL || 'http://localhost:3000'}/auth/set-password`
-            }
-          });
-
-        if (linkError) {
-          logger.error('Failed to generate invite link', { error: linkError.message });
-        } else {
-          invitationSent = true;
-          logger.info('Invitation link generated', { email: agent.email });
-          // TODO: Send invitation email with the link
-        }
-      } catch (error) {
-        logger.error('Error generating invitation', { error });
+      if (!existingAgentRole) {
+        logger.info('Assigning Agent role', {
+          userId: localUser.userId,
+          roleId: agentRole.roleId,
+          agentId,
+        });
+        await this.userRoleRepository.create(
+          {
+            userId: localUser.userId,
+            roleId: agentRole.roleId,
+            scopeEntityType: 'Agent',
+            scopeEntityId: agentId,
+            assignedBy: approvedBy,
+          },
+          tx
+        );
+      } else {
+        logger.info('Agent role already assigned, skipping', {
+          userId: localUser.userId,
+          agentId,
+        });
       }
 
-      // 8. Publish AgentActivated event
+      // 5. Publish AgentActivated event
       await eventBus.publish(
         new AgentActivatedEvent(
           {
@@ -174,10 +207,11 @@ export class ActivateAgentOnApprovalHandler implements IEventHandler<DomainEvent
         )
       );
 
-      logger.info('Agent activated successfully', { 
-        agentId, 
+      logger.info('Agent activated successfully', {
+        agentId,
         userId: localUser.userId,
-        invitationSent 
+        invitationSent,
+        reusedExistingUser: !!existingUser,
       });
     });
   }
