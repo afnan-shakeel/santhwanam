@@ -18,6 +18,7 @@ import {
   updateMemberProfileSchema,
   memberIdParamSchema,
   documentIdParamSchema,
+  memberNotifyBodySchema,
 } from "./validators";
 import { searchValidationSchema } from "@/shared/validators/searchValidator";
 
@@ -150,6 +151,15 @@ export function createMembersRouter(controller: MembersController): Router {
     "/:memberId/benefit",
     validateParams(memberIdParamSchema),
     controller.getMemberBenefit
+  );
+
+  // ===== NOTIFICATIONS =====
+
+  router.post(
+    "/:memberId/notify",
+    validateParams(memberIdParamSchema),
+    validateBody(memberNotifyBodySchema),
+    controller.notifyMember
   );
 
   router.get("/:memberId", controller.getMemberDetails);

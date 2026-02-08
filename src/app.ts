@@ -15,6 +15,7 @@ import { walletRouter } from '@/modules/wallet'
 import { deathClaimsRouter } from '@/modules/death-claims'
 import { contributionsRouter } from '@/modules/contributions'
 import { cashManagementRouter } from '@/modules/cash-management'
+import { systemConfigRouter } from '@/modules/config'
 import { devRouter } from '@/modules/dev'
 import { contextMiddleware } from '@/shared/infrastructure/context'
 import { authenticate } from '@/shared/infrastructure/auth/middleware/authenticate'
@@ -86,6 +87,9 @@ app.use('/api/contributions', contributionsRouter)
 
 // Cash Management API
 app.use('/api/cash-management', cashManagementRouter)
+
+// System Configuration API
+app.use('/api/system-config', systemConfigRouter)
 
 // Dev API (only available in non-production environments)
 if (process.env.NODE_ENV !== 'production') {

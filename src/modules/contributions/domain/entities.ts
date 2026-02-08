@@ -111,6 +111,9 @@ export interface MemberContributionWithRelations extends MemberContribution {
     firstName: string;
     lastName: string;
     agentId: string;
+    wallet?: {
+      currentBalance: number;
+    } | null;
   };
   agent?: {
     agentId: string;
@@ -118,4 +121,7 @@ export interface MemberContributionWithRelations extends MemberContribution {
     firstName: string;
     lastName: string;
   };
+  // Computed fields (set by application layer, not from DB)
+  isLowBalance?: boolean;
+  daysRemaining?: number;
 }

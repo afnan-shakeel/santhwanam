@@ -17,6 +17,8 @@ import {
   AgentPerformanceResponseDto,
   AgentHierarchyResponseDto,
   AgentsListWithSummaryResponseDto,
+  AgentContributionsResponseDto,
+  AgentLowBalanceMembersResponseDto,
 } from './dtos/responseDtos'
 import {
   StartAgentRegistrationHandler,
@@ -221,7 +223,6 @@ export class AgentsController {
       search: req.query.search as string | undefined,
     };
     const members = await this.agentProfileService.getAgentMembers(agentId, query);
-    console.log(JSON.stringify(members, null, 2));
     next({ responseSchema: AgentMembersResponseDto, data: members, status: 200 });
   };
 
@@ -255,5 +256,37 @@ export class AgentsController {
     const { agentId } = req.params;
     const hierarchy = await this.agentProfileService.getAgentHierarchy(agentId);
     next({ responseSchema: AgentHierarchyResponseDto, data: hierarchy, status: 200 });
+  };
+
+  /**
+   * GET /api/agents/:agentId/contributions
+   * Get agent's contributions with pagination and filtering
+   */
+  getAgentContributions = async (req: Request, res: Response, next: NextFunction) => {
+    const { agentId } = req.params;
+    const query = {
+      page: parseInt(req.query.page as string) || 1,
+      limit: parseInt(req.query.limit as string) || 20,
+      status: req.query.status as string | undefined,
+      cycleId: req.query.cycleId as string | undefined,
+      search: req.query.search as string | undefined,
+    };
+    const result = await this.agentProfileService.getAgentContributions(agentId, query);
+    next({ responseSchema: AgentContributionsResponseDto, data: result, status: 200 });
+  };
+
+  /**
+   * GET /api/agents/:agentId/members/low-balance
+   * Get agent's members with low wallet balance
+   */
+  getLowBalanceMembers = async (req: Request, res: Response, next: NextFunction) => {
+    const { agentId } = req.params;
+    const query = {
+      page: parseInt(req.query.page as string) || 1,
+      limit: parseInt(req.query.limit as string) || 20,
+      search: req.query.search as string | undefined,
+    };
+    const result = await this.agentProfileService.getLowBalanceMembers(agentId, query);
+    next({ responseSchema: AgentLowBalanceMembersResponseDto, data: result, status: 200 });
   };
 }

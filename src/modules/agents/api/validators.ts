@@ -160,6 +160,28 @@ export const agentIdParamSchema = z.object({
   agentId: z.string().uuid(),
 });
 
+// ===== Agent Contributions Query =====
+export const agentContributionsQuerySchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().max(100).default(20),
+  status: z.enum(["Pending", "Collected", "Missed", "Exempted", "WalletDebitRequested", "Acknowledged"]).optional(),
+  cycleId: z.string().uuid().optional(),
+  search: z.string().max(100).optional(),
+});
+
+// ===== Low Balance Members Query =====
+export const agentLowBalanceMembersQuerySchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().max(100).default(20),
+  search: z.string().max(100).optional(),
+});
+
+// ===== Member Notify Body =====
+export const memberNotifyBodySchema = z.object({
+  type: z.enum(["low_balance", "pending_contribution", "general"]),
+  channel: z.enum(["sms", "email", "push"]).optional().default("sms"),
+});
+
 // Type exports
 export type StartAgentRegistrationDTO = z.infer<
   typeof startAgentRegistrationSchema
@@ -172,4 +194,7 @@ export type AgentStatsQueryDTO = z.infer<typeof agentStatsQuerySchema>;
 export type AgentMembersQueryDTO = z.infer<typeof agentMembersQuerySchema>;
 export type AgentMembersExportQueryDTO = z.infer<typeof agentMembersExportQuerySchema>;
 export type AgentPerformanceQueryDTO = z.infer<typeof agentPerformanceQuerySchema>;
+export type AgentContributionsQueryDTO = z.infer<typeof agentContributionsQuerySchema>;
+export type AgentLowBalanceMembersQueryDTO = z.infer<typeof agentLowBalanceMembersQuerySchema>;
+export type MemberNotifyBodyDTO = z.infer<typeof memberNotifyBodySchema>;
 

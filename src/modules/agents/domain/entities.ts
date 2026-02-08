@@ -73,3 +73,41 @@ export interface Agent {
   updatedAt: Date | null;
   updatedBy: string | null;
 }
+
+// ===== Agent Member Item (used in agent's member listings) =====
+
+export interface AgentMemberItem {
+  memberId: string;
+  memberCode: string;
+  firstName: string;
+  lastName: string;
+  contactNumber: string;
+  email: string | null;
+  memberStatus: string | null;
+  registrationStatus: string;
+  tier: {
+    tierId: string;
+    tierCode: string;
+    tierName: string;
+  };
+  wallet: {
+    balance: number;
+    isLowBalance: boolean;
+  } | null;
+  createdAt: Date;
+  registeredAt: Date | null;
+}
+
+// ===== Low Balance Member Item (used in low wallet balance listing) =====
+
+export interface LowBalanceMemberItem {
+  memberId: string;
+  memberCode: string;
+  firstName: string;
+  lastName: string;
+  contactNumber: string;
+  email: string | null;
+  memberStatus: string | null;
+  walletBalance: number;
+  balanceIndicator: "empty" | "low";
+}

@@ -20,16 +20,20 @@ import { createAgentsRouter } from "./api/router";
 import { requestService as approvalRequestService } from "@/modules/approval-workflow";
 import { PrismaUnitRepository } from "../organization-bodies/infrastructure/prisma/unitRepository";
 
+// Import contribution repository for agent profile service
+import { PrismaMemberContributionRepository } from "@/modules/contributions/infrastructure/prisma/memberContributionRepository";
+
 // Import organization bodies repo
 // import { PrismaUnitRepository } from "@/modules/organization-bodies/infrastructure";
 
 // Initialize repositories
 const agentRepo = new PrismaAgentRepository();
 const unitRepo = new PrismaUnitRepository();
+const memberContributionRepo = new PrismaMemberContributionRepository();
 
 // Initialize services
 const agentService = new AgentService(agentRepo, unitRepo);
-const agentProfileService = new AgentProfileService(agentRepo);
+const agentProfileService = new AgentProfileService(agentRepo, memberContributionRepo);
 
 // Initialize command handlers
 const startRegistrationCmd = new StartAgentRegistrationHandler(agentService);

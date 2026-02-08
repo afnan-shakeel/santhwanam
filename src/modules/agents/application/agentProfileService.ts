@@ -4,10 +4,14 @@
  */
 
 import { AgentRepository } from "../domain/repositories";
-import { Agent } from "../domain/entities";
+import { Agent, AgentMemberItem, LowBalanceMemberItem } from "../domain/entities";
+import { MemberContributionRepository } from "@/modules/contributions/domain/repositories";
+import { MemberContributionWithRelations, MemberContributionStatus as ContributionStatus } from "@/modules/contributions/domain/entities";
 import { NotFoundError } from "@/shared/utils/error-handling/httpErrors";
 import prisma from "@/shared/infrastructure/prisma/prismaClient";
 import { MemberStatus as PrismaMemberStatus, MemberRegistrationStatus } from "@/generated/prisma/client";
+import { configService } from "@/modules/config";
+import { CONFIG_KEYS } from "@/modules/config/domain/entities";
 
 // Types
 export interface AgentProfile extends Agent {
@@ -46,29 +50,15 @@ export interface AgentMembersQuery {
   search?: string;
 }
 
-export interface AgentMember {
-  memberId: string;
-  memberCode: string;
-  firstName: string;
-  lastName: string;
-  contactNumber: string;
-  email: string | null;
-  memberStatus: string | null;
-  registrationStatus: string;
-  tier: {
-    tierId: string;
-    tierCode: string;
-    tierName: string;
+export interface AgentMemberListingResponse {
+  items: AgentMemberItem[];
+  pagination: {
+    page: number;
+    limit: number;
+    totalItems: number;
+    totalPages: number;
   };
-  createdAt: Date;
-  registeredAt: Date | null;
-}
-
-export interface AgentMembersResponse {
-  members: AgentMember[];
-  total: number;
-  page: number;
-  limit: number;
+  summary: null;
 }
 
 export interface MonthlyTrend {
@@ -132,8 +122,64 @@ export interface UpdateAgentProfileInput {
   updatedBy: string;
 }
 
+// ===== Agent Contributions Query/Response Types =====
+
+export interface AgentContributionsQuery {
+  page: number;
+  limit: number;
+  status?: string;
+  cycleId?: string;
+  search?: string;
+}
+
+export interface AgentContributionsSummary {
+  totalPending: number;
+  totalAmount: number;
+  activeCycles: Array<{
+    cycleId: string;
+    cycleCode: string;
+    dueDate: string;
+  }>;
+}
+
+export interface AgentContributionListingResponse {
+  items: MemberContributionWithRelations[];
+  pagination: {
+    page: number;
+    limit: number;
+    totalItems: number;
+    totalPages: number;
+  };
+  summary: AgentContributionsSummary;
+}
+
+// ===== Low Balance Members Query/Response Types =====
+
+export interface AgentLowBalanceMembersQuery {
+  page: number;
+  limit: number;
+  search?: string;
+}
+
+export interface AgentLowBalanceMemberListingResponse {
+  items: LowBalanceMemberItem[];
+  pagination: {
+    page: number;
+    limit: number;
+    totalItems: number;
+    totalPages: number;
+  };
+  summary: {
+    threshold: number;
+    totalCount: number;
+  };
+}
+
 export class AgentProfileService {
-  constructor(private agentRepository: AgentRepository) {}
+  constructor(
+    private agentRepository: AgentRepository,
+    private memberContributionRepository: MemberContributionRepository
+  ) {}
 
   /**
    * Get agent profile with hierarchy details
@@ -382,7 +428,7 @@ export class AgentProfileService {
   async getAgentMembers(
     agentId: string,
     query: AgentMembersQuery
-  ): Promise<AgentMembersResponse> {
+  ): Promise<AgentMemberListingResponse> {
     const agent = await this.agentRepository.findById(agentId);
     if (!agent) {
       throw new NotFoundError("Agent not found");
@@ -439,6 +485,11 @@ export class AgentProfileService {
               tierName: true,
             },
           },
+          wallet: {
+            select: {
+              currentBalance: true,
+            },
+          },
           _count: {
             select:{
               contributions: {
@@ -453,8 +504,16 @@ export class AgentProfileService {
       prisma.member.count({ where }),
     ]);
 
+    // Get min wallet balance threshold
+    let minWalletBalance = 200;
+    try {
+      minWalletBalance = await configService.getNumber(CONFIG_KEYS.MIN_WALLET_BALANCE);
+    } catch {
+      // Use default if config not found
+    }
+
     return {
-      members: members.map((m) => ({
+      items: members.map((m) => ({
         memberId: m.memberId,
         memberCode: m.memberCode,
         firstName: m.firstName,
@@ -464,15 +523,25 @@ export class AgentProfileService {
         memberStatus: m.memberStatus,
         registrationStatus: m.registrationStatus,
         tier: m.tier,
+        wallet: m.wallet
+          ? {
+              balance: Number(m.wallet.currentBalance),
+              isLowBalance: Number(m.wallet.currentBalance) < minWalletBalance,
+            }
+          : null,
         createdAt: m.createdAt,
         registeredAt: m.registeredAt,
         contributions: {
           count: { pending: m._count.contributions }
         }
       })),
-      total,
-      page,
-      limit,
+      pagination: {
+        page,
+        limit,
+        totalItems: total,
+        totalPages: Math.ceil(total / limit),
+      },
+      summary: null,
     };
   }
 
@@ -686,7 +755,7 @@ export class AgentProfileService {
   async exportAgentMembers(
     agentId: string,
     format: "csv" | "excel" = "csv"
-  ): Promise<AgentMember[]> {
+  ): Promise<AgentMemberItem[]> {
     const agent = await this.agentRepository.findById(agentId);
     if (!agent) {
       throw new NotFoundError("Agent not found");
@@ -729,12 +798,185 @@ export class AgentProfileService {
       memberStatus: m.memberStatus,
       registrationStatus: m.registrationStatus,
       tier: m.tier,
+      wallet: null,
       createdAt: m.createdAt,
       registeredAt: m.registeredAt,
     }));
   }
 
   // Helper methods
+
+  /**
+   * Get agent's contributions with pagination and filtering
+   */
+  async getAgentContributions(
+    agentId: string,
+    query: AgentContributionsQuery
+  ): Promise<AgentContributionListingResponse> {
+    const agent = await this.agentRepository.findById(agentId);
+    if (!agent) {
+      throw new NotFoundError("Agent not found");
+    }
+
+    const { page = 1, limit = 20, status, cycleId, search } = query;
+
+    // Get min wallet balance threshold
+    let minWalletBalance = 200;
+    try {
+      minWalletBalance = await configService.getNumber(CONFIG_KEYS.MIN_WALLET_BALANCE);
+    } catch {
+      // Use default
+    }
+
+    const [{ contributions, total }, summaryData] = await Promise.all([
+      this.memberContributionRepository.findByAgentId(agentId, {
+        cycleId,
+        status: status as ContributionStatus | undefined,
+        search,
+        page,
+        limit,
+      }),
+      this.memberContributionRepository.getAgentContributionSummary(agentId),
+    ]);
+
+    const now = new Date();
+
+    // Enrich contributions with computed fields
+    const enrichedItems: MemberContributionWithRelations[] = contributions.map((c) => {
+      const walletBalance = c.member?.wallet
+        ? c.member.wallet.currentBalance
+        : 0;
+      const deadline = c.cycle?.collectionDeadline
+        ? new Date(c.cycle.collectionDeadline)
+        : now;
+      const daysRemaining = Math.ceil(
+        (deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+      );
+
+      return {
+        ...c,
+        isLowBalance: walletBalance < minWalletBalance,
+        daysRemaining,
+      };
+    });
+
+    return {
+      items: enrichedItems,
+      pagination: {
+        page,
+        limit,
+        totalItems: total,
+        totalPages: Math.ceil(total / limit),
+      },
+      summary: {
+        totalPending: summaryData.totalPending,
+        totalAmount: summaryData.totalPendingAmount,
+        activeCycles: summaryData.activeCycles.map((ac) => ({
+          cycleId: ac.cycleId,
+          cycleCode: ac.cycleNumber,
+          dueDate: ac.collectionDeadline.toISOString(),
+        })),
+      },
+    };
+  }
+
+  /**
+   * Get agent's members with low wallet balance
+   */
+  async getLowBalanceMembers(
+    agentId: string,
+    query: AgentLowBalanceMembersQuery
+  ): Promise<AgentLowBalanceMemberListingResponse> {
+    const agent = await this.agentRepository.findById(agentId);
+    if (!agent) {
+      throw new NotFoundError("Agent not found");
+    }
+
+    const { page = 1, limit = 20, search } = query;
+    const skip = (page - 1) * limit;
+
+    // Get min wallet balance threshold
+    let minWalletBalance = 200;
+    try {
+      minWalletBalance = await configService.getNumber(CONFIG_KEYS.MIN_WALLET_BALANCE);
+    } catch {
+      // Use default
+    }
+
+    // Build where clause for members with low/empty wallet balance
+    const where: any = {
+      agentId,
+      registrationStatus: MemberRegistrationStatus.Approved,
+      memberStatus: PrismaMemberStatus.Active,
+      wallet: {
+        currentBalance: { lt: minWalletBalance },
+      },
+    };
+
+    if (search) {
+      where.OR = [
+        { firstName: { contains: search, mode: "insensitive" } },
+        { lastName: { contains: search, mode: "insensitive" } },
+        { memberCode: { contains: search, mode: "insensitive" } },
+        { contactNumber: { contains: search } },
+      ];
+    }
+
+    const [members, total] = await Promise.all([
+      prisma.member.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: {
+          wallet: { currentBalance: "asc" },
+        },
+        select: {
+          memberId: true,
+          memberCode: true,
+          firstName: true,
+          lastName: true,
+          contactNumber: true,
+          email: true,
+          memberStatus: true,
+          wallet: {
+            select: {
+              currentBalance: true,
+            },
+          },
+        },
+      }),
+      prisma.member.count({ where }),
+    ]);
+
+    return {
+      items: members.map((m) => {
+        const balance = m.wallet ? Number(m.wallet.currentBalance) : 0;
+        return {
+          memberId: m.memberId,
+          memberCode: m.memberCode,
+          firstName: m.firstName,
+          lastName: m.lastName,
+          contactNumber: m.contactNumber,
+          email: m.email,
+          memberStatus: m.memberStatus,
+          walletBalance: balance,
+          balanceIndicator: balance === 0 ? "empty" as const : "low" as const,
+        };
+      }),
+      pagination: {
+        page,
+        limit,
+        totalItems: total,
+        totalPages: Math.ceil(total / limit),
+      },
+      summary: {
+        threshold: minWalletBalance,
+        totalCount: total,
+      },
+    };
+  }
+
+  // Private helper methods
   private getPeriodLabel(period: string, now: Date): string {
     switch (period) {
       case "lastMonth": {

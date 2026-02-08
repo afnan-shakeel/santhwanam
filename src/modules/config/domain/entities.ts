@@ -24,11 +24,20 @@ export const CONFIG_KEYS = {
    * See docs/implementations/update-99-remove-wallet-debit-request.md
    */
   WALLET_AUTO_DEBIT_ENABLED: 'wallet.autoDebitEnabled',
+
+  /**
+   * Minimum wallet balance threshold for low balance alerts.
+   * Members with balance below this value are flagged as low-balance.
+   * 
+   * Default: 200
+   */
+  MIN_WALLET_BALANCE: 'min_wallet_balance',
 } as const;
 
 // Configuration value types for type safety
 export interface ConfigValues {
   [CONFIG_KEYS.WALLET_AUTO_DEBIT_ENABLED]: boolean;
+  [CONFIG_KEYS.MIN_WALLET_BALANCE]: number;
 }
 
 // Default configuration values
@@ -37,5 +46,10 @@ export const DEFAULT_CONFIG: Record<string, { value: string; description: string
     value: 'true',
     description: 'When enabled, wallet debits for contributions are processed automatically without agent acknowledgment',
     dataType: 'boolean',
+  },
+  [CONFIG_KEYS.MIN_WALLET_BALANCE]: {
+    value: '200',
+    description: 'Minimum wallet balance threshold for low balance alerts',
+    dataType: 'number',
   },
 };

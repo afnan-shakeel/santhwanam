@@ -85,10 +85,23 @@ export interface MemberContributionRepository {
     filters: {
       cycleId?: string;
       status?: MemberContributionStatus;
+      search?: string;
       page: number;
       limit: number;
     }
   ): Promise<{ contributions: MemberContributionWithRelations[]; total: number }>;
+
+  getAgentContributionSummary(
+    agentId: string
+  ): Promise<{
+    totalPending: number;
+    totalPendingAmount: number;
+    activeCycles: Array<{
+      cycleId: string;
+      cycleNumber: string;
+      collectionDeadline: Date;
+    }>;
+  }>;
   
   findPreviousMissedContribution(
     memberId: string,

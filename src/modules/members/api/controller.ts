@@ -547,4 +547,35 @@ export class MembersController {
       next(err);
     }
   };
+
+  /**
+   * POST /api/members/:memberId/notify
+   * Send notification to a member (placeholder)
+   */
+  notifyMember = async (req: Request, res: Response, next: NextFunction) => {
+    const { memberId } = req.params;
+    const { type, channel } = req.body;
+
+    // Verify member exists
+    const member = await prisma.member.findUnique({
+      where: { memberId },
+      select: { memberId: true, firstName: true, lastName: true },
+    });
+
+    if (!member) {
+      throw new NotFoundError(`Member not found: ${memberId}`);
+    }
+
+    // TODO: Integrate with actual notification service (SMS/Email/Push)
+    // For now, this is a placeholder that acknowledges the request
+
+    next({
+      responseSchema: SuccessResponseDto,
+      data: {
+        success: true,
+        message: `Notification (${type}) queued for delivery via ${channel} to ${member.firstName} ${member.lastName}`,
+      },
+      status: 200,
+    });
+  };
 }

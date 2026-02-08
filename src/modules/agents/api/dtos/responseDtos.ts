@@ -165,6 +165,10 @@ const AgentMemberDto = z.object({
     tierCode: z.string(),
     tierName: z.string(),
   }),
+  wallet: z.object({
+    balance: z.number(),
+    isLowBalance: z.boolean(),
+  }).nullable(),
   createdAt: z.date(),
   registeredAt: z.date().nullable(),
   contributions: z.object({
@@ -174,12 +178,16 @@ const AgentMemberDto = z.object({
   })
 });
 
-// Agent Members list response
+// Agent Members list response (new standardized format)
 export const AgentMembersResponseDto = z.object({
-  members: z.array(AgentMemberDto),
-  total: z.number(),
-  page: z.number(),
-  limit: z.number(),
+  items: z.array(AgentMemberDto),
+  pagination: z.object({
+    page: z.number(),
+    limit: z.number(),
+    totalItems: z.number(),
+    totalPages: z.number(),
+  }),
+  summary: z.null(),
 });
 
 // Agent Members export response
@@ -236,6 +244,131 @@ export const AgentHierarchyResponseDto = z.object({
   }).nullable(),
 });
 
+// ===== NEW: Agent Contributions =====
+
+const ContributionMemberDto = z.object({
+  memberId: z.string(),
+  memberCode: z.string(),
+  firstName: z.string(),
+  lastName: z.string(),
+  agentId: z.string(),
+  wallet: z.object({
+    currentBalance: z.number(),
+  }).nullable().optional(),
+});
+
+const ContributionCycleDto = z.object({
+  cycleId: z.string(),
+  cycleNumber: z.string(),
+  deathClaimId: z.string(),
+  claimNumber: z.string(),
+  deceasedMemberId: z.string(),
+  deceasedMemberName: z.string(),
+  benefitAmount: z.number(),
+  forumId: z.string(),
+  startDate: z.date(),
+  collectionDeadline: z.date(),
+  cycleStatus: z.string(),
+  totalMembers: z.number(),
+  totalExpectedAmount: z.number(),
+  totalCollectedAmount: z.number(),
+  totalPendingAmount: z.number(),
+  membersCollected: z.number(),
+  membersPending: z.number(),
+  membersMissed: z.number(),
+  closedDate: z.date().nullable().optional(),
+  closedBy: z.string().nullable().optional(),
+  createdAt: z.date(),
+  updatedAt: z.date().nullable().optional(),
+});
+
+const ContributionAgentDto = z.object({
+  agentId: z.string(),
+  agentCode: z.string(),
+  firstName: z.string(),
+  lastName: z.string(),
+});
+
+const AgentContributionItemDto = z.object({
+  contributionId: z.string(),
+  cycleId: z.string(),
+  memberId: z.string(),
+  memberCode: z.string(),
+  memberName: z.string(),
+  tierId: z.string(),
+  agentId: z.string(),
+  expectedAmount: z.number(),
+  contributionStatus: z.string(),
+  paymentMethod: z.string().nullable().optional(),
+  collectionDate: z.date().nullable().optional(),
+  collectedBy: z.string().nullable().optional(),
+  walletDebitRequestId: z.string().nullable().optional(),
+  debitAcknowledgedAt: z.date().nullable().optional(),
+  cashReceiptReference: z.string().nullable().optional(),
+  journalEntryId: z.string().nullable().optional(),
+  isConsecutiveMiss: z.boolean(),
+  createdAt: z.date(),
+  updatedAt: z.date().nullable().optional(),
+  // Relations
+  cycle: ContributionCycleDto.optional(),
+  member: ContributionMemberDto.optional(),
+  agent: ContributionAgentDto.optional(),
+  // Computed fields
+  isLowBalance: z.boolean().optional(),
+  daysRemaining: z.number().optional(),
+});
+
+const AgentContributionsSummaryDto = z.object({
+  totalPending: z.number(),
+  totalAmount: z.number(),
+  activeCycles: z.array(
+    z.object({
+      cycleId: z.string(),
+      cycleCode: z.string(),
+      dueDate: z.string(),
+    })
+  ),
+});
+
+export const AgentContributionsResponseDto = z.object({
+  items: z.array(AgentContributionItemDto),
+  pagination: z.object({
+    page: z.number(),
+    limit: z.number(),
+    totalItems: z.number(),
+    totalPages: z.number(),
+  }),
+  summary: AgentContributionsSummaryDto,
+});
+
+// ===== NEW: Low Balance Members =====
+
+const LowBalanceMemberItemDto = z.object({
+  memberId: z.string(),
+  memberCode: z.string(),
+  firstName: z.string(),
+  lastName: z.string(),
+  contactNumber: z.string(),
+  email: z.string().nullable(),
+  memberStatus: z.string().nullable(),
+  walletBalance: z.number(),
+  balanceIndicator: z.enum(["empty", "low"]),
+});
+
+export const AgentLowBalanceMembersResponseDto = z.object({
+  items: z.array(LowBalanceMemberItemDto),
+  pagination: z.object({
+    page: z.number(),
+    limit: z.number(),
+    totalItems: z.number(),
+    totalPages: z.number(),
+  }),
+  summary: z.object({
+    threshold: z.number(),
+    totalCount: z.number(),
+  }),
+});
+
 // Type exports
 export type AgentResponse = z.infer<typeof AgentResponseDto>;
 export type AgentListResponse = z.infer<typeof AgentListResponseDto>;
@@ -247,3 +380,5 @@ export type AgentMembersResponse = z.infer<typeof AgentMembersResponseDto>;
 export type AgentMembersExportResponse = z.infer<typeof AgentMembersExportResponseDto>;
 export type AgentPerformanceResponse = z.infer<typeof AgentPerformanceResponseDto>;
 export type AgentHierarchyResponse = z.infer<typeof AgentHierarchyResponseDto>;
+export type AgentContributionsResponse = z.infer<typeof AgentContributionsResponseDto>;
+export type AgentLowBalanceMembersResponse = z.infer<typeof AgentLowBalanceMembersResponseDto>;

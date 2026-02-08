@@ -2512,6 +2512,184 @@
         }
       }
     },
+    "/api/agents/{agentId}/contributions": {
+      "get": {
+        "tags": ["Agent Profile"],
+        "summary": "Get agent's contributions",
+        "description": "List contribution records for members under this agent. Supports filtering by status and cycle.",
+        "parameters": [
+          {
+            "name": "agentId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "default": 1 }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Filter by contribution status",
+            "schema": { "type": "string", "enum": ["Pending", "Collected", "Missed", "Exempted", "WalletDebitRequested", "Acknowledged"] }
+          },
+          {
+            "name": "cycleId",
+            "in": "query",
+            "description": "Filter by contribution cycle",
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "Search by member name or code",
+            "schema": { "type": "string", "maxLength": 100 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated list of contributions with summary",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AgentContributionsResponse" }
+              }
+            }
+          },
+          "404": { "description": "Agent not found" }
+        }
+      }
+    },
+    "/api/agents/{agentId}/members/low-balance": {
+      "get": {
+        "tags": ["Agent Profile"],
+        "summary": "Get agent's members with low wallet balance",
+        "description": "List members whose wallet balance is below the system-configured minimum threshold. Sorted by balance ascending (emptiest first).",
+        "parameters": [
+          {
+            "name": "agentId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "default": 1 }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "Search by member name, code, or contact number",
+            "schema": { "type": "string", "maxLength": 100 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated list of low-balance members with summary",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AgentLowBalanceMembersResponse" }
+              }
+            }
+          },
+          "404": { "description": "Agent not found" }
+        }
+      }
+    },
+    "/api/system-config/{key}": {
+      "get": {
+        "tags": ["System Configuration"],
+        "summary": "Get a system configuration value by key",
+        "description": "Retrieves a system-wide configuration setting. Examples: min_wallet_balance, wallet.autoDebitEnabled.",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "minLength": 1, "maxLength": 100 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Configuration value",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SystemConfigResponse" }
+              }
+            }
+          },
+          "404": { "description": "Configuration key not found" }
+        }
+      }
+    },
+    "/api/members/{memberId}/notify": {
+      "post": {
+        "tags": ["Members - Actions"],
+        "summary": "Send notification to a member",
+        "description": "Placeholder endpoint to queue a notification (SMS/email/push) for a specific member. Returns success acknowledgment.",
+        "parameters": [
+          {
+            "name": "memberId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["type"],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": ["low_balance", "pending_contribution", "general"],
+                    "description": "Type of notification"
+                  },
+                  "channel": {
+                    "type": "string",
+                    "enum": ["sms", "email", "push"],
+                    "default": "sms",
+                    "description": "Delivery channel"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Notification queued successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "message": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "description": "Member not found" }
+        }
+      }
+    },
     "/api/members/search": {
       "post": {
         "tags": ["Members - Queries"],
@@ -8062,21 +8240,48 @@
               "tierName": { "type": "string" }
             }
           },
+          "wallet": {
+            "type": "object",
+            "nullable": true,
+            "description": "Member wallet balance info (null if wallet not created yet)",
+            "properties": {
+              "balance": { "type": "number", "description": "Current wallet balance" },
+              "isLowBalance": { "type": "boolean", "description": "True if balance is below the configured minimum threshold" }
+            }
+          },
           "createdAt": { "type": "string", "format": "date-time" },
-          "registeredAt": { "type": "string", "format": "date-time", "nullable": true }
+          "registeredAt": { "type": "string", "format": "date-time", "nullable": true },
+          "contributions": {
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "object",
+                "properties": {
+                  "pending": { "type": "integer", "description": "Number of pending contributions" }
+                }
+              }
+            }
+          }
         }
       },
       "AgentMembersResponse": {
         "type": "object",
         "description": "Paginated list of members under an agent",
         "properties": {
-          "members": {
+          "items": {
             "type": "array",
             "items": { "$ref": "#/components/schemas/AgentMember" }
           },
-          "total": { "type": "integer" },
-          "page": { "type": "integer" },
-          "limit": { "type": "integer" }
+          "pagination": {
+            "type": "object",
+            "properties": {
+              "page": { "type": "integer" },
+              "limit": { "type": "integer" },
+              "totalItems": { "type": "integer" },
+              "totalPages": { "type": "integer" }
+            }
+          },
+          "summary": { "type": "null", "nullable": true, "description": "No summary for this endpoint" }
         }
       },
       "AgentPerformance": {
@@ -8154,6 +8359,179 @@
               "forumName": { "type": "string" }
             }
           }
+        }
+      },
+      "AgentContributionItem": {
+        "type": "object",
+        "description": "Full member contribution record with relations and computed fields",
+        "properties": {
+          "contributionId": { "type": "string", "format": "uuid" },
+          "cycleId": { "type": "string", "format": "uuid" },
+          "memberId": { "type": "string", "format": "uuid" },
+          "memberCode": { "type": "string" },
+          "memberName": { "type": "string" },
+          "tierId": { "type": "string", "format": "uuid" },
+          "agentId": { "type": "string", "format": "uuid" },
+          "expectedAmount": { "type": "number" },
+          "contributionStatus": { "type": "string", "enum": ["Pending", "WalletDebitRequested", "Acknowledged", "Collected", "Missed", "Exempted"] },
+          "paymentMethod": { "type": "string", "enum": ["Wallet", "DirectCash"], "nullable": true },
+          "collectionDate": { "type": "string", "format": "date-time", "nullable": true },
+          "collectedBy": { "type": "string", "format": "uuid", "nullable": true },
+          "walletDebitRequestId": { "type": "string", "format": "uuid", "nullable": true },
+          "debitAcknowledgedAt": { "type": "string", "format": "date-time", "nullable": true },
+          "cashReceiptReference": { "type": "string", "nullable": true },
+          "journalEntryId": { "type": "string", "format": "uuid", "nullable": true },
+          "isConsecutiveMiss": { "type": "boolean" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time", "nullable": true },
+          "cycle": {
+            "type": "object",
+            "description": "Full contribution cycle details",
+            "properties": {
+              "cycleId": { "type": "string", "format": "uuid" },
+              "cycleNumber": { "type": "string" },
+              "deathClaimId": { "type": "string", "format": "uuid" },
+              "claimNumber": { "type": "string" },
+              "deceasedMemberId": { "type": "string", "format": "uuid" },
+              "deceasedMemberName": { "type": "string" },
+              "benefitAmount": { "type": "number" },
+              "forumId": { "type": "string", "format": "uuid" },
+              "startDate": { "type": "string", "format": "date-time" },
+              "collectionDeadline": { "type": "string", "format": "date-time" },
+              "cycleStatus": { "type": "string", "enum": ["Active", "Closed"] },
+              "totalMembers": { "type": "integer" },
+              "totalExpectedAmount": { "type": "number" },
+              "totalCollectedAmount": { "type": "number" },
+              "totalPendingAmount": { "type": "number" },
+              "membersCollected": { "type": "integer" },
+              "membersPending": { "type": "integer" },
+              "membersMissed": { "type": "integer" },
+              "closedDate": { "type": "string", "format": "date-time", "nullable": true },
+              "closedBy": { "type": "string", "format": "uuid", "nullable": true },
+              "createdAt": { "type": "string", "format": "date-time" },
+              "updatedAt": { "type": "string", "format": "date-time", "nullable": true }
+            }
+          },
+          "member": {
+            "type": "object",
+            "description": "Member details with wallet",
+            "properties": {
+              "memberId": { "type": "string", "format": "uuid" },
+              "memberCode": { "type": "string" },
+              "firstName": { "type": "string" },
+              "lastName": { "type": "string" },
+              "agentId": { "type": "string", "format": "uuid" },
+              "wallet": {
+                "type": "object",
+                "nullable": true,
+                "properties": {
+                  "currentBalance": { "type": "number" }
+                }
+              }
+            }
+          },
+          "agent": {
+            "type": "object",
+            "description": "Agent details",
+            "properties": {
+              "agentId": { "type": "string", "format": "uuid" },
+              "agentCode": { "type": "string" },
+              "firstName": { "type": "string" },
+              "lastName": { "type": "string" }
+            }
+          },
+          "isLowBalance": { "type": "boolean", "description": "Computed: true if wallet balance is below minimum threshold" },
+          "daysRemaining": { "type": "integer", "description": "Computed: days until collection deadline (negative = overdue)" }
+        }
+      },
+      "AgentContributionsResponse": {
+        "type": "object",
+        "description": "Paginated list of contributions with summary",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AgentContributionItem" }
+          },
+          "pagination": {
+            "type": "object",
+            "properties": {
+              "page": { "type": "integer" },
+              "limit": { "type": "integer" },
+              "totalItems": { "type": "integer" },
+              "totalPages": { "type": "integer" }
+            }
+          },
+          "summary": {
+            "type": "object",
+            "description": "Overall summary of pending contributions for this agent",
+            "properties": {
+              "totalPending": { "type": "integer", "description": "Total number of pending contributions" },
+              "totalAmount": { "type": "number", "description": "Sum of pending contribution amounts" },
+              "activeCycles": {
+                "type": "array",
+                "description": "Active contribution cycles for this agent",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "cycleId": { "type": "string", "format": "uuid" },
+                    "cycleCode": { "type": "string" },
+                    "dueDate": { "type": "string", "format": "date-time" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "LowBalanceMemberItem": {
+        "type": "object",
+        "description": "A member with low or empty wallet balance",
+        "properties": {
+          "memberId": { "type": "string", "format": "uuid" },
+          "memberCode": { "type": "string" },
+          "firstName": { "type": "string" },
+          "lastName": { "type": "string" },
+          "contactNumber": { "type": "string" },
+          "email": { "type": "string", "nullable": true },
+          "memberStatus": { "type": "string", "nullable": true },
+          "walletBalance": { "type": "number", "description": "Current wallet balance" },
+          "balanceIndicator": { "type": "string", "enum": ["empty", "low"], "description": "Balance is zero (empty) or below threshold (low)" }
+        }
+      },
+      "AgentLowBalanceMembersResponse": {
+        "type": "object",
+        "description": "Paginated list of members with low wallet balance",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/LowBalanceMemberItem" }
+          },
+          "pagination": {
+            "type": "object",
+            "properties": {
+              "page": { "type": "integer" },
+              "limit": { "type": "integer" },
+              "totalItems": { "type": "integer" },
+              "totalPages": { "type": "integer" }
+            }
+          },
+          "summary": {
+            "type": "object",
+            "properties": {
+              "threshold": { "type": "number", "description": "The minimum wallet balance threshold" },
+              "totalCount": { "type": "integer", "description": "Total members below threshold" }
+            }
+          }
+        }
+      },
+      "SystemConfigResponse": {
+        "type": "object",
+        "description": "System configuration value",
+        "properties": {
+          "key": { "type": "string", "description": "Configuration key" },
+          "value": { "type": "string", "description": "Configuration value" },
+          "dataType": { "type": "string", "enum": ["string", "number", "boolean", "json"], "description": "Data type of the value" },
+          "description": { "type": "string", "nullable": true, "description": "Description of the configuration" }
         }
       },
       "DeathClaim": {

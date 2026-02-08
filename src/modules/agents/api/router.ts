@@ -16,6 +16,8 @@ import {
   agentMembersExportQuerySchema,
   agentPerformanceQuerySchema,
   agentIdParamSchema,
+  agentContributionsQuerySchema,
+  agentLowBalanceMembersQuerySchema,
 } from "./validators";
 import { searchValidationSchema } from "@/shared/validators/searchValidator";
 
@@ -52,6 +54,14 @@ export function createAgentsRouter(controller: AgentsController): Router {
     controller.getAgentStats
   );
 
+  // Agent members - low balance (must be before /:agentId/members to avoid route conflict)
+  router.get(
+    "/:agentId/members/low-balance",
+    validateParams(agentIdParamSchema),
+    validateQuery(agentLowBalanceMembersQuerySchema),
+    controller.getLowBalanceMembers
+  );
+
   // Agent members
   router.get(
     "/:agentId/members",
@@ -65,6 +75,14 @@ export function createAgentsRouter(controller: AgentsController): Router {
     validateParams(agentIdParamSchema),
     validateQuery(agentMembersExportQuerySchema),
     controller.exportAgentMembers
+  );
+
+  // Agent contributions
+  router.get(
+    "/:agentId/contributions",
+    validateParams(agentIdParamSchema),
+    validateQuery(agentContributionsQuerySchema),
+    controller.getAgentContributions
   );
 
   // Agent performance

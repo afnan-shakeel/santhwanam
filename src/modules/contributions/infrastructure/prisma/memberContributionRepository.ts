@@ -334,6 +334,7 @@ export class PrismaMemberContributionRepository implements MemberContributionRep
     filters: {
       cycleId?: string;
       status?: MemberContributionStatus;
+      search?: string;
       page: number;
       limit: number;
     }
@@ -347,6 +348,14 @@ export class PrismaMemberContributionRepository implements MemberContributionRep
     if (filters.status) {
       where.contributionStatus = filters.status;
     }
+
+    if (filters.search) {
+      where.OR = [
+        { memberName: { contains: filters.search, mode: 'insensitive' } },
+        { memberCode: { contains: filters.search, mode: 'insensitive' } },
+      ];
+    }
+
     const [contributions, total] = await Promise.all([
       prisma.memberContribution.findMany({
         where,
@@ -362,6 +371,11 @@ export class PrismaMemberContributionRepository implements MemberContributionRep
               firstName: true,
               lastName: true,
               agentId: true,
+              wallet: {
+                select: {
+                  currentBalance: true,
+                },
+              },
             },
           },
           agent: {
@@ -378,12 +392,65 @@ export class PrismaMemberContributionRepository implements MemberContributionRep
     ]);
     return {
       contributions: contributions.map((c: any) => ({
-      ...this.mapToEntity(c),
-      cycle: c.cycle,
-      member: c.member,
-      agent: c.agent,
-    })),
+        ...this.mapToEntity(c),
+        cycle: {
+          ...c.cycle,
+          benefitAmount: parseFloat(c.cycle.benefitAmount.toString()),
+          totalExpectedAmount: parseFloat(c.cycle.totalExpectedAmount.toString()),
+          totalCollectedAmount: parseFloat(c.cycle.totalCollectedAmount.toString()),
+          totalPendingAmount: parseFloat(c.cycle.totalPendingAmount.toString()),
+        },
+        member: c.member
+          ? {
+              ...c.member,
+              wallet: c.member.wallet
+                ? { currentBalance: Number(c.member.wallet.currentBalance) }
+                : null,
+            }
+          : undefined,
+        agent: c.agent,
+      })),
       total,
+    };
+  }
+
+  async getAgentContributionSummary(
+    agentId: string
+  ): Promise<{
+    totalPending: number;
+    totalPendingAmount: number;
+    activeCycles: Array<{
+      cycleId: string;
+      cycleNumber: string;
+      collectionDeadline: Date;
+    }>;
+  }> {
+    const [totalPending, pendingAgg, activeCycles] = await Promise.all([
+      prisma.memberContribution.count({
+        where: { agentId, contributionStatus: MemberContributionStatus.Pending },
+      }),
+      prisma.memberContribution.aggregate({
+        where: { agentId, contributionStatus: MemberContributionStatus.Pending },
+        _sum: { expectedAmount: true },
+      }),
+      prisma.contributionCycle.findMany({
+        where: {
+          cycleStatus: 'Active',
+          contributions: { some: { agentId } },
+        },
+        select: {
+          cycleId: true,
+          cycleNumber: true,
+          collectionDeadline: true,
+        },
+        orderBy: { collectionDeadline: 'asc' },
+      }),
+    ]);
+
+    return {
+      totalPending,
+      totalPendingAmount: Number(pendingAgg._sum.expectedAmount ?? 0),
+      activeCycles,
     };
   }
 

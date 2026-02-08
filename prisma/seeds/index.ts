@@ -10,6 +10,7 @@
  * 5. Membership Tiers
  * 6. Chart of Accounts
  * 7. Approval Workflows
+ * 8. System Configuration
  */
 
 import dotenv from 'dotenv';
@@ -22,6 +23,7 @@ import { seedRolePermissions } from './seed-role-permissions';
 import { seedMembershipTiers } from './seed-membership-tiers';
 import { seedChartOfAccounts } from './seed-chart-of-accounts';
 import { seedApprovalWorkflows } from './seed-approval-workflows';
+import { seedSystemConfig } from './seed-system-config';
 
 import { PrismaPg } from '@prisma/adapter-pg';
 
@@ -43,7 +45,9 @@ const CORE_SEEDS: SeedFunction[] = [
   { name: 'Membership Tiers', fn: seedMembershipTiers },
   { name: 'Chart of Accounts', fn: seedChartOfAccounts },
   { name: 'Approval Workflows', fn: seedApprovalWorkflows },
+  { name: 'System Configuration', fn: seedSystemConfig },
 ];
+
 
 async function runSeeds(): Promise<boolean> {
   console.log('\n🌱 Starting database seeding...\n');

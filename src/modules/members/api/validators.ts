@@ -229,3 +229,9 @@ export const documentIdParamSchema = z.object({
   memberId: z.string().uuid(),
   documentId: z.string().uuid(),
 });
+
+// ===== Member Notify =====
+export const memberNotifyBodySchema = z.object({
+  type: z.enum(["low_balance", "pending_contribution", "general"]),
+  channel: z.enum(["sms", "email", "push"]).optional().default("sms"),
+});
