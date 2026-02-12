@@ -5,6 +5,7 @@
 import { DeathClaimRepository } from '../../domain/repositories';
 import { DeathClaim } from '../../domain/entities';
 import prisma from '@/shared/infrastructure/prisma/prismaClient';
+import { report } from 'process';
 
 export class PrismaDeathClaimRepository implements DeathClaimRepository {
   async create(data: Omit<DeathClaim, 'createdAt' | 'updatedAt'>, tx?: any): Promise<DeathClaim> {
@@ -69,7 +70,7 @@ export class PrismaDeathClaimRepository implements DeathClaimRepository {
     return claim ? this.mapToDomain(claim) : null;
   }
 
-  async findByIdWithDetails(claimId: string, tx?: any): Promise<any | null> {
+  async findByIdWithDetails(claimId: string, tx?: any): Promise<DeathClaim | null> {
     const db = tx || prisma;
 
     const claim = await db.deathClaim.findUnique({
@@ -108,6 +109,33 @@ export class PrismaDeathClaimRepository implements DeathClaimRepository {
           orderBy: { createdAt: 'desc' },
           take: 1,
         },
+        approvalRequest: {
+          select:{
+            requestId: true,
+            workflowId: true,
+            entityType: true,
+            entityId: true,
+            status: true,
+            currentStageOrder: true,
+            requestedAt: true,
+          }
+        },
+        reportedByUser: {
+          select: {
+            userId: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+        verifiedByUser: {
+          select: {
+            userId: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        }  
       },
     });
 
@@ -128,21 +156,24 @@ export class PrismaDeathClaimRepository implements DeathClaimRepository {
 
     return {
       ...this.mapToDomain(claim),
-      memberDetails: {
+      member: {
         memberId: claim.member.memberId,
         memberCode: claim.member.memberCode,
-        fullName: `${claim.member.firstName} ${claim.member.lastName}`,
+        firstName: claim.member.firstName,
+        lastName: claim.member.lastName,
+        // fullName: `${claim.member.firstName} ${claim.member.lastName}`,
         dateOfBirth: claim.member.dateOfBirth,
         tier: {
           tierId: claim.member.tier.tierId,
           tierName: claim.member.tier.tierName,
-          deathBenefit: Number(claim.member.tier.deathBenefitAmount),
-          contributionAmount: Number(claim.member.tier.expectedAmount),
+          deathBenefitAmount: Number(claim.member.tier.deathBenefitAmount),
+          contributionAmount: Number(claim.member.tier.contributionAmount),
         },
         agent: {
           agentId: claim.member.agent.agentId,
           agentCode: claim.member.agent.agentCode,
-          fullName: `${claim.member.agent.firstName} ${claim.member.agent.lastName}`,
+          firstName: claim.member.agent.firstName,
+          lastName: claim.member.agent.lastName,
         },
         unit: {
           unitId: claim.member.unit.unitId,
@@ -156,42 +187,43 @@ export class PrismaDeathClaimRepository implements DeathClaimRepository {
             },
           },
         },
-        membershipStartDate: claim.member.createdAt,
-        membershipDuration: this.calculateDuration(claim.member.createdAt, claim.deathDate),
+        createdAt: claim.member.createdAt,
         contributionsPaid: contributionStats._count.contributionId || 0,
         totalContributed: Number(contributionStats._sum.expectedAmount || 0),
-        walletBalance: Number(memberWallet?.currentBalance || 0),
+        membershipDuration: this.calculateDuration(claim.member.createdAt, claim.deathDate),
+        wallet: { currentBalance: Number(memberWallet?.currentBalance || 0) },
+
+        nominees: claim.member.nominees.map((nominee: any) => ({
+          nomineeId: nominee.nomineeId,
+          name: nominee.name,
+          relationType: nominee.relationType,
+          contactNumber: nominee.contactNumber,
+          idProofNumber: nominee.idProofNumber,
+          dateOfBirth: nominee.dateOfBirth,
+          addressLine1: nominee.addressLine1,
+          addressLine2: nominee.addressLine2,
+          city: nominee.city,
+          postalCode: nominee.postalCode,
+          state: nominee.state,
+          country: nominee.country,
+          priority: nominee.priority,
+        })),
       },
-      nominees: claim.member.nominees.map((nominee: any) => ({
-        nomineeId: nominee.nomineeId,
-        fullName: nominee.name,
-        relationship: nominee.relationType,
-        phone: nominee.contactNumber,
-        idNumber: nominee.idProofNumber,
-        dateOfBirth: nominee.dateOfBirth,
-        addressLine1: nominee.addressLine1,
-        addressLine2: nominee.addressLine2,
-        city: nominee.city,
-        postalCode: nominee.postalCode,
-        state: nominee.state,
-        country: nominee.country,
-        priority: nominee.priority,
-      })),
       documents: claim.documents.map((doc: any) => ({
-        documentId: doc.documentId,
-        claimId: doc.claimId,
-        documentType: doc.documentType,
-        documentName: doc.documentName,
-        fileSize: doc.fileSize,
-        mimeType: doc.mimeType,
-        fileUrl: doc.fileUrl,
-        uploadedAt: doc.uploadedAt,
-        uploadedBy: doc.uploadedBy,
-        verificationStatus: doc.verificationStatus,
-        verifiedBy: doc.verifiedBy,
-        verifiedAt: doc.verifiedAt,
-        rejectionReason: doc.rejectionReason,
-      })),
+          documentId: doc.documentId,
+          claimId: doc.claimId,
+          documentType: doc.documentType,
+          documentName: doc.documentName,
+          fileSize: doc.fileSize,
+          mimeType: doc.mimeType,
+          fileUrl: doc.fileUrl,
+          uploadedAt: doc.uploadedAt,
+          uploadedBy: doc.uploadedBy,
+          verificationStatus: doc.verificationStatus,
+          verifiedBy: doc.verifiedBy,
+          verifiedAt: doc.verifiedAt,
+          rejectionReason: doc.rejectionReason,
+        })),
       contributionCycle: claim.contributionCycles[0] ? {
         cycleId: claim.contributionCycles[0].cycleId,
         cycleNumber: claim.contributionCycles[0].cycleNumber,
@@ -209,7 +241,29 @@ export class PrismaDeathClaimRepository implements DeathClaimRepository {
         startDate: claim.contributionCycles[0].startDate,
         collectionDeadline: claim.contributionCycles[0].collectionDeadline,
         daysRemaining: this.calculateDaysRemaining(claim.contributionCycles[0].collectionDeadline),
-      } : null,
+      } : undefined,
+      reportedByUser: {
+        userId: claim.reportedByUser?.userId,
+        firstName: claim.reportedByUser?.firstName,
+        lastName: claim.reportedByUser?.lastName,
+        email: claim.reportedByUser?.email,
+      },
+      approvalRequest: {
+        requestId: claim.approvalRequest?.requestId,
+        workflowId: claim.approvalRequest?.workflowId,
+        entityType: claim.approvalRequest?.entityType,
+        entityId: claim.approvalRequest?.entityId,
+        status: claim.approvalRequest?.status,
+        currentStageOrder: claim.approvalRequest?.currentStageOrder,
+        requestedAt: claim.approvalRequest?.requestedAt,
+
+      },
+      verifiedByUser: {
+        userId: claim.verifiedByUser?.userId,
+        firstName: claim.verifiedByUser?.firstName,
+        lastName: claim.verifiedByUser?.lastName,
+        email: claim.verifiedByUser?.email,
+      }
     };
   }
 

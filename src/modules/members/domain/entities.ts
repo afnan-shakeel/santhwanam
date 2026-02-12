@@ -2,6 +2,8 @@
 // See `docs/domain/5.membership.md` for details
 
 import { Agent } from "@/modules/agents/domain/entities";
+import { Unit } from "@/modules/organization-bodies/domain/entities";
+import { Wallet } from "@/modules/wallet/domain/entities";
 
 // Enums
 export enum RegistrationStatus {
@@ -121,13 +123,14 @@ export interface Member {
   country: string;
 
   // Membership details
-  tier?: MembershipTier;
+  tier?: Partial<MembershipTier>;
   tierId: string;
 
   // Hierarchy
   agentId: string;
-  agent?: Agent
+  agent?: Partial<Agent>;
   unitId: string;
+  unit?: Partial<Unit>;
   areaId: string;
   forumId: string;
 
@@ -145,9 +148,20 @@ export interface Member {
   registeredAt: Date | null;
   updatedAt: Date;
 
+  wallet?: Partial<Wallet>;
+  nominees?: Partial<Nominee>[];
+  documents?: Partial<MemberDocument>[];
+
   // Audit
   createdBy: string;
   approvedBy: string | null;
+
+  // computed optional fields (not stored in DB)
+  fullName?: string;
+  membershipDuration?: string; 
+  contributionsPaid?: number; // total count of contributions paid (from Contributions module)
+  totalContributed?: number; // total amount contributed (from Contributions module)
+  
 }
 
 export interface Nominee {

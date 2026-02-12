@@ -45,6 +45,7 @@ import {
 import { generateMemberCode, calculateAge } from "./helpers";
 import { asyncLocalStorage } from "@/shared/infrastructure/context";
 import { UnitRepository } from "@/modules/organization-bodies/domain/repositories";
+import { AgentRepository } from "@/modules/agents/domain/repositories";
 
 // ===== Step 1: Personal Details =====
 
@@ -64,7 +65,7 @@ interface StartRegistrationInput {
   postalCode: string;
   country: string;
   tierId: string;
-  unitId: string;
+  unitId?: string;
   agentId: string;
   createdBy: string;
 }
@@ -152,7 +153,8 @@ export class MemberService {
     private memberDocumentRepository: MemberDocumentRepository,
     private registrationPaymentRepository: RegistrationPaymentRepository,
     private membershipTierRepository: MembershipTierRepository,
-    private unitRepository: UnitRepository
+    private unitRepository: UnitRepository,
+    private agentRepository: AgentRepository
   ) {}
 
   // ===== STEP 1: PERSONAL DETAILS =====
@@ -180,15 +182,14 @@ export class MemberService {
       // Generate member code
       const memberCode = await generateMemberCode(this.memberRepository);
 
-      // Get unit details for denormalization (assuming unit exists from validation in controller)
-      // In production, fetch unit to get areaId and forumId
-      // For now, we'll need to pass these or fetch from a unit repository
+      const performingUserId = asyncLocalStorage.getUserId();
+      
+      const agent = await this.agentRepository.findById(input.agentId, tx);
+      if (!agent) {
+        throw new BadRequestError("Invalid agent");
+      }
 
-      // if not createdBy, add it
-      const userId = asyncLocalStorage.getUserId();
-
-      // get area id and forum id from unit
-      const unit = await this.unitRepository.findById(input.unitId, tx);
+      const unit = await this.unitRepository.findById(agent.unitId, tx);
       if (!unit) {
         throw new BadRequestError("Invalid unit");
       }
@@ -218,7 +219,7 @@ export class MemberService {
           country: input.country,
           tierId: input.tierId,
           agentId: input.agentId,
-          unitId: input.unitId,
+          unitId: unit.unitId,
           areaId: unit.areaId,
           forumId: unit.forumId,
           memberStatus: null,
@@ -226,7 +227,7 @@ export class MemberService {
           suspensionReason: null,
           suspendedAt: null,
           registeredAt: null,
-          createdBy: userId,
+          createdBy: performingUserId,
           approvedBy: null,
         },
         tx
@@ -320,6 +321,14 @@ export class MemberService {
       // }
 
       // Validate all required fields
+      if(!member.agentId){
+        throw new BadRequestError("Member is not assigned to an agent");
+      }
+
+      if(!member.unitId || !member.areaId || !member.forumId){
+        throw new BadRequestError("Member's organizational body details are incomplete");
+      }
+
       if (!member.firstName || !member.lastName) {
         throw new BadRequestError("First name and last name are required");
       }

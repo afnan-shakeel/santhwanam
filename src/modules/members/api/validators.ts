@@ -85,7 +85,7 @@ export const startMemberRegistrationSchema = z.object({
   postalCode: z.string().min(1).max(20),
   country: z.string().min(1).max(100),
   tierId: z.string().uuid(),
-  unitId: z.string().uuid(),
+  unitId: z.string().optional().nullable(),
   agentId: z.string().uuid(),
 });
 
@@ -113,7 +113,7 @@ export const addNomineeSchema = z.object({
   relationType: RelationTypeEnum,
   dateOfBirth: z.coerce.date(),
   contactNumber: z.string().min(10).max(20),
-  alternateContactNumber: z.string().min(10).max(20).optional(),
+  alternateContactNumber: z.string().min(10).max(20).optional().nullable(),
   addressLine1: z.string().min(1).max(255),
   addressLine2: z.string().max(255).optional(),
   city: z.string().min(1).max(100),

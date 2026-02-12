@@ -235,6 +235,8 @@ export const PendingHandoversListResponseDto = z.object({
 const ValidReceiverDto = z.object({
   userId: z.string().nullable(),
   fullName: z.string(),
+  firstName: z.string().nullable(),
+  lastName: z.string().nullable().optional(),
   role: z.string(),
   roleDisplayName: z.string(),
   hierarchyLevel: z.string().nullable(),

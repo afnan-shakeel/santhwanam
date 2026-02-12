@@ -57,6 +57,10 @@ export interface ContributionCycle {
   // Timestamps
   createdAt: Date;
   updatedAt?: Date | null;
+
+  // optional summary of contributions in this cycle (not from DB, set by application layer)
+  collectionPercentage?: number;
+  daysRemaining?: number;
 }
 
 export interface MemberContribution {

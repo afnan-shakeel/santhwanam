@@ -45,7 +45,7 @@ export const MemberContributionResponseDto = z.object({
 // Contribution Cycle Response
 export const ContributionCycleResponseDto = z.object({
   cycleId: z.string(),
-  claimId: z.string(),
+  deathClaimId: z.string(),
   benefitAmount: z.any(),
   totalCollectedAmount: z.any(),
   membersCollected: z.number(),
@@ -53,7 +53,7 @@ export const ContributionCycleResponseDto = z.object({
   membersMissed: z.number(),
   collectionDeadline: z.date(),
   cycleStatus: z.string(),
-  startedAt: z.date(),
+  startDate: z.date(),
   completedAt: z.date().nullable().optional(),
   closedBy: z.string().nullable().optional(),
 });

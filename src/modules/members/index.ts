@@ -79,7 +79,8 @@ const memberService = new MemberService(
   memberDocumentRepo,
   registrationPaymentRepo,
   membershipTierRepo,
-  unitRepo
+  unitRepo,
+  agentRepo
 );
 
 // Initialize commands

@@ -585,6 +585,8 @@ export class CashHandoverService {
     Array<{
       userId: string | null;
       userName: string;
+      firstName?: string | null;
+      lastName?: string | null;
       role: string;
       roleDisplayName: string;
       hierarchyLevel?: string;
@@ -605,6 +607,8 @@ export class CashHandoverService {
     const recipients: Array<{
       userId: string | null;
       userName: string;
+      firstName?: string | null;
+      lastName?: string | null;
       role: string;
       roleDisplayName: string;
       hierarchyLevel: string;
@@ -631,6 +635,8 @@ export class CashHandoverService {
           recipients.push({
             userId: admin.userId,
             userName: `${admin.firstName || ''} ${admin.lastName || ''}`.trim() || admin.email,
+            firstName: admin.firstName,
+            lastName: admin.lastName,
             role: 'UnitAdmin',
             roleDisplayName: 'Unit Admin',
             hierarchyLevel: 'Unit',
@@ -657,6 +663,8 @@ export class CashHandoverService {
           recipients.push({
             userId: admin.userId,
             userName: `${admin.firstName || ''} ${admin.lastName || ''}`.trim() || admin.email,
+            firstName: admin.firstName,
+            lastName: admin.lastName,
             role: 'AreaAdmin',
             roleDisplayName: 'Area Admin',
             hierarchyLevel: 'Area',
@@ -683,6 +691,8 @@ export class CashHandoverService {
           recipients.push({
             userId: admin.userId,
             userName: `${admin.firstName || ''} ${admin.lastName || ''}`.trim() || admin.email,
+            firstName: admin.firstName,
+            lastName: admin.lastName,
             role: 'ForumAdmin',
             roleDisplayName: 'Forum Admin',
             hierarchyLevel: 'Forum',

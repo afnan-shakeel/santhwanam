@@ -737,12 +737,11 @@ export class DeathClaimService {
   /**
    * Query: Get claim by ID with full details
    */
-  async getClaimByIdWithDetails(claimId: string): Promise<any> {
+  async getClaimByIdWithDetails(claimId: string): Promise<DeathClaim> {
     const claim = await this.deathClaimRepo.findByIdWithDetails(claimId);
     if (!claim) {
       throw new NotFoundError('Death claim not found');
     }
-    console.log(JSON.stringify(claim, null, 2));
     return claim;
   }
 

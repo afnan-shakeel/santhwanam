@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { email, z } from 'zod';
 
 /**
  * Response DTOs for Death Claims Module API
@@ -34,11 +34,32 @@ const NomineeAddressDto = z.object({
   country: z.string().nullable().optional(),
 }).passthrough();
 
+
+// Nominee info (in nominees array)
+const NomineeDto = z.object({
+  nomineeId: z.string(),
+  name: z.string(),
+  relationType: z.string().nullable().optional(),
+  contactNumber: z.string().nullable().optional(),
+  idProofNumber: z.string().nullable().optional(),
+  dateOfBirth: z.coerce.date().nullable().optional(),
+  addressLine1: z.string().nullable().optional(),
+  addressLine2: z.string().nullable().optional(),
+  city: z.string().nullable().optional(),
+  state: z.string().nullable().optional(),
+  postalCode: z.string().nullable().optional(),
+  country: z.string().nullable().optional(),
+  priority: z.number().nullable().optional(),
+}).passthrough();
+
+
 // Member details (embedded in claim details response)
 const MemberDetailsDto = z.object({
   memberId: z.string(),
   memberCode: z.string(),
-  fullName: z.string(),
+  fullName: z.string().optional().nullable(),
+  firstName: z.string().nullable().optional(),
+  lastName: z.string().nullable().optional(),
   dateOfBirth: z.coerce.date().nullable().optional(),
   tier: z.object({
     tierId: z.string(),
@@ -49,7 +70,9 @@ const MemberDetailsDto = z.object({
   agent: z.object({
     agentId: z.string(),
     agentCode: z.string(),
-    fullName: z.string(),
+    fullName: z.string().optional().nullable(),
+    firstName: z.string().nullable().optional(),
+    lastName: z.string().nullable().optional(),
   }).nullable().optional(),
   unit: z.object({
     unitId: z.string(),
@@ -67,24 +90,10 @@ const MemberDetailsDto = z.object({
   membershipDuration: z.string().nullable().optional(),
   contributionsPaid: z.number().nullable().optional(),
   totalContributed: z.any().nullable().optional(),
-  walletBalance: z.any().nullable().optional(),
-}).passthrough();
-
-// Nominee info (in nominees array)
-const NomineeDto = z.object({
-  nomineeId: z.string(),
-  fullName: z.string(),
-  relationship: z.string().nullable().optional(),
-  phone: z.string().nullable().optional(),
-  idNumber: z.string().nullable().optional(),
-  dateOfBirth: z.coerce.date().nullable().optional(),
-  addressLine1: z.string().nullable().optional(),
-  addressLine2: z.string().nullable().optional(),
-  city: z.string().nullable().optional(),
-  state: z.string().nullable().optional(),
-  postalCode: z.string().nullable().optional(),
-  country: z.string().nullable().optional(),
-  priority: z.number().nullable().optional(),
+  wallet: z.object({
+    currentBalance: z.any(),
+  }).nullable().optional(),
+  nominees: z.array(z.object(NomineeDto)).optional(),
 }).passthrough();
 
 // Contribution cycle info (embedded in claim)
@@ -152,9 +161,31 @@ export const DeathClaimResponseDto = z.object({
 // Death claim with full details (member, nominees, cycle, documents)
 export const DeathClaimDetailsResponseDto = DeathClaimResponseDto.extend({
   memberDetails: MemberDetailsDto.nullable().optional(),
-  nominees: z.array(NomineeDto).optional(),
   documents: z.array(ClaimDocumentResponseDto).optional(),
   contributionCycle: ContributionCycleDto.nullable().optional(),
+  approvalRequest: z.object({
+    requestId: z.string().nullable().optional(),
+    entityId: z.string().nullable().optional(),
+    status: z.string().nullable().optional(),
+    currentStageOrder: z.number().nullable().optional(),
+    requestedAt: z.coerce.date().nullable().optional(),
+  }).nullable().optional(),
+  reportedByUser: z.object({
+    userId: z.string().optional().nullable(),
+    fullName: z.string().optional().nullable(),
+    firstName: z.string().nullable().optional(),
+    lastName: z.string().nullable().optional(),
+    email: z.string().nullable().optional(),
+  }).nullable().optional(),
+  verifiedByUser: z.object({
+    userId: z.string().optional().nullable(),
+    fullName: z.string().optional().nullable(),
+    firstName: z.string().nullable().optional(),
+    lastName: z.string().nullable().optional(),
+    email: z.string().nullable().optional(),
+  }).nullable().optional(),
+
+
 }).passthrough();
 
 // Death claim list response

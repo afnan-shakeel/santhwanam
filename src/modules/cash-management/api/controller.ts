@@ -221,24 +221,29 @@ export class CashManagementController {
    * Acknowledge a cash handover
    */
   acknowledgeHandover = async (req: Request, res: Response, next: NextFunction) => {
-    const userId = asyncLocalStorage.getUserId();
-    const { handoverId } = req.params;
-    const { receiverNotes } = req.body;
+    try {
+      const userId = asyncLocalStorage.getUserId();
+      const { handoverId } = req.params;
+      const { receiverNotes } = req.body;
 
-    const handover = await this.handoverService.acknowledgeHandover(
-      handoverId,
-      userId,
-      receiverNotes
-    );
+      const handover = await this.handoverService.acknowledgeHandover(
+        handoverId,
+        userId,
+        receiverNotes
+      );
 
-    return next({
-      responseSchema: CashHandoverCreatedResponseDto,
-      data: {
-        handover,
-        message: 'Cash handover acknowledged successfully',
-      },
-      status: 200,
-    });
+      return next({
+        responseSchema: CashHandoverCreatedResponseDto,
+        data: {
+          handover,
+          message: 'Cash handover acknowledged successfully',
+        },
+        status: 200,
+      });
+
+    } catch (err) {
+      next(err)
+    }
   };
 
   /**
@@ -246,24 +251,28 @@ export class CashManagementController {
    * Reject a cash handover
    */
   rejectHandover = async (req: Request, res: Response, next: NextFunction) => {
-    const userId = asyncLocalStorage.getUserId();
-    const { handoverId } = req.params;
-    const { rejectionReason } = req.body;
+    try {
+      const userId = asyncLocalStorage.getUserId();
+      const { handoverId } = req.params;
+      const { rejectionReason } = req.body;
 
-    const handover = await this.handoverService.rejectHandover(
-      handoverId,
-      userId,
-      rejectionReason
-    );
+      const handover = await this.handoverService.rejectHandover(
+        handoverId,
+        userId,
+        rejectionReason
+      );
 
-    return next({
-      responseSchema: CashHandoverCreatedResponseDto,
-      data: {
-        handover,
-        message: 'Cash handover rejected',
-      },
-      status: 200,
-    });
+      return next({
+        responseSchema: CashHandoverCreatedResponseDto,
+        data: {
+          handover,
+          message: 'Cash handover rejected',
+        },
+        status: 200,
+      });
+    } catch (err) {
+      next(err)
+    }
   };
 
   /**
@@ -271,19 +280,23 @@ export class CashManagementController {
    * Cancel a cash handover (by initiator)
    */
   cancelHandover = async (req: Request, res: Response, next: NextFunction) => {
-    const userId = asyncLocalStorage.getUserId();
-    const { handoverId } = req.params;
-
-    const handover = await this.handoverService.cancelHandover(handoverId, userId);
-
-    return next({
-      responseSchema: CashHandoverCreatedResponseDto,
-      data: {
-        handover,
-        message: 'Cash handover cancelled',
-      },
-      status: 200,
-    });
+    try{
+      const userId = asyncLocalStorage.getUserId();
+      const { handoverId } = req.params;
+  
+      const handover = await this.handoverService.cancelHandover(handoverId, userId);
+  
+      return next({
+        responseSchema: CashHandoverCreatedResponseDto,
+        data: {
+          handover,
+          message: 'Cash handover cancelled',
+        },
+        status: 200,
+      });
+    }catch(err){
+      next(err)
+    }
   };
 
   /**
@@ -495,6 +508,8 @@ export class CashManagementController {
     const mappedRecipients = receivers.map((r) => ({
       userId: r.userId,
       fullName: r.userName,
+      firstName: r.firstName || null,
+      lastName: r.lastName || null,
       role: r.role,
       roleDisplayName: r.roleDisplayName,
       hierarchyLevel: r.hierarchyLevel || null,

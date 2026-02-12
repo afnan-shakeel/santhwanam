@@ -51,10 +51,12 @@ model User {
 
   // Cash Management relations
   cashCustodies              CashCustody[]
-  cashCustodiesDeactivatedBy CashCustody[]    @relation("CashCustodyDeactivatedBy")
-  handoversFrom              CashHandover[]   @relation("HandoverFromUser")
-  handoversTo                CashHandover[]   @relation("HandoverToUser")
-  handoversCreated           CashHandover[]   @relation("HandoverCreatedBy")
+  cashCustodiesDeactivatedBy CashCustody[]  @relation("CashCustodyDeactivatedBy")
+  handoversFrom              CashHandover[] @relation("HandoverFromUser")
+  handoversTo                CashHandover[] @relation("HandoverToUser")
+  handoversCreated           CashHandover[] @relation("HandoverCreatedBy")
+  deathClaimReports          DeathClaim[]   @relation("DeathClaimsReports")
+  deathClaimVerifications    DeathClaim[]   @relation("DeathClaimsVerifications")
 }
 
 // Enums for role scope and user role scope
@@ -1204,6 +1206,7 @@ model DeathClaim {
   // Reporting
   reportedBy     String
   reportedByRole String
+  reportedByUser User     @relation(fields: [reportedBy], references: [userId], name: "DeathClaimsReports")
   reportedDate   DateTime @default(now())
   initialNotes   String?
 
@@ -1220,6 +1223,7 @@ model DeathClaim {
   // Verification
   verificationStatus DeathClaimVerificationStatus @default(Pending)
   verifiedBy         String?
+  verifiedByUser     User?                        @relation(fields: [verifiedBy], references: [userId], name: "DeathClaimsVerifications")
   verifiedDate       DateTime?
   verificationNotes  String?
 
@@ -1444,33 +1448,33 @@ enum CashHandoverType {
 
 // Cash Custody - Tracks cash balance held by each user
 model CashCustody {
-  custodyId         String             @id @default(uuid())
+  custodyId         String              @id @default(uuid())
   userId            String
   userRole          CashCustodyUserRole
   glAccountCode     String
   unitId            String?
   areaId            String?
   forumId           String?
-  status            CashCustodyStatus  @default(Active)
-  currentBalance    Decimal            @default(0) @db.Decimal(15, 2)
-  totalReceived     Decimal            @default(0) @db.Decimal(15, 2)
-  totalTransferred  Decimal            @default(0) @db.Decimal(15, 2)
+  status            CashCustodyStatus   @default(Active)
+  currentBalance    Decimal             @default(0) @db.Decimal(15, 2)
+  totalReceived     Decimal             @default(0) @db.Decimal(15, 2)
+  totalTransferred  Decimal             @default(0) @db.Decimal(15, 2)
   lastTransactionAt DateTime?
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
   deactivatedAt     DateTime?
   deactivatedBy     String?
   deactivatedReason String?
 
   // Relations
-  user              User               @relation(fields: [userId], references: [userId])
-  unit              Unit?              @relation(fields: [unitId], references: [unitId])
-  area              Area?              @relation(fields: [areaId], references: [areaId])
-  forum             Forum?             @relation(fields: [forumId], references: [forumId])
-  deactivatedByUser User?              @relation("CashCustodyDeactivatedBy", fields: [deactivatedBy], references: [userId])
+  user              User   @relation(fields: [userId], references: [userId])
+  unit              Unit?  @relation(fields: [unitId], references: [unitId])
+  area              Area?  @relation(fields: [areaId], references: [areaId])
+  forum             Forum? @relation(fields: [forumId], references: [forumId])
+  deactivatedByUser User?  @relation("CashCustodyDeactivatedBy", fields: [deactivatedBy], references: [userId])
 
-  handoversFrom     CashHandover[]     @relation("HandoverFromCustody")
-  handoversTo       CashHandover[]     @relation("HandoverToCustody")
+  handoversFrom CashHandover[] @relation("HandoverFromCustody")
+  handoversTo   CashHandover[] @relation("HandoverToCustody")
 
   @@index([userId])
   @@index([status])
@@ -1481,24 +1485,24 @@ model CashCustody {
 
 // Cash Handover - Records transfers between personnel
 model CashHandover {
-  handoverId        String             @id @default(uuid())
-  handoverNumber    String             @unique
+  handoverId        String              @id @default(uuid())
+  handoverNumber    String              @unique
   fromUserId        String
   fromUserRole      CashCustodyUserRole
   fromCustodyId     String
   fromGlAccountCode String
   toUserId          String
-  toUserRole        String             // Can be CashCustodyUserRole or 'SuperAdmin'
-  toCustodyId       String?            // Null for SuperAdmin (goes to bank)
+  toUserRole        String // Can be CashCustodyUserRole or 'SuperAdmin'
+  toCustodyId       String? // Null for SuperAdmin (goes to bank)
   toGlAccountCode   String
-  amount            Decimal            @db.Decimal(15, 2)
+  amount            Decimal             @db.Decimal(15, 2)
   unitId            String?
   areaId            String?
   forumId           String
-  status            CashHandoverStatus @default(Initiated)
-  handoverType      CashHandoverType   @default(Normal)
+  status            CashHandoverStatus  @default(Initiated)
+  handoverType      CashHandoverType    @default(Normal)
   sourceHandoverId  String?
-  requiresApproval  Boolean            @default(false)
+  requiresApproval  Boolean             @default(false)
   approvalRequestId String?
   journalEntryId    String?
   initiatedAt       DateTime
@@ -1509,19 +1513,19 @@ model CashHandover {
   receiverNotes     String?
   rejectionReason   String?
   createdBy         String
-  updatedAt         DateTime           @updatedAt
+  updatedAt         DateTime            @updatedAt
 
   // Relations
-  fromUser          User               @relation("HandoverFromUser", fields: [fromUserId], references: [userId])
-  toUser            User               @relation("HandoverToUser", fields: [toUserId], references: [userId])
-  fromCustody       CashCustody        @relation("HandoverFromCustody", fields: [fromCustodyId], references: [custodyId])
-  toCustody         CashCustody?       @relation("HandoverToCustody", fields: [toCustodyId], references: [custodyId])
-  sourceHandover    CashHandover?      @relation("HandoverChain", fields: [sourceHandoverId], references: [handoverId])
-  childHandovers    CashHandover[]     @relation("HandoverChain")
-  forum             Forum              @relation(fields: [forumId], references: [forumId])
-  approvalRequest   ApprovalRequest?   @relation(fields: [approvalRequestId], references: [requestId])
-  journalEntry      JournalEntry?      @relation(fields: [journalEntryId], references: [entryId])
-  createdByUser     User               @relation("HandoverCreatedBy", fields: [createdBy], references: [userId])
+  fromUser        User             @relation("HandoverFromUser", fields: [fromUserId], references: [userId])
+  toUser          User             @relation("HandoverToUser", fields: [toUserId], references: [userId])
+  fromCustody     CashCustody      @relation("HandoverFromCustody", fields: [fromCustodyId], references: [custodyId])
+  toCustody       CashCustody?     @relation("HandoverToCustody", fields: [toCustodyId], references: [custodyId])
+  sourceHandover  CashHandover?    @relation("HandoverChain", fields: [sourceHandoverId], references: [handoverId])
+  childHandovers  CashHandover[]   @relation("HandoverChain")
+  forum           Forum            @relation(fields: [forumId], references: [forumId])
+  approvalRequest ApprovalRequest? @relation(fields: [approvalRequestId], references: [requestId])
+  journalEntry    JournalEntry?    @relation(fields: [journalEntryId], references: [entryId])
+  createdByUser   User             @relation("HandoverCreatedBy", fields: [createdBy], references: [userId])
 
   @@index([fromUserId])
   @@index([toUserId])

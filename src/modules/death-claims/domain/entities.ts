@@ -3,6 +3,11 @@
  * See docs/domain/8.death_claims_and_contribution.md
  */
 
+import { ApprovalRequest } from "@/modules/approval-workflow/domain/entities";
+import { ContributionCycle } from "@/modules/contributions/domain/entities";
+import { User } from "@/modules/iam/domain/entities";
+import { Member, MembershipTier } from "@/modules/members/domain/entities";
+
 // Enums
 export enum DeathClaimStatus {
   Reported = 'Reported',
@@ -57,13 +62,16 @@ export interface DeathClaim {
   
   // Approval tracking
   approvalRequestId: string | null;
+  approvalRequest?: Partial<ApprovalRequest> | null;
   
   // Member info
   memberId: string;
   memberCode: string;
   memberName: string;
+  member?: Partial<Member>;
   tierId: string;
-  
+  tier?: Partial<MembershipTier>;
+
   // Hierarchy
   agentId: string;
   unitId: string;
@@ -77,6 +85,7 @@ export interface DeathClaim {
   
   // Reporting
   reportedBy: string;
+  reportedByUser?: Partial<User> | null;
   reportedByRole: string;
   reportedDate: Date;
   initialNotes: string | null;
@@ -94,6 +103,7 @@ export interface DeathClaim {
   // Verification
   verificationStatus: DeathClaimVerificationStatus;
   verifiedBy: string | null;
+  verifiedByUser?: Partial<User> | null;
   verifiedDate: Date | null;
   verificationNotes: string | null;
   
@@ -118,6 +128,10 @@ export interface DeathClaim {
   approvedBy: string | null;
   rejectedBy: string | null;
   rejectionReason: string | null;
+
+  // related entities
+  contributionCycle?: Partial<ContributionCycle>;
+  documents?: Partial<DeathClaimDocument>[];
 }
 
 export interface DeathClaimDocument {

@@ -64,12 +64,12 @@ export const modelConfigs: ModelConfigs = {
   DeathClaim: {
     searchable: [],
     sortable: ['createdAt', 'reportedDate'],
-    filters: [],
-    relations: ['tier', 'agent', 'unit', 'approvalRequest', 'contributionCycles']
+    filters: ['claimStatus'],
+    relations: ['agent', 'unit', 'approvalRequest', 'contributionCycles', 'reportedByUser']
   },
   MemberContribution: {
     searchable: ['memberName', 'memberCode'],
-    sortable: ['createdAt', 'collectionDate'],
+    sortable: ['createdAt', 'collectionDate', 'memberName'],
     filters: ['contributionStatus', 'paymentMethod', 'cycleId'],
     relations: ['cycle', 'member', 'agent']
   }

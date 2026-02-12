@@ -18,6 +18,7 @@ export interface Forum {
 export interface Area {
   areaId: string;
   forumId: string;
+  forum?: Partial<Forum>;
   areaCode: string;
   areaName: string;
   adminUserId: string;
@@ -31,7 +32,9 @@ export interface Area {
 export interface Unit {
   unitId: string;
   areaId: string;
+  area?: Partial<Area>;
   forumId: string;
+  forum?: Partial<Forum>;
   unitCode: string;
   unitName: string;
   adminUserId: string;
